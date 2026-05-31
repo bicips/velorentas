@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VeloRentas — Gestión integral</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="qr-engine.js"></script>
+<link rel="stylesheet" href="reservas.css"/>
+<link rel="stylesheet" href="taller.css"/>
+<style>
+#taller-section { display:none; }
+#taller-section.active { display:flex; flex:1; flex-direction:column; min-height:100vh; }
+#reservas-section { display:flex; flex:1; flex-direction:column; min-height:100vh; }
+#reservas-section.hidden { display:none; }
+.main-content { margin-left:240px; }
+@media(max-width:768px){ .main-content { margin-left:0; } }
+</style>
+</head>
+<body>
+
+<div id="reservas-section">
+<div class="sb-ov" id="sbov" onclick="closeSB()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo"><div class="sb-ico">🚲</div><div class="sb-name">VeloRentas</div></div>
+    <div class="sb-sub">Reservas & Facturación</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-sec">Gestión</div>
+    <button class="ni on" id="nav-dash"     onclick="goV('dash')">    <span class="ic">📊</span> Panel</button>
+    <button class="ni"    id="nav-flota"    onclick="goV('flota')">   <span class="ic">🚲</span> Gestión de flota</button>
+    <button class="ni"    id="nav-cal"      onclick="goV('cal')">     <span class="ic">📅</span> Calendario</button>
+    <button class="ni"    id="nav-timeline" onclick="goV('timeline')"><span class="ic">⏱️</span> Timeline</button>
+    <button class="ni"    id="nav-res"      onclick="goV('res')">     <span class="ic">📋</span> Reservas <span class="nbadge hidden" id="pbadge">0</span></button>
+    <div class="sb-sec">Facturación</div>
+    <button class="ni"    id="nav-fact"     onclick="goV('fact')">    <span class="ic">🧾</span> Facturas</button>
+    <div class="sb-sec">Informes</div>
+    <button class="ni"    id="nav-informes"   onclick="goV('informes')"><span class="ic">📈</span> Informes</button>
+    <button class="ni"    id="nav-tarifas"    onclick="goV('tarifas')"> <span class="ic">💶</span> Tarifas</button>
+    <button class="ni"    id="nav-clientes"   onclick="goV('clientes')"><span class="ic">👤</span> Clientes</button>
+    <div class="sb-sec">Taller</div>
+    <button class="ni" id="nav-taller-dash" onclick="switchSection('taller');if(typeof showView==='function')showView('dashboard')"><span class="ic">🔧</span> Panel taller</button>
+    <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller');if(typeof showView==='function')showView('preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
+    <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller');if(typeof showView==='function')showView('bikes')"><span class="ic">🔩</span> Bicicletas taller</button>
+    <div class="sb-sec">Acceso público</div>
+    <button class="ni" onclick="openPublicPortal()">                  <span class="ic">🌐</span> Portal de reservas</button>
+    <button class="ni" onclick="window.open('taller-bicicletas.html','_blank')||( window.location.href='taller-bicicletas.html')"><span class="ic">🔧</span> Ir al taller</button>
+  </nav>
+  <div class="sb-ft">
+    <button class="ni bs" onclick="openM('mcfg');loadCfg()" style="color:var(--g500)"><span class="ic">⚙️</span> Configuración</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="tb-l">
+      <button class="mtoggle" onclick="toggleSB()">☰</button>
+      <div class="ptitle" id="pgtitle">Panel</div>
+    </div>
+    <div class="tb-r">
+      <button class="btn bs bsm" onclick="openM('mcfg');loadCfg()">⚙️</button>
+      <button class="btn bb bsm" onclick="openNewRes()">+ Nueva reserva</button>
+    </div>
+  </header>
+  <div class="pg">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="view on" id="v-dash">
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--fontd);font-size:22px;font-weight:800;margin-bottom:3px">Panel de reservas 📊</div>
+        <div style="font-size:13px;color:var(--g400)" id="tdlbl"></div>
+      </div>
+      <div class="sg4" id="dstats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div><div class="shdr"><div class="st">Próximas entradas</div><button class="btn bs bsm" onclick="goV('res')">Ver todas</button></div><div class="card" id="d-arrivals"></div></div>
+        <div><div class="shdr"><div class="st">Próximas salidas</div></div><div class="card" id="d-departs"></div></div>
+      </div>
+      <div class="shdr"><div class="st">Disponibilidad hoy por modelo y talla</div></div>
+      <div id="d-avail"></div>
+    </div>
+
+    <!-- ══ GESTIÓN DE FLOTA ══ -->
+    <div class="view" id="v-flota">
+      <div class="shdr">
+        <div><div class="st">Gestión de flota</div><div class="sd-">Bicicletas disponibles, bloqueadas y sin asignar por modelo y talla</div></div>
+        <div class="ftabs">
+          <button class="ftab on" onclick="setFF('all',this)">Todas</button>
+          <button class="ftab" onclick="setFF('libre',this)">Libres</button>
+          <button class="ftab" onclick="setFF('sinasignar',this)">Sin asignar</button>
+          <button class="ftab" onclick="setFF('bloqueada',this)">Bloqueadas</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <select class="fi" id="flota-tipo" onchange="renderFlota()" style="width:160px;padding:7px 10px;font-size:13px">
+          <option value="">Todos los modelos</option>
+        </select>
+        <select class="fi" id="flota-talla" onchange="renderFlota()" style="width:110px;padding:7px 10px;font-size:13px">
+          <option value="">Todas las tallas</option>
+        </select>
+        <button class="btn bb bsm" onclick="openBloqueo()">🔒 Bloquear bicicletas</button>
+      </div>
+      <div class="fleet-grid" id="flota-grid"></div>
+    </div>
+
+    <!-- ══ CALENDARIO ══ -->
+    <div class="view" id="v-cal">
+      <div class="shdr">
+        <div><div class="st">Calendario anual de alquileres</div><div class="sd-">Vista año completo · click en día para ver detalles</div></div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <div style="display:flex;gap:5px;flex-wrap:wrap" id="cal-tf"></div>
+          <button class="btn bs bsm" onclick="calYear(-1)">‹ Año</button>
+          <span id="cal-year-lbl" style="font-family:var(--fontd);font-weight:700;font-size:15px;min-width:44px;text-align:center"></span>
+          <button class="btn bs bsm" onclick="calYear(1)">Año ›</button>
+          <button class="btn bs bsm" onclick="calNow()">Hoy</button>
+          <button class="btn bb bsm" onclick="openNewRes()">+ Nueva</button>
+        </div>
+      </div>
+      <div style="border:1px solid var(--g200);border-radius:var(--r12);box-shadow:var(--s1);background:#fff;overflow:hidden">
+        <div id="cal-annual"></div>
+      </div>
+    </div>
+
+    <!-- ══ TIMELINE ══ -->
+    <div class="view" id="v-timeline">
+      <div class="shdr">
+        <div><div class="st">Timeline de ocupación</div><div class="sd-">30 días · incluye períodos de preparación</div></div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <select class="fi" id="tl-tipo" onchange="tlTC();renderTL()" style="width:150px;padding:7px 10px;font-size:13px"></select>
+          <select class="fi" id="tl-talla" onchange="renderTL()" style="width:100px;padding:7px 10px;font-size:13px"></select>
+          <button class="btn bb bsm" onclick="openNewRes()">+ Nueva</button>
+        </div>
+      </div>
+      <div class="card" style="overflow:hidden"><div id="tlcont"></div></div>
+    </div>
+
+    <!-- ══ RESERVAS ══ -->
+    <div class="view" id="v-res">
+      <!-- Top bar -->
+      <div class="shdr">
+        <div><div class="st">Reservas</div><div class="sd-" id="rcount"></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="btn bs bsm" onclick="exportarReservas()">⬇️ Exportar CSV</button>
+          <button class="btn bs bsm" onclick="openImportRes()">⬆️ Importar CSV</button>
+          <button class="btn bs bsm" onclick="openPrintSelector()">🖨️ Imprimir lista</button>
+          <button id="btn-vista" class="btn bs bsm" onclick="toggleVistaRes()" style="border:1px solid var(--g300)">📊 Vista tabla</button>
+          <button class="btn bb bsm" onclick="openNewRes()">+ Nueva reserva</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <!-- Row 1: búsqueda + tabs estado -->
+        <div style="display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--g100);flex-wrap:wrap;align-items:center">
+          <div style="display:flex;gap:6px;align-items:center;flex:1;min-width:150px">
+            <div style="flex:1;position:relative">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--g400);font-size:14px">🔍</span>
+              <input class="fi" id="rsrch" placeholder="Buscar cliente, bici, teléfono, lugar..." oninput="renderRes()" style="padding-left:32px"/>
+            </div>
+            <button id="btn-cal-filter" onclick="toggleDateRow()" title="Filtrar por fechas" style="flex-shrink:0;width:38px;height:38px;border-radius:8px;border:1px solid var(--g200);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">📅</button>
+          </div>
+          <div class="ftabs" id="res-status-tabs">
+            <button class="ftab on" onclick="setRF('all',this)">Todas</button>
+            <button class="ftab" onclick="setRF('pendiente',this)">Pendientes</button>
+            <button class="ftab" onclick="setRF('confirmada',this)">Confirmadas</button>
+            <button class="ftab" onclick="setRF('activa',this)">Activas</button>
+            <button class="ftab" onclick="setRF('finalizada',this)">Finalizadas</button>
+            <button class="ftab" onclick="setRF('cancelada',this)">Canceladas</button>
+          </div>
+        </div>
+
+        <!-- Row 1b: filtro por fechas -->
+        <div id="res-date-row" style="display:none;padding:8px 14px;border-bottom:1px solid var(--g100);background:#eff9f7;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:var(--te700);flex-shrink:0">📅 Rango de fechas:</span>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <label style="font-size:12px;font-weight:600;color:var(--g600)">F. inicio desde</label>
+            <input type="date" id="res-fini" class="fi" style="width:145px;padding:6px 9px;font-size:13px" onkeydown="if(event.key==='Enter')aplicarFiltroFechas()"/>
+            <label style="font-size:12px;font-weight:600;color:var(--g600)">F. fin hasta</label>
+            <input type="date" id="res-ffin" class="fi" style="width:145px;padding:6px 9px;font-size:13px" onkeydown="if(event.key==='Enter')aplicarFiltroFechas()"/>
+            <button onclick="aplicarFiltroFechas()" style="padding:6px 16px;background:var(--g900);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap">🔍 Buscar</button>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button onclick="setFechaPreset('today')"   class="btn bxs" style="background:#fff;border:1px solid var(--te500);color:var(--te700);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">Hoy</button>
+            <button onclick="setFechaPreset('week')"    class="btn bxs" style="background:#fff;border:1px solid var(--te500);color:var(--te700);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">Esta semana</button>
+            <button onclick="setFechaPreset('month')"   class="btn bxs" style="background:#fff;border:1px solid var(--te500);color:var(--te700);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">Este mes</button>
+            <button onclick="setFechaPreset('next30')"  class="btn bxs" style="background:#fff;border:1px solid var(--te500);color:var(--te700);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">Próx. 30 días</button>
+            <button onclick="setFechaPreset('clear')"   class="btn bxs" style="background:var(--r50);border:1px solid var(--r200);color:var(--r600);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;cursor:pointer">✕ Limpiar</button>
+          </div>
+        </div>
+
+        <!-- Row 2: ordenación + selección -->
+        <div style="display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--g100);background:var(--g50);flex-wrap:wrap;align-items:center">
+          <!-- Ordenar -->
+          <span style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Ordenar:</span>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <button id="sort-ini"   class="sort-btn sort-on" onclick="setSort('ini',this)"   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--g300);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--g700)">📅 F. Inicio <span id="sort-ini-ico">↑</span></button>
+            <button id="sort-fin"   class="sort-btn"         onclick="setSort('fin',this)"   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--g300);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--g700)">🏁 F. Fin <span id="sort-fin-ico"></span></button>
+            <button id="sort-ts"    class="sort-btn"         onclick="setSort('ts',this)"    style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--g300);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--g700)">🕐 F. Reserva <span id="sort-ts-ico"></span></button>
+            <button id="sort-cli"   class="sort-btn"         onclick="setSort('cli',this)"   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--g300);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--g700)">👤 Cliente <span id="sort-cli-ico"></span></button>
+            <button id="sort-total" class="sort-btn"         onclick="setSort('total',this)" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:6px;border:1px solid var(--g300);font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--g700)">💶 Total <span id="sort-total-ico"></span></button>
+          </div>
+          <div style="flex:1"></div>
+          <!-- Selección -->
+          <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            <button onclick="selAll()"  class="btn bs bxs">☑ Selec. todo</button>
+            <button onclick="selNone()" class="btn bs bxs">☐ Deselec.</button>
+          </div>
+        </div>
+
+        <!-- Row 3: acciones en lote (visible solo con selección) -->
+        <div id="res-batch-bar" style="display:none;padding:8px 14px;background:var(--b50);border-bottom:1px solid var(--b100);display:none;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="res-sel-count" style="font-size:13px;font-weight:700;color:var(--b700)">0 seleccionadas</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button class="btn bsm" onclick="batchStatus('confirmada')" style="background:var(--b50);border:1px solid var(--b200);color:var(--b700);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">✅ Confirmar</button>
+            <button class="btn bsm" onclick="batchStatus('activa')"     style="background:var(--gr50);border:1px solid var(--gr500);color:var(--gr700);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">🔄 Activar</button>
+            <button class="btn bsm" onclick="batchStatus('finalizada')" style="background:var(--g100);border:1px solid var(--g300);color:var(--g700);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">🏁 Finalizar</button>
+            <button class="btn bsm" onclick="batchStatus('cancelada')"  style="background:var(--r50);border:1px solid var(--r200);color:var(--r600);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">❌ Cancelar</button>
+            <button class="btn bsm" onclick="batchExport()"             style="background:var(--am50);border:1px solid var(--am200);color:var(--am700);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">⬇️ Exportar selec.</button>
+            <button class="btn bsm" onclick="batchDelete()"             style="background:var(--r50);border:1px solid var(--r200);color:var(--r600);font-size:12px;font-weight:700;padding:5px 10px;border-radius:6px;cursor:pointer">🗑️ Eliminar</button>
+          </div>
+        </div>
+
+        <div id="rlist"></div>
+
+        <!-- Vista tabla desagrupada estilo Excel -->
+        <div id="res-tabla" style="display:none;overflow-x:auto">
+          <table id="res-table-el" style="width:100%;border-collapse:collapse;font-size:13px;min-width:700px">
+            <thead>
+              <tr style="background:var(--g900);color:#fff;position:sticky;top:0;z-index:2">
+                <th onclick="setTableSort('cli')"   style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">👤 Cliente <span id="ts-cli"></span></th>
+                <th onclick="setTableSort('ini')"   style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">📅 F. Inicio <span id="ts-ini">↑</span></th>
+                <th onclick="setTableSort('fin')"   style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">🏁 F. Fin <span id="ts-fin"></span></th>
+                <th onclick="setTableSort('lugar')" style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">📍 Lugar inicio <span id="ts-lugar"></span></th>
+                <th onclick="setTableSort('mod')"   style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;cursor:pointer;user-select:none;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">🚲 Modelo <span id="ts-mod"></span></th>
+                <th style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">📏 Talla</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)">⚡ Estado</th>
+                <th style="padding:10px 12px;text-align:left;font-weight:700;font-size:12px;letter-spacing:.3px;white-space:nowrap">🏁 Destino</th>
+              </tr>
+            </thead>
+            <tbody id="res-table-body"></tbody>
+          </table>
+          <div id="res-table-footer" style="padding:10px 14px;background:var(--g50);border-top:1px solid var(--g200);font-size:12px;color:var(--g400);display:flex;justify-content:space-between;align-items:center">
+            <span id="res-table-count"></span>
+            <button class="btn bs bxs" onclick="exportTablaCSV()">⬇️ Exportar esta tabla</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ FACTURAS ══ -->
+    <div class="view" id="v-fact">
+      <div class="shdr">
+        <div><div class="st">Facturas</div><div class="sd-" id="fcount"></div></div>
+        <div style="display:flex;gap:7px">
+          <button class="btn bs bsm" onclick="goV('res')">📋 Desde reservas</button>
+        </div>
+      </div>
+      <div class="sg3" id="fact-stats"></div>
+      <div class="card">
+        <div style="display:flex;gap:8px;padding:12px 16px;border-bottom:1px solid var(--g100);flex-wrap:wrap">
+          <div style="flex:1;min-width:150px;position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--g400)">🔍</span>
+            <input class="fi" id="fsrch" placeholder="Buscar cliente, nº factura..." oninput="renderFact()" style="padding-left:30px"/>
+          </div>
+          <div class="ftabs">
+            <button class="ftab on" onclick="setFF2('all',this)">Todas</button>
+            <button class="ftab" onclick="setFF2('pendiente',this)">Pendientes</button>
+            <button class="ftab" onclick="setFF2('pagada',this)">Pagadas</button>
+            <button class="ftab" onclick="setFF2('cancelada',this)">Canceladas</button>
+          </div>
+        </div>
+        <div id="flist"></div>
+      </div>
+    </div>
+
+    <!-- ══ INFORMES ══ -->
+    <div class="view" id="v-informes">
+      <div class="shdr"><div><div class="st">Informes y estadísticas</div><div class="sd-">Resumen de ocupación, ingresos y rendimiento de la flota</div></div>
+        <button class="btn bs bsm" onclick="exportCSV()">⬇️ Exportar CSV</button>
+      </div>
+      <div class="sg4" id="inf-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div><div class="shdr"><div class="st">Ocupación por modelo</div></div><div class="card"><div class="cb" id="inf-ocu"></div></div></div>
+        <div><div class="shdr"><div class="st">Ingresos por mes</div></div><div class="card"><div class="cb" id="inf-ing"></div></div></div>
+      </div>
+      <div class="shdr"><div class="st">Bloqueos activos</div><button class="btn bd bsm" onclick="openBloqueo()">+ Nuevo bloqueo</button></div>
+      <div class="card" id="blq-list-wrap"></div>
+    </div>
+
+    <!-- ══ TARIFAS ══ -->
+    <div class="view" id="v-tarifas">
+      <div class="shdr"><div><div class="st">Tarifas por modelo y talla</div><div class="sd-">Precio por día de cada tipo de bicicleta</div></div>
+        <button class="btn bp bsm" onclick="saveTarifas()">💾 Guardar tarifas</button>
+      </div>
+      <div class="card"><div class="cb" id="tarifas-body"></div></div>
+    </div>
+
+    <!-- ══ CLIENTES ══ -->
+    <div class="view" id="v-clientes">
+      <div class="shdr"><div><div class="st">Historial de clientes</div><div class="sd-" id="cli-count"></div></div></div>
+      <div class="card">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--g100)">
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--g400)">🔍</span>
+            <input class="fi" id="cli-srch" placeholder="Buscar cliente por nombre, teléfono o email..." oninput="renderClientes()" style="padding-left:30px"/>
+          </div>
+        </div>
+        <div id="cli-list"></div>
+      </div>
+    </div>
+
+  </div><!-- /pg -->
+</div><!-- /main -->
+
+<!-- ════════════════════ MODALES ════════════════════ -->
+
+<!-- Nueva/Editar Reserva -->
+<div class="mover" id="mres">
+  <div class="mbox w720">
+    <div class="mhdr"><div class="mtit" id="mres-tit">Nueva reserva</div><button class="mcls" onclick="closeM('mres')">✕</button></div>
+    <div class="mbdy">
+      <div class="fr2">
+        <div class="fg"><label class="fl">Nombre cliente *</label><input class="fi" id="r-nom" placeholder="Nombre completo"/></div>
+        <div class="fg"><label class="fl">Teléfono *</label><input class="fi" id="r-tel" type="tel" placeholder="+34 600 000 000"/></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Email</label><input class="fi" id="r-email" type="email" placeholder="cliente@email.com"/></div>
+        <div class="fg"><label class="fl">DNI / Pasaporte</label><input class="fi" id="r-dni" placeholder="12345678A"/></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Fecha inicio *</label><input class="fi" id="r-ini" type="date" onchange="calcDays();calcPrice();renderLineas()"/></div>
+        <div class="fg"><label class="fl">Fecha fin *</label><input class="fi" id="r-fin" type="date" onchange="calcDays();calcPrice();renderLineas()"/></div>
+      </div>
+      <div id="r-dinfo" style="display:none;font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px"></div>
+      <div class="fr2">
+        <div class="fg">
+          <label class="fl">📍 Lugar de inicio</label>
+          <input class="fi" id="r-lugar-ini" placeholder="Ej: Saint-Jean-Pied-de-Port" list="lugares-sugeridos"/>
+        </div>
+        <div class="fg">
+          <label class="fl">🏁 Lugar de finalización</label>
+          <input class="fi" id="r-lugar-fin" placeholder="Santiago de Compostela" list="lugares-sugeridos"/>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">🚚 Dirección de entrega</label>
+        <input class="fi" id="r-dir-entrega" placeholder="Ej: Hotel Parador, Rúa do Franco 3, Santiago de Compostela"/>
+      </div>
+      <datalist id="lugares-sugeridos">
+        <option value="Santiago de Compostela"/>
+        <option value="Saint-Jean-Pied-de-Port"/>
+        <option value="Roncesvalles"/>
+        <option value="Pamplona"/>
+        <option value="Burgos"/>
+        <option value="León"/>
+        <option value="Ponferrada"/>
+        <option value="Sarria"/>
+        <option value="O Cebreiro"/>
+        <option value="Lugo"/>
+        <option value="Porto"/>
+        <option value="Lisboa"/>
+        <option value="Sevilla"/>
+        <option value="Oviedo"/>
+        <option value="Irún"/>
+        <option value="Ferrol"/>
+        <option value="Tui"/>
+        <option value="Vigo"/>
+        <option value="A Coruña"/>
+      </datalist>
+
+      <!-- LÍNEAS DE BICICLETAS -->
+      <div style="border:1px solid var(--g200);border-radius:12px;overflow:hidden;margin-bottom:14px">
+        <div style="background:var(--g900);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:13px">🚲 Bicicletas de la reserva</span>
+        </div>
+        <div id="r-lineas"></div>
+        <div style="padding:10px 14px;border-top:1px solid var(--g100)">
+          <button type="button" onclick="addLinea()" style="width:100%;padding:10px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <span style="font-size:18px">+</span> Añadir otro modelo de bicicleta
+          </button>
+        </div>
+        <div id="r-avail" style="display:none;padding:10px 14px;font-size:13px;border-top:1px solid var(--g100)"></div>
+      </div>
+
+      <div class="fr3">
+        <div class="fg"><label class="fl">Precio/día total (€)</label><input class="fi" id="r-ppd" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcPrice()"/></div>
+        <div class="fg"><label class="fl">Total reserva (€)</label><input class="fi" id="r-total" type="number" min="0" step="0.01" placeholder="0.00"/></div>
+        <div class="fg"><label class="fl">Estado</label>
+          <select class="fi" id="r-estado">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="confirmada">✅ Confirmada</option>
+            <option value="activa">🔄 Activa</option>
+            <option value="finalizada">🏁 Finalizada</option>
+            <option value="cancelada">❌ Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notas</label><textarea class="fi" id="r-notas" placeholder="Observaciones, peticiones especiales..."></textarea></div>
+
+      <!-- Asignación de bicis físicas -->
+      <div style="background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:14px;margin-top:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--am700);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📷 Asignación de bicicleta(s) — por QR o manual</div>
+        <div id="r-bikes-asig" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <button class="btn ba bsm" type="button" onclick="openQRAsign()">📷 Escanear QR</button>
+          <button class="btn bs bsm" type="button" onclick="openManualAsign()">🔍 Asignar manual</button>
+          <button class="btn bd bsm" type="button" onclick="clearAsignadas()">✕ Limpiar</button>
+        </div>
+        <div style="font-size:11px;color:var(--g400);margin-top:6px">Asigna la bici física en la entrega. La reserva ya bloquea disponibilidad por modelo/talla.</div>
+      </div>
+
+      <!-- EXTRAS POR BICICLETA -->
+      <div style="border:1px solid var(--g200);border-radius:12px;overflow:hidden;margin-top:14px">
+        <div style="background:var(--g800);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:13px">🎒 Extras por bicicleta</span>
+          <button type="button" onclick="openGestionExtras()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">⚙️ Catálogo</button>
+        </div>
+        <div id="r-extras-bici" style="padding:0"></div>
+      </div>
+
+      <!-- campos ocultos de compatibilidad -->
+      <input type="hidden" id="r-tipo"/>
+      <input type="hidden" id="r-talla"/>
+      <input type="hidden" id="r-uds" value="1"/>
+      <input type="hidden" id="r-eid"/>
+    </div>
+    <div class="mftr">
+      <button class="btn bs" onclick="closeM('mres')">Cancelar</button>
+      <button class="btn bb" onclick="saveRes()">💾 Guardar reserva</button>
+      <button class="btn bg-" id="r-fact-btn" onclick="genFactFromRes()" style="display:none">🧾 Generar factura</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR Asignación -->
+<div class="mover" id="mqrasign">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">📷 Escanear código QR</div><button class="mcls" onclick="closeM('mqrasign')">✕</button></div>
+    <div class="mbdy">
+      <div id="qra-status" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px"></div>
+
+      <!-- Visor cámara en vivo -->
+      <div class="qrwrap" id="qrwrap" style="display:none"><video id="qrv" playsinline autoplay muted></video><div class="qrov"><div class="qrc tl"></div><div class="qrc tr"></div><div class="qrc bl"></div><div class="qrc br"></div><div class="qrsl"></div></div></div>
+      <canvas id="qrc2" style="display:none"></canvas>
+
+      <!-- Botón único principal -->
+      <input type="file" id="qra-file" accept="image/*" capture="environment" style="display:none" onchange="scanQRaFromFile(event)"/>
+      <button onclick="iniciarEscanerQR()" style="width:100%;padding:20px 16px;background:linear-gradient(135deg,#0d9488,#065f46);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 18px rgba(13,148,136,.4);margin-bottom:14px">
+        <span style="font-size:32px">📷</span>
+        <div style="text-align:left"><div>Escanear QR</div><div style="font-size:12px;font-weight:400;opacity:.85">Toca para abrir la cámara</div></div>
+      </button>
+      <button id="bstpqr" onclick="stopQRa()" style="display:none;width:100%;padding:10px;background:var(--r600);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px">⏹ Detener cámara</button>
+
+      <div class="dvd"></div>
+      <div class="fg" style="margin-top:12px"><label class="fl">O escribe el número de bici manualmente</label>
+        <div style="display:flex;gap:7px">
+          <input class="fi" id="qra-inp" placeholder="Ej: B-001" onkeydown="if(event.key==='Enter')doQRaManual()"/>
+          <button class="btn bb" onclick="doQRaManual()">Asignar</button>
+        </div>
+      </div>
+      <div id="qra-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Manual asignación -->
+<div class="mover" id="mmanasign">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">🔍 Asignar bicicleta manual</div><button class="mcls" onclick="closeM('mmanasign')">✕</button></div>
+    <div class="mbdy">
+      <div class="fg"><label class="fl">Buscar bicicleta disponible</label>
+        <input class="fi" id="man-srch" placeholder="Nº bici, modelo, talla..." oninput="renderManList()"/>
+      </div>
+      <div id="man-list" style="max-height:350px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bloqueo de flota -->
+<div class="mover" id="mbloqueo">
+  <div class="mbox w720">
+    <div class="mhdr"><div class="mtit">🔒 Bloquear bicicletas</div><button class="mcls" onclick="closeM('mbloqueo')">✕</button></div>
+    <div class="mbdy">
+      <div style="background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--am700)">
+        ℹ️ Al bloquear, las bicicletas quedan <strong>no disponibles para reservar</strong> durante el período indicado (preparación, mantenimiento, evento, etc.) y se aplica el margen de <strong id="blq-gap-lbl">6</strong> días antes y después.
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Modelo *</label>
+          <select class="fi" id="blq-tipo" onchange="blqTC()"><option value="">— Modelo —</option></select>
+        </div>
+        <div class="fg"><label class="fl">Talla *</label>
+          <select class="fi" id="blq-talla"><option value="">— Talla —</option></select>
+        </div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Fecha inicio bloqueo *</label><input class="fi" id="blq-ini" type="date"/></div>
+        <div class="fg"><label class="fl">Fecha fin bloqueo *</label><input class="fi" id="blq-fin" type="date"/></div>
+      </div>
+      <div class="fg"><label class="fl">Motivo del bloqueo</label><input class="fi" id="blq-motivo" placeholder="Ej: mantenimiento, evento, temporada baja..."/></div>
+      <div class="fg"><label class="fl">Número de bicicletas a bloquear</label><input class="fi" id="blq-uds" type="number" min="1" value="1"/></div>
+      <div id="blq-avail-info" style="margin-top:8px"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn bs" onclick="closeM('mbloqueo')">Cancelar</button>
+      <button class="btn bd" onclick="saveBloqueo()">🔒 Confirmar bloqueo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detalle reserva -->
+<div class="mover" id="mdetail">
+  <div class="mbox w720">
+    <div class="mhdr"><div class="mtit">Detalle de reserva</div><button class="mcls" onclick="closeM('mdetail')">✕</button></div>
+    <div class="mbdy" id="mdetail-body"></div>
+    <div class="mftr" id="mdetail-ftr"></div>
+  </div>
+</div>
+
+<!-- Factura -->
+<div class="mover" id="mfact">
+  <div class="mbox w900">
+    <div class="mhdr"><div class="mtit">🧾 Factura</div><button class="mcls" onclick="closeM('mfact')">✕</button></div>
+    <div class="mbdy">
+      <div class="fr2" style="margin-bottom:14px">
+        <div class="fg"><label class="fl">Nº Factura</label><input class="fi" id="f-num" placeholder="F-2024-001"/></div>
+        <div class="fg"><label class="fl">Fecha emisión</label><input class="fi" id="f-date" type="date"/></div>
+      </div>
+      <div class="fr2" style="margin-bottom:14px">
+        <div class="fg"><label class="fl">IVA (%)</label><input class="fi" id="f-iva" type="number" min="0" max="100" value="21" oninput="updateInvPreview()"/></div>
+        <div class="fg"><label class="fl">Estado pago</label>
+          <select class="fi" id="f-epago">
+            <option value="pendiente">⏳ Pendiente</option>
+            <option value="pagada">✅ Pagada</option>
+            <option value="cancelada">❌ Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notas / condiciones</label><textarea class="fi" id="f-fnotes" placeholder="Condiciones de pago, notas legales..." style="min-height:60px"></textarea></div>
+      <div class="dvd"></div>
+      <div class="inv-preview" id="inv-preview"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn bs" onclick="closeM('mfact')">Cancelar</button>
+      <button class="btn bs" onclick="printInvoice()">🖨️ Imprimir</button>
+      <button class="btn bp" id="f-send-btn" onclick="sendFromModal()" style="display:none">📨 Enviar al cliente</button>
+      <button class="btn bb" onclick="saveFactura()">💾 Guardar factura</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal envío confirmación -->
+<div class="mover" id="msend">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">📨 Enviar confirmación al cliente</div><button class="mcls" onclick="closeM('msend')">✕</button></div>
+    <div class="mbdy">
+      <div style="background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--am700)">
+        ℹ️ Elige cómo enviar la confirmación al cliente. Se abrirá la app correspondiente con el mensaje prellenado.
+      </div>
+      <div id="send-client-info" style="background:var(--g50);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px"></div>
+      <div class="fg"><label class="fl">Mensaje personalizado (opcional)</label>
+        <textarea class="fi" id="send-msg" style="min-height:100px"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn bg-" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doSendWhatsApp()">
+          💬 Enviar por WhatsApp
+        </button>
+        <button class="btn bb" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doSendEmail()">
+          ✉️ Enviar por Email
+        </button>
+        <button class="btn bs" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doSendSMS()">
+          📱 Enviar por SMS
+        </button>
+        <button class="btn bs" style="width:100%;justify-content:center;font-size:13px" onclick="copyMsgClipboard()">
+          📋 Copiar mensaje
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Día calendario -->
+<div class="mover" id="mday">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit" id="mday-tit">Reservas del día</div><button class="mcls" onclick="closeM('mday')">✕</button></div>
+    <div class="mbdy" id="mday-body"></div>
+    <div class="mftr"><button class="btn bs" onclick="closeM('mday')">Cerrar</button><button class="btn bb" onclick="closeM('mday');openNewRes()">+ Nueva reserva</button></div>
+  </div>
+</div>
+
+<!-- Config -->
+<div class="mover" id="mcfg">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">⚙️ Configuración</div><button class="mcls" onclick="closeM('mcfg')">✕</button></div>
+    <div class="mbdy">
+      <div class="fg"><label class="fl">Nombre del negocio</label><input class="fi" id="c-biz" placeholder="Mi tienda de bicis"/></div>
+      <div class="fg"><label class="fl">CIF / NIF</label><input class="fi" id="c-cif" placeholder="B12345678"/></div>
+      <div class="fg"><label class="fl">Dirección</label><input class="fi" id="c-addr" placeholder="Calle Mayor 1, 28001 Madrid"/></div>
+      <div class="fg"><label class="fl">Teléfono negocio</label><input class="fi" id="c-phone" placeholder="+34 91 000 0000"/></div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Mínimo días alquiler</label><input class="fi" id="c-min" type="number" min="1" value="3"/></div>
+        <div class="fg"><label class="fl">Días preparación entre alquileres</label><input class="fi" id="c-gap" type="number" min="0" value="6"/></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Moneda</label><select class="fi" id="c-cur"><option value="€">€ Euro</option><option value="$">$ Dólar</option><option value="£">£ Libra</option></select></div>
+        <div class="fg"><label class="fl">IVA por defecto (%)</label><input class="fi" id="c-iva" type="number" min="0" value="21"/></div>
+      </div>
+      <div class="fg"><label class="fl">Prefijo facturas</label><input class="fi" id="c-fprefix" placeholder="F-2024-" value="F-2024-"/></div>
+    </div>
+    <div class="mftr"><button class="btn bs" onclick="closeM('mcfg')">Cancelar</button><button class="btn bp" onclick="saveCfg()">💾 Guardar</button></div>
+  </div>
+</div>
+
+<!-- Portal público -->
+<div class="mover" id="mpublic">
+  <div class="mbox w1100">
+    <div class="mhdr"><div class="mtit">🌐 Portal público de reservas</div><button class="mcls" onclick="closeM('mpublic')">✕</button></div>
+    <div class="mbdy" id="mpublic-body"></div>
+  </div>
+</div>
+
+<!-- Detalle cliente -->
+<div class="mover" id="mcli">
+  <div class="mbox w720">
+    <div class="mhdr"><div class="mtit" id="mcli-tit">Historial del cliente</div><button class="mcls" onclick="closeM('mcli')">✕</button></div>
+    <div class="mbdy" id="mcli-body"></div>
+  </div>
+</div>
+
+<!-- Modal cambiar estado bicicleta -->
+<div class="mover" id="m-bike-estado">
+  <div class="mbox" style="max-width:360px">
+    <div class="mhdr"><div class="mtit" id="m-bike-estado-tit">🚲 Cambiar estado</div><button class="mcls" onclick="closeM('m-bike-estado')">✕</button></div>
+    <div class="mbdy">
+      <div id="m-bike-estado-info" style="margin-bottom:14px;font-size:13px;color:var(--g500)"></div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="m-bike-estado-btns"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal catálogo extras -->
+<div class="mover" id="m-extras-cat">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">⚙️ Catálogo de extras</div><button class="mcls" onclick="closeM('m-extras-cat')">✕</button></div>
+    <div class="mbdy">
+      <div style="font-size:13px;color:var(--g500);margin-bottom:14px">Define los extras disponibles para añadir a las reservas.</div>
+      <div id="extras-cat-list" style="margin-bottom:14px;max-height:300px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input class="fi" id="ext-nombre" placeholder="Nombre del extra (ej: Casco)" style="flex:1"/>
+        <input class="fi" type="number" id="ext-precio" placeholder="€" min="0" step="0.01" style="width:80px"/>
+        <input class="fi" id="ext-icono" placeholder="🎒" maxlength="4" style="width:56px;text-align:center;font-size:18px"/>
+      </div>
+      <button type="button" onclick="addExtraCat()" style="width:100%;padding:10px;background:#374151;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">+ Añadir al catálogo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal selector campos impresión -->
+<div class="mover" id="m-print-sel">
+  <div class="mbox" style="max-width:400px">
+    <div class="mhdr">
+      <div class="mtit">🖨️ Imprimir lista — seleccionar campos</div>
+      <button class="mcls" onclick="closeM('m-print-sel')">✕</button>
+    </div>
+    <div class="mbdy">
+      <div style="font-size:13px;color:var(--g500);margin-bottom:14px">
+        Selecciona los campos que quieres incluir en la impresión. Se imprimirán las reservas del filtro actual.
+      </div>
+      <div id="print-fields" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn bs" onclick="closeM('m-print-sel')">Cancelar</button>
+      <button class="btn bb" onclick="ejecutarImpresion()">🖨️ Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal importar reservas -->
+<div class="mover" id="m-import-res">
+  <div class="mbox">
+    <div class="mhdr"><div class="mtit">⬆️ Importar reservas</div><button class="mcls" onclick="closeM('m-import-res')">✕</button></div>
+    <div class="mbdy">
+      <div style="background:var(--b50);border:1px solid var(--b100);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--b700)">
+        ℹ️ Importa reservas desde un archivo <strong>CSV</strong> exportado desde esta app.
+        Las reservas importadas se <strong>añaden</strong> a las existentes (no se borran las actuales).
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="fl">Archivo CSV de reservas</label>
+        <input type="file" id="import-file" accept=".csv,.txt" style="width:100%;padding:10px;border:2px dashed var(--g300);border-radius:10px;font-size:13px;cursor:pointer;background:var(--g50)" onchange="previewImport(event)"/>
+      </div>
+      <div id="import-preview" style="display:none;background:var(--g50);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px"></div>
+      <div id="import-error" style="display:none;background:var(--r50);border:1px solid var(--r100);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--r600)"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn bs" onclick="closeM('m-import-res')">Cancelar</button>
+      <button class="btn bb" id="import-confirm-btn" onclick="confirmarImport()" style="display:none">⬆️ Importar reservas</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+</div>
+
+<div id="taller-section">
+<div class="main-content">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div>
+        <div class="page-title" id="topbar-title">Panel General</div>
+        <div class="topbar-date" id="topbar-date"></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-secondary btn-sm" onclick="openM('madd');abReset()">+ Nueva bici</button>
+      <button class="qr-btn" onclick="openM('mqr')">
+        <span>📷</span> Escanear QR
+      </button>
+    </div>
+  </header>
+
+  <!-- PAGE BODY -->
+  <div class="page-body">
+
+    <!-- ═══ VIEW: DASHBOARD ═══ -->
+    <div class="view active" id="vd">
+      <div style="margin-bottom:24px">
+        <div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--gray-900);margin-bottom:4px">Bienvenido al taller 👋</div>
+        <div style="font-size:14px;color:var(--gray-400)" id="today-label"></div>
+      </div>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="section-header">
+        <div>
+          <div class="section-title">Flota por modelo</div>
+          <div class="section-desc">Selecciona un modelo para ver sus bicicletas</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openM('madd');abReset()">+ Añadir bicicleta</button>
+      </div>
+      <div class="types-grid" id="dash-types"></div>
+
+      <div class="section-header" style="margin-top:8px">
+        <div class="section-title">Últimas revisiones</div>
+        <button class="btn btn-secondary btn-sm" onclick="openM('mh');renderHistorial()">Ver todo</button>
+      </div>
+      <div id="dash-recent"></div>
+    </div>
+
+    <!-- ═══ VIEW: BIKES ═══ -->
+    <div class="view" id="vb">
+      <!-- Type selector -->
+      <!-- PREPARAR VIEW -->
+      <div id="preparar-view" class="hidden">
+        <div class="section-header" style="padding:16px 18px 0">
+          <div>
+            <div class="section-title">🔧 Preparar bicicletas</div>
+            <div class="section-desc">Reservas marcadas para preparar desde el gestor</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="refreshPreparar()">↻ Actualizar</button> <span id="prep-count-lbl" style="font-size:13px;font-weight:700;color:#7c3aed"></span>
+        </div>
+        <div id="preparar-content" style="padding:16px 18px"></div>
+      </div>
+
+      <div id="type-selector-view">
+        <div class="section-header">
+          <div class="section-title">Selecciona un modelo</div>
+          <button class="btn btn-primary btn-sm" onclick="openM('madd');abReset()">+ Nueva bicicleta</button>
+        </div>
+        <div class="types-grid" id="type-selector-grid"></div>
+      </div>
+
+      <!-- Bike list -->
+      <div id="bike-list-view" class="hidden">
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="clearTF()">← Volver</button>
+            <div>
+              <div class="section-title" id="bike-list-title">Bicicletas</div>
+              <div class="section-desc" id="bike-list-sub"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openM('madd');abReset()">+ Nueva</button>
+        </div>
+
+        <div class="list-card">
+          <div class="list-toolbar">
+            <div class="search-box">
+              <span class="search-box-icon">🔍</span>
+              <input class="search-input" id="srch" placeholder="Buscar por número, serie, QR o modelo..." oninput="renderBL()"/>
+            </div>
+            <div class="filter-tabs" id="size-filters-wrap">
+              <div class="size-filters" id="size-filters"></div>
+            </div>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="setFE('all',this)">Todas</button>
+              <button class="filter-tab" onclick="setFE('disponible',this)">Disponibles</button>
+              <button class="filter-tab" onclick="setFE('averiada',this)">Averiadas</button>
+            </div>
+          </div>
+          <div class="bike-table" id="bike-table"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: TALLER ═══ -->
+    <div class="view" id="vt">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <button class="btn btn-secondary btn-sm" onclick="showView('bikes')">← Volver</button>
+        <span style="font-size:13px;color:var(--gray-400)">Hoja de trabajo</span>
+      </div>
+
+      <!-- Bike header -->
+      <div class="taller-header">
+        <div class="taller-bike-thumb" id="taller-thumb"><span>🚲</span></div>
+        <div class="taller-bike-info">
+          <div class="taller-bike-name" id="taller-name">—</div>
+          <div class="taller-bike-meta" id="taller-meta"></div>
+        </div>
+        <div id="taller-estado-badge"></div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-card">
+        <div class="progress-header">
+          <span class="progress-label">Progreso de la revisión</span>
+          <span class="progress-pct" id="t-pct">0%</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="t-bar" style="width:0%"></div></div>
+        <div class="progress-sub" id="t-sub">0 de 0 ítems completados</div>
+      </div>
+
+      <div class="taller-layout">
+        <!-- LEFT: checklist -->
+        <div>
+          <div class="checklist-card">
+            <div class="card-header">
+              <span class="card-title">Checklist de revisión</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-xs" onclick="chkAll(true)">✓ Todo</button>
+                <button class="btn btn-secondary btn-xs" onclick="chkAll(false)">✗ Ninguno</button>
+              </div>
+            </div>
+            <div class="card-body" id="cl-items"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: side panel -->
+        <div class="side-panel">
+          <!-- Técnico + estado + notas -->
+          <div class="panel-card">
+            <div class="card-header"><span class="card-title">Técnico y estado</span></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Técnico responsable *</label>
+                <input class="form-input" id="t-tec" placeholder="Nombre del técnico..."/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estado tras revisión</label>
+                <div class="toggle-group">
+                  <button class="toggle-opt" id="e-disp" onclick="setTE('disponible')">✅ Disponible</button>
+                  <button class="toggle-opt" id="e-aver" onclick="setTE('averiada')">⚠️ Averiada</button>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Notas de trabajo</label>
+                <textarea class="form-input" id="t-notas" placeholder="Observaciones, trabajos realizados, estado general..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Piezas -->
+          <div class="panel-card">
+            <div class="card-header">
+              <span class="card-title">Piezas utilizadas</span>
+              <button class="btn btn-primary btn-xs" onclick="openM('mparts')">+ Añadir</button>
+            </div>
+            <div class="card-body" id="t-parts">
+              <div class="empty-state" style="padding:24px 12px">
+                <div style="font-size:24px;margin-bottom:6px">🔩</div>
+                <div style="font-size:12px;color:var(--gray-400)">Sin piezas registradas</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Foto num serie -->
+          <div class="panel-card">
+            <div class="card-header">
+              <span class="card-title">Foto N.º de serie</span>
+              <div style="display:flex;gap:5px">
+                <button class="btn btn-secondary btn-xs" onclick="document.getElementById('fsf1').click()">📷</button>
+                <button class="btn btn-secondary btn-xs" onclick="document.getElementById('fsf2').click()">🖼️</button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:12px">
+              <div class="photo-upload-area" id="fs-area" onclick="document.getElementById('fsf1').click()">
+                <div class="photo-placeholder" id="fs-ph">
+                  <div class="photo-placeholder-icon">📷</div>
+                  <div class="photo-placeholder-text">Toca para fotografiar el número de serie</div>
+                </div>
+                <div class="photo-preview" id="fs-prev">
+                  <img id="fs-img" src="" alt="Nº serie"/>
+                  <div class="photo-actions">
+                    <button class="btn btn-secondary btn-xs" onclick="event.stopPropagation();document.getElementById('fsf1').click()">🔄 Nueva foto</button>
+                    <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();clearFS()">✕ Quitar</button>
+                  </div>
+                </div>
+              </div>
+              <input type="file" id="fsf1" accept="image/*" capture="environment" style="display:none" onchange="handleFS(event)"/>
+              <input type="file" id="fsf2" accept="image/*" style="display:none" onchange="handleFS(event)"/>
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <button class="btn btn-success" style="width:100%;padding:13px;font-size:15px;justify-content:center;border-radius:var(--radius)" onclick="saveTaller()">
+            💾 Guardar revisión
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-body -->
+</div><!-- /main-content -->
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
+
+<!-- QR -->
+<div class="modal-overlay" id="mqr">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Escanear código QR</div>
+      <button class="modal-close" onclick="closeM('mqr');stopQR()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="qr-status" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px"></div>
+      <div class="qr-video-wrap" id="qr-wrap" style="display:none">
+        <video id="qr-video" playsinline autoplay muted></video>
+        <div class="qr-overlay"><div class="qr-corner tl"></div><div class="qr-corner tr"></div><div class="qr-corner bl"></div><div class="qr-corner br"></div><div class="qr-scan-line"></div></div>
+      </div>
+      <canvas id="qr-canvas" style="display:none"></canvas>
+      <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display:none" onchange="scanQRFromFile(event)"/>
+      <button onclick="openQRCamera()" style="width:100%;padding:20px 16px;background:linear-gradient(135deg,#0d9488,#065f46);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 18px rgba(13,148,136,.4);margin-bottom:14px">
+        <span style="font-size:32px">📷</span>
+        <div style="text-align:left"><div>Escanear QR</div><div style="font-size:12px;font-weight:400;opacity:.85">Toca para abrir la cámara</div></div>
+      </button>
+      <button id="b-stopqr" onclick="stopQR()" style="display:none;width:100%;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px">⏹ Detener cámara</button>
+      <div class="divider"></div>
+      <div class="form-group">
+        <label class="form-label">O introduce el código manualmente</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="qr-inp" placeholder="Nº bici / Nº serie / Código QR" onkeydown="if(event.key==='Enter')doQS()"/>
+          <button class="btn btn-primary" onclick="doQS()">Buscar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Bike -->
+<div class="modal-overlay" id="madd">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="madd-title">Nueva bicicleta</div>
+      <button class="modal-close" onclick="closeM('madd')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Foto del modelo</label>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div id="ab-pic-wrap" style="width:72px;height:72px;border-radius:var(--radius-sm);border:2px dashed var(--gray-200);background:var(--gray-50);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:28px;color:var(--gray-300)" onclick="document.getElementById('ab-pf1').click()">
+            <span id="ab-pic-ph">📷</span>
+            <img id="ab-pic-img" src="" style="display:none;width:100%;height:100%;object-fit:cover"/>
+          </div>
+          <div>
+            <div style="display:flex;gap:6px;margin-bottom:6px">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('ab-pf1').click()">📷 Cámara</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('ab-pf2').click()">🖼️ Galería</button>
+              <button type="button" class="btn btn-danger btn-sm hidden" id="ab-pic-del" onclick="clearBikePic()">✕</button>
+            </div>
+            <div style="font-size:12px;color:var(--gray-400)">Aparecerá como icono en la lista</div>
+          </div>
+        </div>
+        <input type="file" id="ab-pf1" accept="image/*" capture="environment" style="display:none" onchange="handleBikePic(event)"/>
+        <input type="file" id="ab-pf2" accept="image/*" style="display:none" onchange="handleBikePic(event)"/>
+        <input type="hidden" id="ab-ico"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nº Bicicleta *</label>
+          <input class="form-input" id="ab-num" placeholder="B-010"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nº Serie <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+          <input class="form-input" id="ab-ser" placeholder="SN-2024-010"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Código QR <span style="font-weight:400;text-transform:none;letter-spacing:0">(vacío = igual que Nº bicicleta)</span></label>
+        <input class="form-input" id="ab-qr" placeholder="QR-010"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Modelo / Nombre</label>
+        <input class="form-input" id="ab-mod" placeholder="City Comfort, Trail Pro..."/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tipo *</label>
+          <select class="form-input" id="ab-tipo" onchange="abSizes()"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Talla *</label>
+          <select class="form-input" id="ab-tal"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado inicial</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="ab-estado-btns"></div>
+      </div>
+      <input type="hidden" id="ab-est" value="disponible"/>
+      <input type="hidden" id="ab-eid" value=""/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeM('madd')">Cancelar</button>
+      <button class="btn btn-primary" id="ab-savebtn" onclick="saveBikeM()">Añadir bicicleta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit tipos -->
+<div class="modal-overlay" id="met">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">Tipos y modelos</div>
+      <button class="modal-close" onclick="closeM('met')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-tabs" id="et-tabs"></div>
+      <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;margin-bottom:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Editar tipo seleccionado</div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0"><label class="form-label">Nombre</label><input class="form-input" id="et-n" placeholder="Nombre del tipo"/></div>
+          <div class="form-group" style="margin-bottom:0"><label class="form-label">Icono (emoji)</label><input class="form-input" id="et-i" placeholder="🚲" maxlength="4"/></div>
+        </div>
+        <div class="form-group" style="margin:12px 0 0">
+          <label class="form-label">Tallas disponibles <span style="font-weight:400;text-transform:none">(separadas por coma)</span></label>
+          <input class="form-input" id="et-sz" placeholder="XS, S, M, L, XL"/>
+        </div>
+        <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="saveET()">Guardar cambios</button></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Bicicletas de este tipo</div>
+      <div id="et-bikes" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Piezas -->
+<div class="modal-overlay" id="mparts">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Añadir pieza</div>
+      <button class="modal-close" onclick="closeM('mparts')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nombre de la pieza *</label>
+        <input class="form-input" id="p-n" list="p-dl" placeholder="Ej: Cámara de aire, pastillas de freno..."/>
+        <datalist id="p-dl"></datalist>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" type="number" id="p-q" value="1" min="1"/></div>
+        <div class="form-group"><label class="form-label">Referencia / SKU</label><input class="form-input" id="p-r" placeholder="REF-001"/></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Sugerencias rápidas</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px" id="p-quick"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeM('mparts')">Cancelar</button>
+      <button class="btn btn-primary" onclick="addPart()">Añadir pieza</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit checklist -->
+<div class="modal-overlay" id="mecl">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">Editar checklists</div>
+      <button class="modal-close" onclick="closeM('mecl')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-tabs" id="ecl-tabs"></div>
+      <div id="ecl-items" style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white;padding:8px;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="ecl-new" placeholder="+ Nuevo ítem del checklist..." onkeydown="if(event.key==='Enter')addCLI()"/>
+        <button class="btn btn-primary" onclick="addCLI()">Añadir</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeM('mecl')">Cancelar</button>
+      <button class="btn btn-success" onclick="saveCL()">💾 Guardar checklist</button>
+    </div>
+  </div>
+</div>
+
+<!-- Historial -->
+<div class="modal-overlay" id="mh">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">Historial de revisiones</div>
+      <button class="modal-close" onclick="closeM('mh')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Filtrar por bicicleta</label>
+        <select class="form-input" id="hf" onchange="renderHistorial()"><option value="all">Todas las bicicletas</option></select>
+      </div>
+      <div id="h-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal aviso averiada con alquileres -->
+<div class="modal-overlay" id="m-aver-warn">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ Bicicleta con alquileres pendientes</div>
+    </div>
+    <div class="modal-body" id="m-aver-body" style="font-size:13px;line-height:1.6"></div>
+    <div class="modal-footer" style="gap:8px">
+      <button class="btn btn-secondary" onclick="closeM('m-aver-warn')">Cancelar — no marcar averiada</button>
+      <button class="btn btn-danger" id="m-aver-confirm" onclick="">Marcar averiada igualmente</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
+</div>
+
+<script src="db.js"></script>
+<script src="reservas.js"></script>
+<script src="taller-merged.js"></script>
+<script>
+var _currentSection = 'reservas';
+function switchSection(section) {
+  _currentSection = section;
+  var rs = document.getElementById('reservas-section');
+  var ts = document.getElementById('taller-section');
+  if (section === 'taller') {
+    rs.classList.add('hidden');
+    ts.classList.add('active');
+    document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
+    var tnd = document.getElementById('nav-taller-dash');
+    if (tnd) tnd.classList.add('on');
+    if (typeof rDB === 'function') rDB();
+  } else {
+    rs.classList.remove('hidden');
+    ts.classList.remove('active');
+    document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
+    var nd = document.getElementById('nav-dash');
+    if (nd) nd.classList.add('on');
+    if (typeof renderDash === 'function') renderDash();
+  }
+}
+</script>
+</body>
+</html>
