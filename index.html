@@ -43,12 +43,12 @@
     <button class="ni"    id="nav-tarifas"    onclick="goV('tarifas')"> <span class="ic">💶</span> Tarifas</button>
     <button class="ni"    id="nav-clientes"   onclick="goV('clientes')"><span class="ic">👤</span> Clientes</button>
     <div class="sb-sec">Taller</div>
-    <button class="ni" id="nav-taller-dash" onclick="switchSection('taller');if(typeof showView==='function')showView('dashboard')"><span class="ic">🔧</span> Panel taller</button>
-    <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller');if(typeof showView==='function')showView('preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
-    <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller');if(typeof showView==='function')showView('bikes')"><span class="ic">🔩</span> Bicicletas taller</button>
+    <button class="ni" id="nav-taller-dash" onclick="switchSection('taller','dashboard')"><span class="ic">🔧</span> Panel taller</button>
+    <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
+    <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller','bikes')"><span class="ic">🔩</span> Bicicletas taller</button>
     <div class="sb-sec">Acceso público</div>
     <button class="ni" onclick="openPublicPortal()">                  <span class="ic">🌐</span> Portal de reservas</button>
-    <button class="ni" onclick="window.open('taller-bicicletas.html','_blank')||( window.location.href='taller-bicicletas.html')"><span class="ic">🔧</span> Ir al taller</button>
+
   </nav>
   <div class="sb-ft">
     <button class="ni bs" onclick="openM('mcfg');loadCfg()" style="color:var(--g500)"><span class="ic">⚙️</span> Configuración</button>
@@ -709,13 +709,14 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-left">
-      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <button class="menu-toggle" onclick="toggleSB()">☰</button>
       <div>
         <div class="page-title" id="topbar-title">Panel General</div>
         <div class="topbar-date" id="topbar-date"></div>
       </div>
     </div>
     <div class="topbar-right">
+      <button class="btn btn-secondary btn-sm" onclick="switchSection('reservas')" style="gap:4px">← Reservas</button>
       <button class="btn btn-secondary btn-sm" onclick="openM('madd');abReset()">+ Nueva bici</button>
       <button class="qr-btn" onclick="openM('mqr')">
         <span>📷</span> Escanear QR
@@ -1149,20 +1150,26 @@
 <script src="taller-merged.js"></script>
 <script>
 var _currentSection = 'reservas';
-function switchSection(section) {
+function switchSection(section, tallerView) {
   _currentSection = section;
   var rs = document.getElementById('reservas-section');
   var ts = document.getElementById('taller-section');
   if (section === 'taller') {
     rs.classList.add('hidden');
     ts.classList.add('active');
+    ts.style.display = '';
+    // Update unified sidebar
     document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
-    var tnd = document.getElementById('nav-taller-dash');
+    var view = tallerView || 'dashboard';
+    var tnd = document.getElementById('nav-taller-' + view);
     if (tnd) tnd.classList.add('on');
-    if (typeof rDB === 'function') rDB();
+    // Show the right taller view AFTER section is visible
+    if (typeof showView === 'function') showView(view);
+    else if (typeof rDB === 'function') rDB();
   } else {
     rs.classList.remove('hidden');
     ts.classList.remove('active');
+    // Update unified sidebar
     document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
     var nd = document.getElementById('nav-dash');
     if (nd) nd.classList.add('on');
