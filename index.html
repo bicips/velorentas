@@ -16,6 +16,8 @@
 #reservas-section.hidden { display:none; }
 .main-content { margin-left:240px; }
 @media(max-width:768px){ .main-content { margin-left:0; } }
+/* Taller modals use .on class (unified openM/closeM from reservas.js) */
+.modal-overlay.on { display: flex !important; }
 </style>
 </head>
 <body>
@@ -1138,7 +1140,7 @@
   </div>
 </div>
 
-<div id="toast"></div>
+
 
 <!-- ════════════════════════════════════════════════
      JAVASCRIPT
