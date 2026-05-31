@@ -1073,4 +1073,3 @@ async function refreshPreparar(){
   updPrepBadge();
   toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para preparar':'Sin reservas pendientes');
 }
-
