@@ -40,7 +40,7 @@ const sp=()=>DB.saveConfig('photos', photos).catch(e=>console.error('sp',e));
 let cv='dashboard', ft=null, fs=null, fe='all', aB=null, cs={}, pu=[], te='disponible', ect='urbana', eci=[], etc='urbana', cfs='';
 
 // ── UTILS ─────────────────────────────────────────────────
-const ns=()=>new Date().toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m){m.classList.remove('open');if(m.id==='mqr'){try{stopQR();}catch{}}}}));
 
 // ── SIDEBAR ───────────────────────────────────────────────
