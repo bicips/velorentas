@@ -980,7 +980,7 @@ function abrirAsignarBici(resId, tipo, talla, lineaIdx) {
     + '<div style="border-top:1px solid #e5e7eb;padding-top:12px;margin-top:4px">'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">O escanear QR</div>'
     + '<div style="display:flex;gap:8px">'
-    + '<input id="asig-qr-inp" placeholder="Nº bici o código QR..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px" onkeydown="if(event.key==='Enter')asignarPorQR()"/>'
+    + '<input id="asig-qr-inp" placeholder="Nº bici o código QR..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px" onkeydown="if(event.key===&quot;Enter&quot;)asignarPorQR()"/>'
     + '<button onclick="asignarPorQR()" style="padding:9px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>'
     + '</div>'
     + '<div id="asig-qr-result" style="margin-top:8px;font-size:13px"></div>'
@@ -1073,4 +1073,3 @@ async function refreshPreparar(){
   updPrepBadge();
   toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para preparar':'Sin reservas pendientes');
 }
-
