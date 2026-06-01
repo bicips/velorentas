@@ -1274,10 +1274,13 @@ function imprimirHojasBici() {
       +"<div class=\"cab-qr\"><div id=\"qr"+i+"\"></div><div class=\"qr-lbl\">Reserva #"+p.resId+"</div></div></div>"
       +"<div class=\"body\">"
       // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
-      +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;\">"
-      +"<div class=\"campo\"><div class=\"lbl\">Lugar de inicio</div><div class=\"val grande\">"+xe(p.lugarIni||"-")+"</div></div>"
-      +"<div class=\"campo\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
-      +"</div>"
+      +"<table style=\"width:100%;border-collapse:separate;border-spacing:4px;margin-bottom:4px;\">"
+      +"<tr>"
+      +"<td style=\"width:50%;border:2px solid #374151;border-radius:4px;overflow:hidden;padding:0;vertical-align:top\">"
+      +"<div class=\"lbl\">Lugar de inicio</div><div style=\"padding:10px 12px;font-size:22px;font-weight:900;min-height:50px;display:flex;align-items:center\">"+xe(p.lugarIni||"-")+"</div></td>"
+      +"<td style=\"width:50%;border:2px solid #b45309;border-radius:4px;overflow:hidden;padding:0;vertical-align:top;background:#fffbeb\">"
+      +"<div class=\"lbl\" style=\"background:#b45309\">Fecha max. de entrega</div><div style=\"padding:10px 12px;font-size:20px;font-weight:900;min-height:50px;display:flex;align-items:center;color:#b45309\">"+xe(p.fechaEntrega)+"</div></td>"
+      +"</tr></table>"
       // Fila 2: Dirección de entrega
       +"<div class=\"campo\"><div class=\"lbl\">Direccion de entrega</div><div class=\"val grande\">"+xe(sitio)+"</div></div>"
       // Fila 3: Nombre cliente + telefono
