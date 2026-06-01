@@ -1274,7 +1274,7 @@ function imprimirHojasBici() {
       +"<div class=\"cab-qr\"><div id=\"qr"+i+"\"></div><div class=\"qr-lbl\">Reserva #"+p.resId+"</div></div></div>"
       +"<div class=\"body\">"
       // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
-      +"<div class=\"fila1\">"
+      +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;\">"
       +"<div class=\"campo\"><div class=\"lbl\">Lugar de inicio</div><div class=\"val grande\">"+xe(p.lugarIni||"-")+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
       +"</div>"
