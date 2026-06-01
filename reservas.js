@@ -1252,7 +1252,7 @@ function imprimirHojasBici() {
         var fechaEntrega = fechaIni ? new Date(fechaIni.getTime()-86400000) : null;
         paginas.push({resId:r.id,cliente:r.cliente||"",tel:r.tel||"",
           fechaEntrega:fechaEntrega?fechaEntrega.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):"-",
-          lugarFin:r.lugarFin||"Santiago de Compostela",dirEntrega:r.dirEntrega||"",
+          lugarIni:r.lugarIni||"",lugarFin:r.lugarFin||"Santiago de Compostela",dirEntrega:r.dirEntrega||"",
           fechaIni:fechaIni?fechaIni.toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           fechaFin:r.fin?new Date(r.fin+"T00:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           dias:r.dias||"",modelo:t.label,icon:t.icon||"",talla:l.talla||r.talla||"",
@@ -1269,19 +1269,29 @@ function imprimirHojasBici() {
     if(p.extras&&p.extras.length){p.extras.forEach(function(e){extHtml+="<span class=\"tag\">"+(e.icono||"")+" "+xe(e.nombre||"Extra")+(e.qty>1?" x"+e.qty:"")+"</span>";});}
     else{extHtml="<span style=\"color:#9ca3af;font-size:12px\">Sin extras</span>";}
     hojas+="<div class=\"hoja\">"
+      // Cabecera: logo izq, QR der
       +"<div class=\"cab\"><img src=\""+LOGO+"\" alt=\"Bicips\"/>"
       +"<div class=\"cab-qr\"><div id=\"qr"+i+"\"></div><div class=\"qr-lbl\">Reserva #"+p.resId+"</div></div></div>"
       +"<div class=\"body\">"
-      +"<div class=\"campo\"><div class=\"lbl\">Cliente</div><div class=\"val grande\">"+xe(p.cliente)+"</div></div>"
-      +(p.tel?"<div class=\"campo\"><div class=\"lbl\">Telefono</div><div class=\"val\">"+xe(p.tel)+"</div></div>":"")
-      +"<div class=\"campo\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
-      +"<div class=\"campo\"><div class=\"lbl\">Sitio de entrega</div><div class=\"val grande\">"+xe(sitio)+"</div></div>"
+      // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
+      +"<div class=\"fila1\">"
+      +"<div class=\"campo\"><div class=\"lbl\">Lugar de inicio</div><div class=\"val grande\">"+xe(p.lugarFin.replace("Santiago de Compostela","")||p.lugarIni||"-")+"</div></div>"
+      +"<div class=\"campo campo-alerta\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
+      +"</div>"
+      // Fila 2: Dirección de entrega
+      +"<div class=\"campo\"><div class=\"lbl\">Direccion de entrega</div><div class=\"val grande\">"+xe(sitio)+"</div></div>"
+      // Fila 3: Nombre cliente + telefono
+      +"<div class=\"campo\"><div class=\"lbl\">Cliente</div><div class=\"val grande\">"+xe(p.cliente)+(p.tel?" &nbsp;|&nbsp; "+xe(p.tel):"")+"</div></div>"
+      // Fila 4: Inicio - Fin alquiler
       +"<div class=\"g2\"><div class=\"campo\"><div class=\"lbl\">Inicio alquiler</div><div class=\"val\">"+xe(p.fechaIni)+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">Fin alquiler</div><div class=\"val\">"+xe(p.fechaFin)+" ("+p.dias+" dias)</div></div></div>"
+      // Fila 5: Modelo + Talla + N.bici
       +"<div class=\"g3\"><div class=\"campo\"><div class=\"lbl\">Modelo</div><div class=\"val\">"+p.icon+" "+xe(p.modelo)+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">Talla</div><div class=\"val\">"+xe(p.talla)+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">N. bici</div><div class=\"val\">"+xe(p.bikeNum)+"</div></div></div>"
+      // Fila 6: Extras
       +"<div class=\"campo\"><div class=\"lbl\">Extras y accesorios</div><div class=\"ext-val\">"+extHtml+"</div></div>"
+      // Fila 7: Observaciones
       +"<div class=\"campo\"><div class=\"lbl\">Observaciones</div><div class=\"obs-val\">"+xe(p.notas)+"</div></div>"
       +"</div><div class=\"pie\"><div class=\"pie-txt\">Impreso: "+hoyStr+"</div><div class=\"firma\">Firma transportista</div></div>"
       +"</div>";
