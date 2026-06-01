@@ -14,8 +14,9 @@
 #taller-section.active { display:flex; flex:1; flex-direction:column; min-height:100vh; }
 #reservas-section { display:flex; flex:1; flex-direction:column; min-height:100vh; }
 #reservas-section.hidden { display:none; }
+.main { margin-left:240px; }
 .main-content { margin-left:240px; }
-@media(max-width:768px){ .main-content { margin-left:0; } }
+@media(max-width:768px){ .main { margin-left:0; } .main-content { margin-left:0; } }
 /* Taller modals use .on class (unified openM/closeM from reservas.js) */
 .modal-overlay.on { display: flex !important; }
 </style>
@@ -1167,6 +1168,19 @@
 <script src="reservas.js"></script>
 <script src="taller-merged.js"></script>
 <script>
+// Fix .main margin-left (taller.css can override reservas.css)
+(function(){
+  function fixMain(){
+    var m=document.querySelector('.main');
+    if(m && window.innerWidth>768) m.style.marginLeft='240px';
+  }
+  fixMain();
+  window.addEventListener('resize', function(){
+    var m=document.querySelector('.main');
+    if(m) m.style.marginLeft = window.innerWidth>768 ? '240px' : '0';
+  });
+})();
+
 var _currentSection = 'reservas';
 function switchSection(section, tallerView) {
   _currentSection = section;
