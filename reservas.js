@@ -1275,8 +1275,8 @@ function imprimirHojasBici() {
       +"<div class=\"body\">"
       // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
       +"<div class=\"fila1\">"
-      +"<div class=\"campo\"><div class=\"lbl\">Lugar de inicio</div><div class=\"val grande\">"+xe(p.lugarFin.replace("Santiago de Compostela","")||p.lugarIni||"-")+"</div></div>"
-      +"<div class=\"campo campo-alerta\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
+      +"<div class=\"campo\"><div class=\"lbl\">Lugar de inicio</div><div class=\"val grande\">"+xe(p.lugarIni||"-")+"</div></div>"
+      +"<div class=\"campo\"><div class=\"lbl\">Entregar antes de</div><div class=\"val alerta\">"+xe(p.fechaEntrega)+"</div></div>"
       +"</div>"
       // Fila 2: Dirección de entrega
       +"<div class=\"campo\"><div class=\"lbl\">Direccion de entrega</div><div class=\"val grande\">"+xe(sitio)+"</div></div>"
