@@ -17,6 +17,7 @@ var BIKE_ESTADOS={
 };
 // Variables globales — se cargan desde Supabase en initApp()
 var tipos=TIPOS_DEF, bikes=[], reservas=[], bloqueos=[], facturas=[], tarifas={}, cfg=Object.assign({},CFG_DEF);
+var impExcluidas=[]; // IDs de reservas excluidas de impresión
 
 // ── Guardar en Supabase (async, silencioso) ────────────────────
 function sR(){DB.saveReservas(reservas).catch(function(e){console.error('sR',e);});}
@@ -1235,7 +1236,8 @@ function showClienteDetail(encoded){var parts=decodeURIComponent(encoded).split(
 // EXPORT CSV
 function imprimirHojasBici() {
   var candidatas = reservas.filter(function(r){
-    return r.estado==="confirmada"||r.estado==="activa"||r.estado==="pendiente";
+    return (r.estado==="confirmada"||r.estado==="activa"||r.estado==="pendiente")
+      && impExcluidas.indexOf(r.id) === -1;
   });
   if (!candidatas.length) { toast("No hay reservas para imprimir"); return; }
 
@@ -1244,13 +1246,15 @@ function imprimirHojasBici() {
 }
 
 function _eliminarDeImpresion(resId) {
-  // Remove from candidatas list
+  // Add to permanent exclusion list
+  if(impExcluidas.indexOf(resId) === -1) impExcluidas.push(resId);
+  DB.saveConfig('imp_excluidas', impExcluidas).catch(function(e){console.error('imp_excluidas',e);});
+  // Remove from current modal list
   window._impCandidatas = (window._impCandidatas||[]).filter(function(r){return r.id!==resId;});
   // Close and reopen modal with updated list
   var modal = document.getElementById("m-imp-sel");
   if(modal) modal.remove();
   if(!(window._impCandidatas||[]).length){ toast("No quedan reservas en la lista"); return; }
-  // Rebuild modal with remaining candidatas
   _abrirModalImpresion(window._impCandidatas);
 }
 
@@ -2411,6 +2415,7 @@ async function initApp() {
       DB.getConfig('tipos', TIPOS_DEF),
       DB.getConfig('extras_cat', EXTRAS_DEF),
       DB.getConfig('preparar', []),
+      DB.getConfig('imp_excluidas', []),
       DB.getConfig('historial', {}),
       DB.getConfig('clistas', null),
       DB.getConfig('photos', {})
@@ -2424,7 +2429,8 @@ async function initApp() {
     var dbCfg       = results[5];
     var dbTipos     = results[6];
     var dbExtrasCat = results[7];
-    var dbPreparar  = results[8];
+    var dbPreparar    = results[8];
+    var dbImpExcl     = results[9];
     var dbHist      = results[9];
     var dbCLS       = results[10];
     var dbPhotos    = results[11];
@@ -2439,6 +2445,7 @@ async function initApp() {
     if (dbTipos && Object.keys(dbTipos).length) tipos = dbTipos;
     if (dbExtrasCat && dbExtrasCat.length) catalogoExtras = dbExtrasCat;
     if (dbPreparar && dbPreparar.length) prepararIds = dbPreparar;
+    if (dbImpExcl && dbImpExcl.length) impExcluidas = dbImpExcl;
 
     // Aplicar datos taller (variables de taller-merged.js)
     if (typeof hist !== 'undefined' && Object.keys(dbHist).length) hist = dbHist;
