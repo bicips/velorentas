@@ -1240,22 +1240,39 @@ function imprimirHojasBici() {
   if (!candidatas.length) { toast("No hay reservas para imprimir"); return; }
 
   // Build modal content
-  var rows = candidatas.map(function(r, i){
+  _abrirModalImpresion(candidatas);
+}
+
+function _eliminarDeImpresion(resId) {
+  // Remove from candidatas list
+  window._impCandidatas = (window._impCandidatas||[]).filter(function(r){return r.id!==resId;});
+  // Close and reopen modal with updated list
+  var modal = document.getElementById("m-imp-sel");
+  if(modal) modal.remove();
+  if(!(window._impCandidatas||[]).length){ toast("No quedan reservas en la lista"); return; }
+  // Rebuild modal with remaining candidatas
+  _abrirModalImpresion(window._impCandidatas);
+}
+
+function _abrirModalImpresion(candidatas) {
+  window._impCandidatas = candidatas;
+  var rows = candidatas.map(function(r,i){
     var fechaIni = r.ini ? new Date(r.ini+"T00:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"short",year:"numeric"}) : "-";
     var nBicis = r.lineas ? r.lineas.reduce(function(s,l){return s+(l.uds||1);},0) : 1;
     return "<div style=\"display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb\">"
       +"<input type=\"checkbox\" id=\"imp-cb-"+i+"\" checked style=\"width:16px;height:16px;cursor:pointer\">"
       +"<label for=\"imp-cb-"+i+"\" style=\"flex:1;cursor:pointer\">"
       +"<div style=\"font-weight:700;font-size:14px\">"+esc(r.cliente||"-")+"</div>"
-      +"<div style=\"font-size:12px;color:#6b7280\">"+fechaIni+" &nbsp;·&nbsp; "+nBicis+" bici"+(nBicis>1?"s":"")+" &nbsp;·&nbsp; "+esc(r.estado)+"</div>"
+      +"<div style=\"font-size:12px;color:#6b7280\">"+fechaIni+" &nbsp;&middot;&nbsp; "+nBicis+" bici"+(nBicis>1?"s":"")+" &nbsp;&middot;&nbsp; "+esc(r.estado)+"</div>"
       +"</label>"
+      +"<button onclick=\"_eliminarDeImpresion("+r.id+")\" title=\"Quitar de la lista\" style=\"background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0\">🗑 Quitar</button>"
       +"</div>";
   }).join("");
 
   var modal = document.createElement("div");
   modal.id = "m-imp-sel";
   modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;display:flex;align-items:center;justify-content:center";
-  modal.innerHTML = "<div style=\"background:#fff;border-radius:12px;width:480px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden\">"
+  modal.innerHTML = "<div style=\"background:#fff;border-radius:12px;width:500px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden\">"
     +"<div style=\"padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center\">"
     +"<div style=\"font-size:16px;font-weight:800\">🖨️ Seleccionar reservas a imprimir</div>"
     +"<button onclick=\"document.getElementById(\'m-imp-sel\').remove()\" style=\"background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280\">✕</button>"
@@ -1271,10 +1288,8 @@ function imprimirHojasBici() {
     +"</div>"
     +"</div>";
   document.body.appendChild(modal);
-
-  // Store candidatas for use in _confirmarImpresion
-  window._impCandidatas = candidatas;
 }
+
 
 function _confirmarImpresion() {
   var candidatas = window._impCandidatas || [];
