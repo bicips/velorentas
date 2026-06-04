@@ -2620,21 +2620,8 @@ async function initApp() {
 
   } catch(e) {
     console.error('initApp error:', e);
-    // Retry once after 3 seconds
-    setTimeout(async function(){
-      try {
-        var ok = await DB.ping();
-        if(ok) { 
-          toast('🔄 Reconectando...', 2000);
-          setTimeout(function(){ location.reload(); }, 2000);
-        } else {
-          toast('⚠️ Sin conexión. Reintentando...', 3000);
-          generarDemoData();
-        }
-      } catch(e2) {
-        generarDemoData();
-      }
-    }, 3000);
+    toast('⚠️ Error conectando. Comprueba tu conexión.', 3000);
+    generarDemoData();
   }
 
   // Quitar spinner
