@@ -14,9 +14,9 @@
 #taller-section.active { display:flex; flex:1; flex-direction:column; min-height:100vh; }
 #reservas-section { display:flex; flex:1; flex-direction:column; min-height:100vh; }
 #reservas-section.hidden { display:none; }
-.main { margin-left:240px !important; }
+#reservas-section .main { margin-left:240px !important; }
 .main-content { margin-left:240px !important; }
-@media(max-width:768px){ .main { margin-left:0 !important; } .main-content { margin-left:0 !important; } }
+@media(max-width:768px){ #reservas-section .main { margin-left:0 !important; } .main-content { margin-left:0 !important; } }
 /* Taller modals use .on class (unified openM/closeM from reservas.js) */
 .modal-overlay.on { display: flex !important; }
 </style>
@@ -33,6 +33,7 @@
     <div class="sb-sub">Reservas & Facturación</div>
   </div>
   <nav class="sb-nav">
+    <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()" style="background:rgba(5,150,105,.1);color:#065f46;font-weight:800">📷 Recogida bici</button>
     <div class="sb-sec">Gestión</div>
     <button class="ni on" id="nav-dash"     onclick="goV('dash')">    <span class="ic">📊</span> Panel</button>
     <button class="ni"    id="nav-flota"    onclick="goV('flota')">   <span class="ic">🚲</span> Gestión de flota</button>
@@ -1151,7 +1152,31 @@
      JAVASCRIPT
 ════════════════════════════════════════════════ -->
 
-<!-- Modal Asignar Bicicleta (Preparar) -->
+<!-- Modal Recogida Bicicleta -->
+<div class="modal-overlay" id="m-recogida">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">📷 Recogida de bicicleta</div>
+      <button class="modal-close" onclick="cerrarRecogidaQR()">✕</button>
+    </div>
+    <div class="modal-body" id="m-recogida-body">
+      <div style="text-align:center;padding:16px 0 8px">
+        <video id="rec-cam-video" style="width:100%;border-radius:8px;max-height:240px;object-fit:cover;display:none" playsinline></video>
+        <div id="rec-cam-placeholder" style="background:#f3f4f6;border-radius:8px;padding:40px 20px;color:#6b7280;font-size:14px">
+          Pulsa el botón para activar la cámara
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin:12px 0">
+        <input id="rec-qr-inp" placeholder="O escribe Nº bici / código QR..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px"/>
+        <button onclick="buscarRecogidaManual()" style="padding:9px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
+      </div>
+      <button id="rec-cam-btn" onclick="toggleCamaraRecogida()" style="width:100%;padding:11px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">📷 Activar cámara</button>
+      <div id="rec-resultado"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Recogida -->
 <div class="modal-overlay" id="masignar">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
