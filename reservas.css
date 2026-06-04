@@ -245,4 +245,10 @@ textarea.fi{resize:vertical;min-height:80px}
   .sg4{grid-template-columns:1fr 1fr}.sg3{grid-template-columns:1fr 1fr}
   .fr2,.fr3{grid-template-columns:1fr}.pg{padding:14px}
   .tl-bcol,.tl-bc{width:110px}
+  .trow{padding:10px 12px;gap:8px;align-items:flex-start}
+  .trow-sub{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;font-size:11px}
+  .trow-sub span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .trow-acts{flex-direction:row;flex-wrap:wrap;gap:4px;margin-top:6px}
+  .trow-acts .btn{padding:5px 8px;font-size:11px}
+  .trow-info{min-width:0;flex:1}
 }
