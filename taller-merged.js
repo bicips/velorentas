@@ -768,6 +768,12 @@ function updPrepBadge(){
     b.style.display=n?'inline-block':'none';
     b.className=n?'':'hidden';
   }
+  // Also update unified sidebar badge
+  var bsb=document.getElementById('prep-badge-sb');
+  if(bsb){
+    bsb.textContent=n;
+    bsb.classList.toggle('hidden',!n);
+  }
   // Also update nav item style to draw attention if there are pending items
   var nav=document.getElementById('nav-preparar');
   if(nav){
@@ -954,6 +960,52 @@ function toggleLinealista(key){
 // ── ASIGNAR BICICLETA DESDE PREPARAR ─────────────────────────────
 var _asignarCtx = null; // {resId, tipo, talla, lineaIdx}
 
+// ── CÁMARA QR PARA ASIGNAR BICI ──────────────────────────────────
+var _asigCamStream = null;
+var _asigCamInterval = null;
+
+function abrirCamaraAsignar() {
+  var container = document.getElementById('asig-cam-container');
+  var video = document.getElementById('asig-cam-video');
+  if(!container || !video) return;
+  container.style.display = 'block';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(function(stream){
+      _asigCamStream = stream;
+      video.srcObject = stream;
+      video.play();
+      _asigCamInterval = setInterval(function(){
+        if(video.readyState < 2) return;
+        var canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        try {
+          var code = jsQR(img.data, img.width, img.height);
+          if(code && code.data) {
+            cerrarCamaraAsignar();
+            document.getElementById('asig-qr-inp').value = code.data;
+            asignarPorQR();
+          }
+        } catch(e) {}
+      }, 300);
+    })
+    .catch(function(e){
+      toast('⚠️ No se pudo acceder a la cámara: ' + e.message);
+      container.style.display = 'none';
+    });
+}
+
+function cerrarCamaraAsignar() {
+  if(_asigCamInterval){ clearInterval(_asigCamInterval); _asigCamInterval = null; }
+  if(_asigCamStream){ _asigCamStream.getTracks().forEach(function(t){t.stop();}); _asigCamStream = null; }
+  var container = document.getElementById('asig-cam-container');
+  if(container) container.style.display = 'none';
+}
+
+
 function abrirAsignarBici(resId, tipo, talla, lineaIdx) {
   _asignarCtx = {resId: resId, tipo: tipo, talla: talla, lineaIdx: lineaIdx};
 
@@ -979,9 +1031,14 @@ function abrirAsignarBici(resId, tipo, talla, lineaIdx) {
     + '<button onclick="confirmarAsignacion()" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px">✅ Asignar bicicleta</button>'
     + '<div style="border-top:1px solid #e5e7eb;padding-top:12px;margin-top:4px">'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">O escanear QR</div>'
-    + '<div style="display:flex;gap:8px">'
+    + '<div style="display:flex;gap:8px;margin-bottom:8px">'
     + '<input id="asig-qr-inp" placeholder="Nº bici o código QR..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px"/>'
     + '<button onclick="asignarPorQR()" style="padding:9px 16px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>'
+    + '</div>'
+    + '<button onclick="abrirCamaraAsignar()" style="width:100%;padding:10px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">📷 Abrir cámara QR</button>'
+    + '<div id="asig-cam-container" style="margin-top:8px;display:none">'
+    + '<video id="asig-cam-video" style="width:100%;border-radius:8px;max-height:200px;object-fit:cover" playsinline></video>'
+    + '<button onclick="cerrarCamaraAsignar()" style="width:100%;margin-top:6px;padding:8px;background:#6b7280;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer">✕ Cerrar cámara</button>'
     + '</div>'
     + '<div id="asig-qr-result" style="margin-top:8px;font-size:13px"></div>'
     + '</div>'
@@ -1073,4 +1130,3 @@ async function refreshPreparar(){
   updPrepBadge();
   toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para preparar':'Sin reservas pendientes');
 }
-
