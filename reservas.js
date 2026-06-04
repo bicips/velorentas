@@ -1391,6 +1391,163 @@ function _generarHojasBici(listaFiltrada) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  RECOGIDA DE BICICLETA — Botón lateral
+// ══════════════════════════════════════════════════════════════
+var _recCamStream = null;
+var _recCamInterval = null;
+var _recCamActiva = false;
+
+function abrirRecogidaQR() {
+  closeSB();
+  document.getElementById('rec-resultado').innerHTML = '';
+  document.getElementById('rec-qr-inp').value = '';
+  openM('m-recogida');
+}
+
+function cerrarRecogidaQR() {
+  _pararCamaraRecogida();
+  closeM('m-recogida');
+}
+
+function toggleCamaraRecogida() {
+  if(_recCamActiva) { _pararCamaraRecogida(); return; }
+  var video = document.getElementById('rec-cam-video');
+  var placeholder = document.getElementById('rec-cam-placeholder');
+  var btn = document.getElementById('rec-cam-btn');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(function(stream){
+      _recCamStream = stream;
+      _recCamActiva = true;
+      video.srcObject = stream;
+      video.style.display = 'block';
+      placeholder.style.display = 'none';
+      btn.textContent = '⏹ Parar cámara';
+      btn.style.background = '#6b7280';
+      video.play();
+      _recCamInterval = setInterval(function(){
+        if(video.readyState < 2) return;
+        var canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        var img = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        try {
+          var code = jsQR(img.data, img.width, img.height);
+          if(code && code.data) {
+            _pararCamaraRecogida();
+            _procesarRecogida(code.data);
+          }
+        } catch(e){}
+      }, 300);
+    })
+    .catch(function(e){ toast('⚠️ No se pudo acceder a la cámara'); });
+}
+
+function _pararCamaraRecogida() {
+  if(_recCamInterval){ clearInterval(_recCamInterval); _recCamInterval = null; }
+  if(_recCamStream){ _recCamStream.getTracks().forEach(function(t){t.stop();}); _recCamStream = null; }
+  _recCamActiva = false;
+  var video = document.getElementById('rec-cam-video');
+  var placeholder = document.getElementById('rec-cam-placeholder');
+  var btn = document.getElementById('rec-cam-btn');
+  if(video) video.style.display = 'none';
+  if(placeholder) placeholder.style.display = 'block';
+  if(btn){ btn.textContent = '📷 Activar cámara'; btn.style.background = '#7c3aed'; }
+}
+
+function buscarRecogidaManual() {
+  var val = (document.getElementById('rec-qr-inp').value || '').trim();
+  if(!val) { toast('Escribe el número o código de la bici'); return; }
+  _procesarRecogida(val);
+}
+
+function _procesarRecogida(codigo) {
+  var q = codigo.trim().toUpperCase();
+  // Find bike by num, QR or serial
+  var bici = bikes.find(function(b){
+    return (b.numBici||'').toUpperCase()===q
+      || (b.qr||'').toUpperCase()===q
+      || (b.numSerie||'').toUpperCase()===q;
+  });
+  var el = document.getElementById('rec-resultado');
+  if(!el) return;
+
+  if(!bici) {
+    el.innerHTML = '<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#991b1b;font-weight:700">❌ No se encontró ninguna bici con ese código</div>';
+    return;
+  }
+
+  // Find active reservation for this bike
+  var res = reservas.find(function(r){
+    return (r.estado==='activa'||r.estado==='confirmada')
+      && r.bikesAsig && r.bikesAsig.some(function(a){return a.id===bici.id;});
+  });
+
+  var t = tipos[bici.tipo]||{label:bici.tipo||'',icon:'🚲'};
+  var estBici = BIKE_ESTADOS ? (BIKE_ESTADOS[bici.estado]||{icon:'',lbl:bici.estado}) : {icon:'',lbl:bici.estado};
+
+  var resHtml = res
+    ? '<div style="margin-top:8px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px">'
+      + '<div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:4px">📋 Reserva encontrada</div>'
+      + '<div style="font-weight:700">'+esc(res.cliente)+'</div>'
+      + '<div style="font-size:12px;color:#374151">'+fmtD(res.ini)+' → '+fmtD(res.fin)+'</div>'
+      + '</div>'
+    : '<div style="margin-top:8px;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:10px;font-size:13px;color:#92400e">⚠️ No se encontró reserva activa para esta bici</div>';
+
+  el.innerHTML = '<div style="background:#f0fdf4;border:2px solid #22c55e;border-radius:8px;padding:14px">'
+    + '<div style="font-size:18px;font-weight:900;margin-bottom:4px">'+t.icon+' '+esc(bici.numBici)+'</div>'
+    + '<div style="font-size:13px;color:#374151;margin-bottom:2px">'+esc(t.label)+' '+esc(bici.talla)+'</div>'
+    + '<div style="font-size:12px;color:#6b7280">Estado actual: '+estBici.icon+' '+estBici.lbl+'</div>'
+    + resHtml
+    + '</div>'
+    + '<div style="margin-top:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px">'
+    + '<div style="font-weight:700;font-size:13px;margin-bottom:8px">✅ Confirmar recogida</div>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;cursor:pointer">'
+    + '<input type="checkbox" id="rec-chk-bici" checked> Marcar bici como <strong>Disponible</strong></label>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;cursor:pointer">'
+    + '<input type="checkbox" id="rec-chk-res" '+(res?'checked':'disabled')+'> '+(res?'Marcar reserva como <strong>Finalizada</strong>':'Sin reserva activa')+'</label>'
+    + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;cursor:pointer">'
+    + '<input type="checkbox" id="rec-chk-taller"> Enviar a <strong>Taller</strong> para revisión</label>'
+    + '<button onclick="_confirmarRecogida('+bici.id+','+(res?res.id:'null')+')" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer">🏁 Confirmar recogida</button>'
+    + '</div>';
+}
+
+function _confirmarRecogida(bikeId, resId) {
+  var chkBici = document.getElementById('rec-chk-bici');
+  var chkRes = document.getElementById('rec-chk-res');
+  var chkTaller = document.getElementById('rec-chk-taller');
+
+  var bici = bikes.find(function(b){return b.id===bikeId;});
+  if(!bici) { toast('❌ Bici no encontrada'); return; }
+
+  // Update bike status
+  if(chkBici && chkBici.checked) {
+    bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
+    DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
+  }
+
+  // Update reservation
+  if(resId && chkRes && chkRes.checked) {
+    var res = reservas.find(function(r){return r.id===resId;});
+    if(res) {
+      res.estado = 'finalizada';
+      sR();
+    }
+  }
+
+  var msgs = [];
+  if(chkBici && chkBici.checked) msgs.push('bici '+bici.numBici+' → '+(chkTaller&&chkTaller.checked?'taller':'disponible'));
+  if(resId && chkRes && chkRes.checked) msgs.push('reserva finalizada');
+
+  cerrarRecogidaQR();
+  toast('✅ Recogida confirmada: '+msgs.join(', '));
+  renderDash();
+  if(CV==='flota') renderFlota();
+  if(CV==='res') renderRes();
+}
+
+
 function exportCSV(){var headers=['ID','Cliente','Telefono','Email','Modelos','Fechas','Dias','Total','Estado','Origen','Bicis asignadas','Notas'];var rows=reservas.map(function(r){var bLine=r.lineas&&r.lineas.length>1?r.lineas.map(function(l){var tl=tipos[l.tipo]||{label:l.tipo};return tl.label+' '+l.talla+(l.uds>1?' x'+l.uds:'');}).join(' | '):(tipos[r.tipo]||{label:r.tipo}).label+' '+r.talla+(r.uds>1?' x'+r.uds:'');return[r.id,'"'+(r.cliente||'').replace(/"/g,'""')+'"',r.tel||'',r.email||'','"'+bLine.replace(/"/g,'""')+'"',r.ini+' - '+r.fin,r.dias,r.total||0,r.estado||'',r.origen||'interno','"'+(r.bikesAsig?r.bikesAsig.map(function(b){return b.num;}).join(', '):'').replace(/"/g,'""')+'"','"'+(r.notas||'').replace(/"/g,'""')+'"'].join(',');});var csv=[headers.join(',')].concat(rows).join('\n');var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='reservas_'+todayS()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);toast('CSV descargado');}
 
 // PORTAL PUBLICO
