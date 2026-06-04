@@ -132,7 +132,7 @@ function rDB(){
     return;
   }
   document.getElementById('dash-recent').innerHTML=`<div class="list-card"><div class="bike-table">`+recentR.map(rev=>{
-    const b=bikes.find(x=>x.id===rev.bikeId||Object.keys(hist).some(k=>hist[k].includes(rev)&&Number(k)===x.id));
+    const b=bikes.find(x=>x.id===rev.bikeId||Object.keys(hist).some(k=>Array.isArray(hist[k])&&hist[k].includes(rev)&&Number(k)===x.id));
     const bk=bikes.find(x=>hist[x.id]?.includes(rev));
     const t=bk?tipos[bk.tipo]:null;
     const pct=rev.totalItems?Math.round(rev.checkedCount/rev.totalItems*100):0;
