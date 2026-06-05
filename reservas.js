@@ -1596,6 +1596,8 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
+    if(!bici.estadosHist) bici.estadosHist=[];
+    bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
   }
 
@@ -2024,6 +2026,10 @@ function saveBikeEstado(bikeId, newEstado){
   var b=bikes.find(function(x){return x.id===bikeId;});if(!b)return;
   if(b.estado===newEstado){closeM('m-bike-estado');return;}
   b.estado=newEstado;
+  // Record in bike estado history
+  if(!b.estadosHist) b.estadosHist=[];
+  b.estadosHist.push({estado:newEstado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Reservas'});
+  if(b.estadosHist.length>200) b.estadosHist=b.estadosHist.slice(-200);
   sBikes();
   closeM('m-bike-estado');
   var e=BIKE_ESTADOS[newEstado]||{icon:'',lbl:newEstado};
