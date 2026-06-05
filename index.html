@@ -170,13 +170,20 @@
             </div>
             <button id="btn-cal-filter" onclick="toggleDateRow()" title="Filtrar por fechas" style="flex-shrink:0;width:38px;height:38px;border-radius:8px;border:1px solid var(--g200);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">📅</button>
           </div>
-          <div class="ftabs" id="res-status-tabs">
+          <div class="ftabs" id="res-status-tabs" style="flex-wrap:wrap;gap:4px">
             <button class="ftab on" onclick="setRF('all',this)">Todas</button>
-            <button class="ftab" onclick="setRF('pendiente',this)">Pendientes</button>
-            <button class="ftab" onclick="setRF('confirmada',this)">Confirmadas</button>
-            <button class="ftab" onclick="setRF('activa',this)">Activas</button>
-            <button class="ftab" onclick="setRF('finalizada',this)">Finalizadas</button>
-            <button class="ftab" onclick="setRF('cancelada',this)">Canceladas</button>
+            <button class="ftab" onclick="setRF('anulada',this)">🚫 Anuladas</button>
+            <button class="ftab" onclick="setRF('pendiente',this)">⏳ Pendientes</button>
+            <button class="ftab" onclick="setRF('confirmada',this)">✅ Confirmadas</button>
+            <button class="ftab" onclick="setRF('proxima_entrega',this)">📅 Próx. entrega</button>
+            <button class="ftab" onclick="setRF('en_preparacion',this)">🔧 En preparación</button>
+            <button class="ftab" onclick="setRF('preparada',this)">📦 Preparadas</button>
+            <button class="ftab" onclick="setRF('transito',this)">🚐 Tránsito</button>
+            <button class="ftab" onclick="setRF('entregada',this)">🏁 Entregadas</button>
+            <button class="ftab" onclick="setRF('alquiler',this)">🚲 Alquiler</button>
+            <button class="ftab" onclick="setRF('pendiente_recoger',this)">🔔 Pend. recoger</button>
+            <button class="ftab" onclick="setRF('recogida',this)">✔️ Recogidas</button>
+            <button class="ftab" onclick="setRF('cancelada',this)">❌ Canceladas</button>
           </div>
         </div>
 
@@ -399,10 +406,19 @@
         <div class="fg"><label class="fl">Total reserva (€)</label><input class="fi" id="r-total" type="number" min="0" step="0.01" placeholder="0.00"/></div>
         <div class="fg"><label class="fl">Estado</label>
           <select class="fi" id="r-estado">
+            <option value="anulada">🚫 Anulada</option>
             <option value="pendiente">⏳ Pendiente</option>
             <option value="confirmada">✅ Confirmada</option>
-            <option value="activa">🔄 Activa</option>
-            <option value="finalizada">🏁 Finalizada</option>
+            <option value="proxima_entrega">📅 Próxima entrega</option>
+            <option value="en_preparacion">🔧 En preparación</option>
+            <option value="preparada">📦 Preparada</option>
+            <option value="transito_furgo">🚐 Tránsito (Furgo)</option>
+            <option value="transito_carlos">🚗 Tránsito (Carlos)</option>
+            <option value="transito_seur">📦 Tránsito (Seur)</option>
+            <option value="entregada">🏁 Entregada</option>
+            <option value="alquiler">🚲 Alquiler</option>
+            <option value="pendiente_recoger">🔔 Pendiente recoger</option>
+            <option value="recogida">✔️ Recogida</option>
             <option value="cancelada">❌ Cancelada</option>
           </select>
         </div>
@@ -1177,6 +1193,17 @@
 </div>
 
 <!-- Modal Recogida -->
+<!-- Modal Tránsito -->
+<div class="modal-overlay" id="m-transito">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <div class="modal-title">🚐 Seleccionar transporte</div>
+      <button class="modal-close" onclick="closeM('m-transito')">✕</button>
+    </div>
+    <div class="modal-body" id="m-transito-body"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="masignar">
   <div class="modal" style="max-width:480px">
     <div class="modal-header">
