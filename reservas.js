@@ -735,7 +735,7 @@ function getFechaFilter(){
   return{ini:fi||'0000-00-00',fin:ff||'9999-99-99'};
 }
 
-function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');resSel=[];if(v==='proxima_entrega'){reservas.sort(function(a,b){return a.ini.localeCompare(b.ini);});}renderRes();}
+function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');resSel=[];renderRes();}
 
 function setSort(field,btn){
   if(resSort===field){resSortDir*=-1;}else{resSort=field;resSortDir=1;}
@@ -753,6 +753,8 @@ function setSort(field,btn){
 }
 
 function sortReservas(list){
+  // Próximas entregas always sorted by start date ascending
+  if(resF==='proxima_entrega') return list.slice().sort(function(a,b){return a.ini.localeCompare(b.ini);});
   return list.slice().sort(function(a,b){
     var va,vb;
     if(resSort==='ini'){va=a.ini||'';vb=b.ini||'';}
@@ -774,7 +776,7 @@ function renderRes(){
     if(resF!=='all'){
       var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
       if(resF==='proxima_entrega'){
-        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+        if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
         if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
       } else {
@@ -876,7 +878,7 @@ function selAll(){
     if(resF!=='all'){
       var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
       if(resF==='proxima_entrega'){
-        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+        if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
         if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
       } else {
@@ -1982,7 +1984,7 @@ function renderTablaRes(){
   tbody.innerHTML=html;
 
   var fc=document.getElementById('res-table-count');
-  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return (resF==='all'||(resF==='proxima_entrega'?(r.ini>=new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10)&&['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)<0):(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF)));}).length+' reservas';
+  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return (resF==='all'||(resF==='proxima_entrega'?(r.estado==='confirmada'&&r.ini>=new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10)):(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF)));}).length+' reservas';
 }
 
 function exportTablaCSV(){
@@ -2255,7 +2257,7 @@ function imprimirReservas(){
     if(resF!=='all'){
       var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
       if(resF==='proxima_entrega'){
-        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+        if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
         if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
       } else {
@@ -2450,7 +2452,7 @@ function ejecutarImpresion(){
     if(resF!=='all'){
       var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
       if(resF==='proxima_entrega'){
-        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+        if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
         if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
       } else {
