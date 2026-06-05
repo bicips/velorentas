@@ -364,6 +364,97 @@ function delBike(id){
   toast('🗑️ Bicicleta ' + b.numBici + ' eliminada');
 }
 
+// ── PESTAÑAS HISTORIAL DE BICI ────────────────────────────────────
+// ── Registrar cambio de estado en historial de la bici ──────────
+function _registrarEstadoBici(bici, nuevoEstado, nota) {
+  if(!bici) return;
+  if(!bici.estadosHist) bici.estadosHist = [];
+  var ultimo = bici.estadosHist[bici.estadosHist.length-1];
+  if(ultimo && ultimo.estado === nuevoEstado) return; // no duplicar
+  bici.estadosHist.push({
+    estado: nuevoEstado,
+    fecha:  new Date().toLocaleString('es-ES'),
+    ts:     new Date().toISOString(),
+    nota:   nota || ''
+  });
+  if(bici.estadosHist.length > 200) bici.estadosHist = bici.estadosHist.slice(-200);
+  sb(); // save to supabase
+}
+
+
+function switchBikeTab(tab) {
+  var btnE = document.getElementById('tab-estados-btn');
+  var btnA = document.getElementById('tab-alquileres-btn');
+  var contE = document.getElementById('tab-estados-content');
+  var contA = document.getElementById('tab-alquileres-content');
+  if(!btnE) return;
+  var activeStyle = 'padding:10px 20px;border:none;background:none;font-size:14px;font-weight:700;cursor:pointer;border-bottom:3px solid #0d9488;color:#0d9488;margin-bottom:-2px';
+  var inactiveStyle = 'padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;cursor:pointer;color:#9ca3af;border-bottom:3px solid transparent;margin-bottom:-2px';
+  if(tab === 'estados') {
+    btnE.style.cssText = activeStyle;
+    btnA.style.cssText = inactiveStyle;
+    contE.style.display = 'block';
+    contA.style.display = 'none';
+    renderBikeEstadosHist();
+  } else {
+    btnA.style.cssText = activeStyle;
+    btnE.style.cssText = inactiveStyle;
+    contA.style.display = 'block';
+    contE.style.display = 'none';
+    renderBikeAlquileresHist();
+  }
+}
+
+function renderBikeEstadosHist() {
+  var el = document.getElementById('bike-estados-hist');
+  if(!el || !aB) return;
+  var histBike = (aB.estadosHist || []).slice().reverse();
+  if(!histBike.length) {
+    el.innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">Sin historial de estados</div>';
+    return;
+  }
+  el.innerHTML = histBike.map(function(h) {
+    var est = BIKE_ESTADOS[h.estado] || {icon:'', lbl:h.estado, bg:'#f3f4f6', border:'#e5e7eb', txt:'#374151'};
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:'+est.bg+';border:1px solid '+est.border+';border-radius:8px">'
+      + '<span style="font-size:20px">'+est.icon+'</span>'
+      + '<div style="flex:1">'
+      + '<div style="font-weight:700;color:'+est.txt+'">'+esc(est.lbl)+'</div>'
+      + '<div style="font-size:12px;color:#6b7280">'+esc(h.fecha)+(h.nota?' · '+esc(h.nota):'')+'</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function renderBikeAlquileresHist() {
+  var el = document.getElementById('bike-alquileres-hist');
+  if(!el || !aB) return;
+  // Find all reservations that used this bike
+  var resShared = window._sharedReservas || [];
+  var misRes = resShared.filter(function(r) {
+    return r.bikesAsig && r.bikesAsig.some(function(a){return a.id === aB.id;});
+  }).sort(function(a,b){ return (b.ini||'').localeCompare(a.ini||''); });
+
+  if(!misRes.length) {
+    el.innerHTML = '<div style="color:#9ca3af;font-size:13px;text-align:center;padding:20px">Sin alquileres registrados</div>';
+    return;
+  }
+  el.innerHTML = misRes.map(function(r) {
+    var estado = BIKE_ESTADOS ? '' : '';
+    var sc = {pendiente:'#fef3c7',confirmada:'#dbeafe',alquiler:'#dcfce7',recogida:'#f3f4f6',cancelada:'#fee2e2'};
+    var bg = sc[r.estado] || '#f9fafb';
+    return '<div style="padding:12px 14px;background:'+bg+';border:1px solid #e5e7eb;border-radius:8px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'
+      + '<div style="font-weight:800;font-size:14px">'+esc(r.cliente||'-')+'</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280">'+esc(r.estado||'')+'</div>'
+      + '</div>'
+      + '<div style="font-size:12px;color:#374151">📅 '+esc(r.ini||'-')+' → '+esc(r.fin||'-')+'  ·  '+esc(String(r.dias||''))+ ' días</div>'
+      + '<div style="font-size:12px;color:#374151;margin-top:2px">📍 '+esc(r.lugarIni||'-')+' → '+esc(r.lugarFin||'Santiago de Compostela')+'</div>'
+      + (r.total?'<div style="font-size:13px;font-weight:800;color:#0d9488;margin-top:4px">'+r.total+'€</div>':'')
+      + '</div>';
+  }).join('');
+}
+
+
 // ── TALLER ────────────────────────────────────────────────
 function openT(id){
   aB=bikes.find(b=>b.id===id);if(!aB)return;
@@ -380,6 +471,8 @@ function openT(id){
   cfs=photos[aB.id]||'';renderFS();
   const cl=CLS[aB.tipo]||[];cs={};cl.forEach(i=>cs[i]=false);
   renderCL();renderPT();updProg();showView('taller');window.scrollTo(0,0);
+  // Reset to estados tab
+  switchBikeTab('estados');
 }
 function setTE(v){
   te=v;
@@ -435,6 +528,8 @@ function saveTaller(){
   if(!hist[aB.id])hist[aB.id]=[];
   hist[aB.id].unshift(reg);if(hist[aB.id].length>50)hist[aB.id]=hist[aB.id].slice(0,50);
   sh();
+  // Record estado change in bike history
+  _registrarEstadoBici(aB, te, tec);
   function doSaveT(){
     const idx=bikes.findIndex(b=>b.id===aB.id);if(idx>=0){bikes[idx].estado=te;sb();}
     if(cfs){photos[aB.id]=cfs;sp();}
