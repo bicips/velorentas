@@ -520,10 +520,28 @@ function renderFS(){
 function clearFS(){cfs='';renderFS();}
 
 function saveTaller(){
+  // Validaciones con mensajes claros
+  var errores = [];
   const tec=document.getElementById('t-tec').value.trim();
-  if(!tec){toast('⚠️ Indica el nombre del técnico');return;}
+  if(!tec) errores.push('Nombre del técnico');
+  const tot=ckeys().length;
+  const done=Object.values(cs).filter(Boolean).length;
+  if(tot>0 && done===0) errores.push('Al menos un ítem del checklist');
+
+  if(errores.length){
+    // Mostrar flotante rojo con los campos que faltan
+    toast('🔴 Faltan datos: ' + errores.join(', '), 4000, 'error');
+    // También marcar el campo técnico visualmente si falta
+    var tecInput = document.getElementById('t-tec');
+    if(!tec && tecInput){
+      tecInput.style.borderColor='#dc2626';
+      tecInput.focus();
+      setTimeout(function(){tecInput.style.borderColor='';}, 3000);
+    }
+    return;
+  }
+
   const notas=document.getElementById('t-notas').value.trim();
-  const tot=ckeys().length,done=Object.values(cs).filter(Boolean).length;
   const reg={id:Date.now(),ts:new Date().toISOString(),fecha:ns(),tecnico:tec,notas,checklist:{...cs},checkedCount:done,totalItems:tot,piezas:[...pu],estadoResultante:te,bikeId:aB.id};
   if(!hist[aB.id])hist[aB.id]=[];
   hist[aB.id].unshift(reg);if(hist[aB.id].length>50)hist[aB.id]=hist[aB.id].slice(0,50);
@@ -533,7 +551,7 @@ function saveTaller(){
   function doSaveT(){
     const idx=bikes.findIndex(b=>b.id===aB.id);if(idx>=0){bikes[idx].estado=te;sb();}
     if(cfs){photos[aB.id]=cfs;sp();}
-    toast('✅ Revisión guardada correctamente');showView('bikes');aB=null;
+    toast('✅ Revisión guardada correctamente', 3000, 'success');showView('bikes');aB=null;
   }
   if(te==='averiada'&&aB.estado!=='averiada'){
     confirmarAveriada(aB.id, doSaveT);
