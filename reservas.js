@@ -2605,9 +2605,9 @@ async function initApp() {
     if (dbImpExcl && dbImpExcl.length) impExcluidas = dbImpExcl;
 
     // Aplicar datos taller (variables de taller-merged.js)
-    if (typeof hist !== 'undefined' && dbHist && typeof dbHist === 'object' && Object.keys(dbHist).length) hist = dbHist;
-    if (typeof CLS !== 'undefined' && dbCLS && Array.isArray(dbCLS)) CLS = dbCLS;
-    if (typeof photos !== 'undefined' && dbPhotos && typeof dbPhotos === 'object' && Object.keys(dbPhotos).length) photos = dbPhotos;
+    if (typeof hist !== 'undefined' && dbHist && dbHist !== null && !Array.isArray(dbHist) && Object.keys(dbHist).length) hist = dbHist;
+    if (typeof CLS !== 'undefined' && Array.isArray(dbCLS) && dbCLS.length) CLS = dbCLS;
+    if (typeof photos !== 'undefined' && dbPhotos && dbPhotos !== null && !Array.isArray(dbPhotos) && Object.keys(dbPhotos).length) photos = dbPhotos;
 
     // Caché compartida preparar
     window._sharedReservas = reservas;
