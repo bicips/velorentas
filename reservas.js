@@ -43,7 +43,6 @@ var SCFG={
   anulada:          {lbl:'Anulada',           cls:'bn-red',    icon:'🚫'},
   pendiente:        {lbl:'Pendiente',          cls:'bn-amber',  icon:'⏳'},
   confirmada:       {lbl:'Confirmada',         cls:'bn-blue',   icon:'✅'},
-  proxima_entrega:  {lbl:'Próxima entrega',    cls:'bn-purple', icon:'📅'},
   en_preparacion:   {lbl:'En preparación',     cls:'bn-orange', icon:'🔧'},
   preparada:        {lbl:'Preparada',          cls:'bn-teal',   icon:'📦'},
   transito_furgo:   {lbl:'Tránsito (Furgo)',   cls:'bn-blue',   icon:'🚐'},
@@ -736,7 +735,7 @@ function getFechaFilter(){
   return{ini:fi||'0000-00-00',fin:ff||'9999-99-99'};
 }
 
-function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');resSel=[];renderRes();}
+function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');resSel=[];if(v==='proxima_entrega'){reservas.sort(function(a,b){return a.ini.localeCompare(b.ini);});}renderRes();}
 
 function setSort(field,btn){
   if(resSort===field){resSortDir*=-1;}else{resSort=field;resSortDir=1;}
@@ -772,7 +771,16 @@ function renderRes(){
   var q=(document.getElementById('rsrch')||{value:''}).value.toLowerCase();
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
-    if(resF!=='all'&&!(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF))return false;
+    if(resF!=='all'){
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      if(resF==='proxima_entrega'){
+        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+      } else if(resF==='transito'){
+        if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
+      } else {
+        if(r.estado!==resF)return false;
+      }
+    }
     if(q&&![r.cliente,r.tel,r.email||'',r.bikeNum||'',r.tipo,r.lugarIni||'',r.lugarFin||''].some(function(s){return(s||'').toLowerCase().indexOf(q)>=0;}))return false;
     if(fechaF){
       // show reservations that START on/after 'desde' AND END on/before 'hasta'
@@ -865,7 +873,16 @@ function toggleSel(id,event){
 function selAll(){
   var q=(document.getElementById('rsrch')||{value:''}).value.toLowerCase();
   var list=reservas.filter(function(r){
-    if(resF!=='all'&&!(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF))return false;
+    if(resF!=='all'){
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      if(resF==='proxima_entrega'){
+        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+      } else if(resF==='transito'){
+        if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
+      } else {
+        if(r.estado!==resF)return false;
+      }
+    }
     if(q)return[r.cliente,r.tel,r.email||'',r.tipo,r.lugarIni||'',r.lugarFin||''].some(function(s){return(s||'').toLowerCase().indexOf(q)>=0;});
     return true;
   });
@@ -1848,7 +1865,12 @@ function getTableRows(){
   var q=(document.getElementById('rsrch')||{value:''}).value.toLowerCase();
   var rows=[];
   reservas.forEach(function(r){
-    if(resF!=='all'&&!(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF))return;
+    if(resF!=='all'){
+      var _m2=new Date();_m2.setDate(_m2.getDate()+1);var _ms2=_m2.toISOString().slice(0,10);
+      if(resF==='proxima_entrega'){if(r.ini<_ms2||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return;}
+      else if(resF==='transito'){if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return;}
+      else{if(r.estado!==resF)return;}
+    }
     if(q&&![r.cliente,r.tel,r.email||'',r.tipo,r.lugarIni||'',r.lugarFin||''].some(function(s){return(s||'').toLowerCase().indexOf(q)>=0;}))return;
     var fechaF2=getFechaFilter();
     if(fechaF2){
@@ -1960,7 +1982,7 @@ function renderTablaRes(){
   tbody.innerHTML=html;
 
   var fc=document.getElementById('res-table-count');
-  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return resF==='all'||(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF);}).length+' reservas';
+  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return (resF==='all'||(resF==='proxima_entrega'?(r.ini>=new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10)&&['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)<0):(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF)));}).length+' reservas';
 }
 
 function exportTablaCSV(){
@@ -2230,7 +2252,16 @@ function imprimirReservas(){
   var q=(document.getElementById('rsrch')||{value:''}).value.toLowerCase();
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
-    if(resF!=='all'&&!(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF))return false;
+    if(resF!=='all'){
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      if(resF==='proxima_entrega'){
+        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+      } else if(resF==='transito'){
+        if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
+      } else {
+        if(r.estado!==resF)return false;
+      }
+    }
     if(q&&![r.cliente,r.tel,r.email||'',r.bikeNum||'',r.tipo,r.lugarIni||'',r.lugarFin||''].some(function(s){return(s||'').toLowerCase().indexOf(q)>=0;}))return false;
     if(fechaF){
       var rIni=r.ini||'',rFin=r.fin||'';
@@ -2416,7 +2447,16 @@ function ejecutarImpresion(){
   var q=(document.getElementById('rsrch')||{value:''}).value.toLowerCase();
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
-    if(resF!=='all'&&!(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF))return false;
+    if(resF!=='all'){
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      if(resF==='proxima_entrega'){
+        if(r.ini<_ms||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return false;
+      } else if(resF==='transito'){
+        if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
+      } else {
+        if(r.estado!==resF)return false;
+      }
+    }
     if(q&&![r.cliente,r.tel,r.email||'',r.tipo,r.lugarIni||'',r.lugarFin||''].some(function(s){return(s||'').toLowerCase().indexOf(q)>=0;}))return false;
     if(fechaF){var rIni=r.ini||'',rFin=r.fin||'';if(fechaF.ini!=='0000-00-00'&&rIni<fechaF.ini)return false;if(fechaF.fin!=='9999-99-99'&&rFin>fechaF.fin)return false;}
     return true;
