@@ -1415,33 +1415,36 @@ function toggleCamaraRecogida() {
   var video = document.getElementById('rec-cam-video');
   var placeholder = document.getElementById('rec-cam-placeholder');
   var btn = document.getElementById('rec-cam-btn');
+  if(!video) { toast('Error: elemento de video no encontrado'); return; }
   navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
     .then(function(stream){
       _recCamStream = stream;
       _recCamActiva = true;
       video.srcObject = stream;
       video.style.display = 'block';
-      placeholder.style.display = 'none';
-      btn.textContent = '⏹ Parar cámara';
-      btn.style.background = '#6b7280';
-      video.play();
-      _recCamInterval = setInterval(function(){
-        if(video.readyState < 2) return;
-        var canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        var img = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
-        try {
-          var code = jsQR(img.data, img.width, img.height);
-          if(code && code.data) {
-            _pararCamaraRecogida();
-            _procesarRecogida(code.data);
-          }
-        } catch(e){}
-      }, 300);
+      video.style.width = '100%';
+      video.style.minHeight = '200px';
+      if(placeholder) placeholder.style.display = 'none';
+      if(btn){ btn.textContent = '⏹ Parar cámara'; btn.style.background = '#6b7280'; }
+      video.play().then(function(){
+        _recCamInterval = setInterval(function(){
+          if(video.readyState < 2 || video.videoWidth === 0) return;
+          var canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          var img = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+          try {
+            var code = jsQR(img.data, img.width, img.height);
+            if(code && code.data) {
+              _pararCamaraRecogida();
+              _procesarRecogida(code.data);
+            }
+          } catch(e){}
+        }, 300);
+      }).catch(function(e){ toast('Error al reproducir video: '+e.message); });
     })
-    .catch(function(e){ toast('⚠️ No se pudo acceder a la cámara'); });
+    .catch(function(e){ toast('⚠️ No se pudo acceder a la cámara: '+e.message); });
 }
 
 function _pararCamaraRecogida() {
@@ -1451,7 +1454,7 @@ function _pararCamaraRecogida() {
   var video = document.getElementById('rec-cam-video');
   var placeholder = document.getElementById('rec-cam-placeholder');
   var btn = document.getElementById('rec-cam-btn');
-  if(video) video.style.display = 'none';
+  if(video){ video.style.display = 'none'; video.srcObject = null; }
   if(placeholder) placeholder.style.display = 'block';
   if(btn){ btn.textContent = '📷 Activar cámara'; btn.style.background = '#7c3aed'; }
 }
