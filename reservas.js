@@ -1000,6 +1000,41 @@ function renderCalTF(){
     }).join('');
 }
 
+// ── TOOLTIP CALENDARIO ───────────────────────────────────────────
+var _calTipEl = null;
+function calTip(e, el) {
+  var data = el.getAttribute('data-tip');
+  if(!data) return;
+  var parts = data.split('|');
+  var cliente = parts[0]||'';
+  var estado = parts[1]||'';
+  var modelo = parts[2]||'';
+  var sc = SCFG[estado]||{icon:'',lbl:estado};
+  if(!_calTipEl){
+    _calTipEl = document.createElement('div');
+    _calTipEl.style.cssText = 'position:fixed;z-index:9999;background:#1f2937;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;font-family:Inter,sans-serif;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:220px;line-height:1.5';
+    document.body.appendChild(_calTipEl);
+  }
+  _calTipEl.innerHTML = '<div style="font-weight:800;font-size:13px;margin-bottom:3px">👤 '+esc(cliente)+'</div>'
+    + '<div style="color:#d1d5db">🚲 '+esc(modelo)+'</div>'
+    + '<div style="color:#d1d5db">'+(sc.icon||'')+' '+esc(sc.lbl)+'</div>';
+  _calTipEl.style.display = 'block';
+  calTipMove(e);
+  el.addEventListener('mousemove', calTipMove);
+}
+function calTipMove(e) {
+  if(!_calTipEl) return;
+  var x = e.clientX + 14;
+  var y = e.clientY - 10;
+  if(x + 230 > window.innerWidth) x = e.clientX - 234;
+  _calTipEl.style.left = x + 'px';
+  _calTipEl.style.top = y + 'px';
+}
+function calTipHide() {
+  if(_calTipEl) _calTipEl.style.display = 'none';
+}
+
+
 function renderCal(){
   renderCalTF();
   var yl=document.getElementById('cal-year-lbl');if(yl)yl.textContent=calY;
@@ -1041,20 +1076,41 @@ function renderCal(){
 
   if(!bikeList.length){el.innerHTML=emptyHTML('🚲','Sin bicicletas en la flota');return;}
 
-  // Pre-build dayBikeMap
+  // Pre-build dayBikeMap — bloquea por bici asignada O por tipo+talla si no hay asignada
   var dayBikeMap={};
+  // Also build a day→tipo+talla usage count for unassigned reservas
+  var dayTallaCounts={}; // {day: {'urbana_M': [{resId, cliente, estado}...]}}
+
   reservas.forEach(function(r){
-    if(r.estado==='cancelada')return;
+    if(r.estado==='cancelada'||r.estado==='anulada')return;
     if(calTF!=='all'&&r.tipo!==calTF)return;
     var col=rcol(r.id);
-    for(var di=0;di<days.length;di++){
-      var ds=days[di];
-      if(ds<r.ini)continue;
-      if(ds>r.fin)break;
-      if(!dayBikeMap[ds])dayBikeMap[ds]={};
-      var key=r.bikeId?r.bikeId:'t_'+r.tipo;
-      dayBikeMap[ds][key]={col:col,resId:r.id,isIni:ds===r.ini,isFin:ds===r.fin,isBlq:false};
-    }
+    var lineas = r.lineas&&r.lineas.length ? r.lineas : [{tipo:r.tipo,talla:r.talla,uds:r.uds||1}];
+    lineas.forEach(function(l){
+      var asigBikes = r.bikesAsig ? r.bikesAsig.filter(function(a){return a.tipo===l.tipo&&a.talla===l.talla;}) : [];
+      for(var di=0;di<days.length;di++){
+        var ds=days[di];
+        if(ds<r.ini)continue;
+        if(ds>r.fin)break;
+        if(!dayBikeMap[ds])dayBikeMap[ds]={};
+        if(!dayTallaCounts[ds])dayTallaCounts[ds]={};
+        var tallaKey=l.tipo+'_'+l.talla;
+        if(!dayTallaCounts[ds][tallaKey])dayTallaCounts[ds][tallaKey]=[];
+        dayTallaCounts[ds][tallaKey].push({resId:r.id,cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla,col:col});
+        if(asigBikes.length){
+          // Has assigned bike — block that specific bike
+          asigBikes.forEach(function(a){
+            dayBikeMap[ds][a.id]={col:col,resId:r.id,isIni:ds===r.ini,isFin:ds===r.fin,isBlq:false,
+              cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla};
+          });
+        } else {
+          // No assigned bike yet — block first available bike of that tipo+talla
+          var key='t_'+l.tipo+'_'+l.talla;
+          dayBikeMap[ds][key]={col:col,resId:r.id,isIni:ds===r.ini,isFin:ds===r.fin,isBlq:false,
+            cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla,sinAsignar:true};
+        }
+      }
+    });
   });
   bloqueos.forEach(function(b){
     if(calTF!=='all'&&b.tipo!==calTF)return;
@@ -1138,23 +1194,30 @@ function renderCal(){
       var day2=dt2.getDate();
       var isT2=ds===today;
       var isM1=day2===1;
+      // Check for assigned bike OR unassigned reservation for this tipo+talla
       var cellData=dayBikeMap[ds]?dayBikeMap[ds][b.id]:null;
+      // Also check unassigned block for this bike's tipo+talla
+      var tallaKey='t_'+b.tipo+'_'+b.talla;
+      var unassignedData=(!cellData&&dayBikeMap[ds])?dayBikeMap[ds][tallaKey]:null;
+      var activeData=cellData||unassignedData;
       var cbg,lbdr='none',rbdr='none';
-      var onclick2='';
+      var extraAttrs='';
       if(isT2){cbg='rgba(13,148,136,.2)';lbdr='1px solid #0d9488';}
-      else if(cellData&&cellData.isBlq){cbg='#fecaca';}
-      else if(cellData&&!cellData.isBlq){
-        cbg=cellData.col[0];
-        if(cellData.resId)onclick2=' onclick="showResDetail('+cellData.resId+')" style="cursor:pointer"';
+      else if(activeData&&activeData.isBlq){cbg='#fecaca';}
+      else if(activeData&&!activeData.isBlq){
+        cbg=activeData.sinAsignar?'#fef3c7':activeData.col[0]; // yellow for unassigned
+        var tipTxt=esc(activeData.cliente||'')+'|'+esc(activeData.estado||'')+'|'+esc((tipos[activeData.tipo]||{label:activeData.tipo}).label+' '+activeData.talla)+(activeData.sinAsignar?' (sin bici asignada)':'');
+        extraAttrs=' data-tip="'+tipTxt+'" data-rid="'+activeData.resId+'" onmouseenter="calTip(event,this)" onmouseleave="calTipHide()" onclick="showResDetail('+activeData.resId+')" style="cursor:pointer"';
       }
       else{cbg=bg;}
       var borderL=isM1?'border-left:2px solid #475569;':'';
       var dot='';
-      if(cellData&&!cellData.isBlq){
-        if(cellData.isIni)dot='<div style="position:absolute;top:4px;left:3px;width:5px;height:5px;border-radius:50%;background:#16a34a"></div>';
-        else if(cellData.isFin)dot='<div style="position:absolute;top:4px;right:2px;width:5px;height:5px;border-radius:50%;background:#dc2626"></div>';
+      if(activeData&&!activeData.isBlq){
+        if(activeData.isIni)dot='<div style="position:absolute;top:4px;left:3px;width:5px;height:5px;border-radius:50%;background:#16a34a"></div>';
+        else if(activeData.isFin)dot='<div style="position:absolute;top:4px;right:2px;width:5px;height:5px;border-radius:50%;background:#dc2626"></div>';
       }
-      var cellBorder=isM1?'border-right:2px solid #475569;':'border-right:1px solid #cbd5e1;';rhtml+='<div'+onclick2+' style="width:'+CW+'px;flex-shrink:0;height:'+RH+'px;background:'+cbg+';position:relative;box-sizing:border-box;'+borderL+cellBorder+'">'+dot+'</div>';
+      var cellBorder=isM1?'border-right:2px solid #475569;':'border-right:1px solid #cbd5e1;';
+      rhtml+='<div'+extraAttrs+' style="width:'+CW+'px;flex-shrink:0;height:'+RH+'px;background:'+cbg+';position:relative;box-sizing:border-box;'+borderL+cellBorder+'">'+dot+'</div>';
     });
     rhtml+='</div>';
   });
