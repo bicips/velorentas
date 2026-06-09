@@ -1087,27 +1087,29 @@ function renderCal(){
     var col=rcol(r.id);
     var lineas = r.lineas&&r.lineas.length ? r.lineas : [{tipo:r.tipo,talla:r.talla,uds:r.uds||1}];
     lineas.forEach(function(l){
-      var asigBikes = r.bikesAsig ? r.bikesAsig.filter(function(a){return a.tipo===l.tipo&&a.talla===l.talla;}) : [];
+      var ltipo = l.tipo||r.tipo||'';
+      var ltalla = l.talla||r.talla||'';
+      var asigBikes = r.bikesAsig ? r.bikesAsig.filter(function(a){return a.tipo===ltipo&&a.talla===ltalla;}) : [];
+      // Also check bikesAsig without tipo filter (for old reservas)
+      if(!asigBikes.length && r.bikesAsig && r.bikesAsig.length) asigBikes = r.bikesAsig;
       for(var di=0;di<days.length;di++){
         var ds=days[di];
         if(ds<r.ini)continue;
         if(ds>r.fin)break;
         if(!dayBikeMap[ds])dayBikeMap[ds]={};
         if(!dayTallaCounts[ds])dayTallaCounts[ds]={};
-        var tallaKey=l.tipo+'_'+l.talla;
+        var tallaKey=ltipo+'_'+ltalla;
         if(!dayTallaCounts[ds][tallaKey])dayTallaCounts[ds][tallaKey]=[];
-        dayTallaCounts[ds][tallaKey].push({resId:r.id,cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla,col:col});
+        dayTallaCounts[ds][tallaKey].push({resId:r.id,cliente:r.cliente,estado:r.estado,tipo:ltipo,talla:ltalla,col:col});
         if(asigBikes.length){
-          // Has assigned bike — block that specific bike
           asigBikes.forEach(function(a){
             dayBikeMap[ds][a.id]={col:col,resId:r.id,isIni:ds===r.ini,isFin:ds===r.fin,isBlq:false,
-              cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla};
+              cliente:r.cliente,estado:r.estado,tipo:ltipo,talla:ltalla};
           });
         } else {
-          // No assigned bike yet — block first available bike of that tipo+talla
-          var key='t_'+l.tipo+'_'+l.talla;
+          var key='t_'+ltipo+'_'+ltalla;
           dayBikeMap[ds][key]={col:col,resId:r.id,isIni:ds===r.ini,isFin:ds===r.fin,isBlq:false,
-            cliente:r.cliente,estado:r.estado,tipo:l.tipo,talla:l.talla,sinAsignar:true};
+            cliente:r.cliente,estado:r.estado,tipo:ltipo,talla:ltalla,sinAsignar:true};
         }
       }
     });
@@ -2808,4 +2810,3 @@ async function initApp() {
 }
 
 setTimeout(initApp, 800);
-
