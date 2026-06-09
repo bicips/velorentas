@@ -1279,6 +1279,21 @@ function openDayM(ds){
 function initTLSelects(){var ts=document.getElementById('tl-tipo');if(!ts)return;var pv=ts.value;ts.innerHTML=Object.keys(tipos).map(function(k){var t=tipos[k];return '<option value="'+k+'">'+t.icon+' '+t.label+'</option>';}).join('');if(pv)ts.value=pv;tlTC();}
 function tlTC(){var t=tipos[document.getElementById('tl-tipo').value]||{sizes:[]};var ts=document.getElementById('tl-talla');var pv=ts.value;ts.innerHTML='<option value="">Todas</option>'+t.sizes.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('');if(pv)ts.value=pv;}
 document.getElementById('tl-tipo').addEventListener('change',function(){tlTC();renderTL();});
+function abrirEditPrepDias(resId) {
+  var r = reservas.find(function(x){return x.id===resId;});
+  if(!r) return;
+  var actual = r.prepDias != null ? r.prepDias : cfg.gapDays;
+  var nuevo = window.prompt('Días de preparación para ' + esc(r.cliente) + '\n(Por defecto: ' + cfg.gapDays + ' días)', actual);
+  if(nuevo === null) return;
+  var dias = parseInt(nuevo);
+  if(isNaN(dias) || dias < 0) { toast('Número de días no válido', 2000, 'error'); return; }
+  r.prepDias = dias;
+  sR();
+  renderTL();
+  toast('✅ Preparación actualizada: ' + dias + ' días para ' + esc(r.cliente));
+}
+
+
 function renderTL(){
   var tipo=document.getElementById('tl-tipo').value,talla=document.getElementById('tl-talla').value;
   var now=new Date(),DAYS=33,dates=[];
@@ -1295,7 +1310,7 @@ function renderTL(){
     html+='<div class="tl-row"><div class="tl-bc"><div class="tl-bn">'+esc(bike.numBici)+'</div><div class="tl-bm">'+esc(bike.talla)+' - '+esc(bike.modelo||'')+'</div></div><div class="tl-cells">';
     dates.forEach(function(d){var isT=d===today2;html+='<div class="tl-cell '+(isT?'tday':'')+'"></div>';});
     bBlq.forEach(function(bl){var si=dates.indexOf(bl.ini),ei=dates.indexOf(bl.fin);if(si<0&&ei<0)return;var s=Math.max(0,si<0?0:si),e=Math.min(dates.length-1,ei<0?dates.length-1:ei);if(s>dates.length-1)return;var pct=(s/dates.length)*100,w=((e-s+1)/dates.length)*100;html+='<div class="tl-blk" style="left:'+pct+'%;width:'+w+'%;background:#fee2e2;color:#991b1b;border:1px dashed #f87171;cursor:default">🔒 '+esc(bl.motivo||'Bloqueo')+'</div>';});
-    bRes.forEach(function(r){var si=dates.indexOf(r.ini),ei=dates.indexOf(r.fin);if(si<0&&ei<0)return;var s=Math.max(0,si<0?0:si),e=Math.min(dates.length-1,ei<0?dates.length-1:ei);if(s>dates.length-1)return;var gs=e+1,ge=Math.min(dates.length-1,e+cfg.gapDays);if(gs<=dates.length-1){var gp=(gs/dates.length)*100,gw=((ge-gs+1)/dates.length)*100;html+='<div class="tl-blk" style="left:'+gp+'%;width:'+gw+'%;background:repeating-linear-gradient(45deg,#f9fafb,#f9fafb 4px,#e5e7eb 4px,#e5e7eb 8px);color:var(--g400);font-size:9px;border:1px dashed var(--g300);cursor:default">prep.</div>';}var col=rcol(r.id);var pct=(s/dates.length)*100,w=((e-s+1)/dates.length)*100;html+='<div class="tl-blk" style="left:'+pct+'%;width:'+w+'%;background:'+col[0]+';color:'+col[1]+'" onclick="showResDetail('+r.id+')" title="'+esc(r.cliente)+'">'+esc(r.cliente.split(' ')[0])+'</div>';});
+    bRes.forEach(function(r){var si=dates.indexOf(r.ini),ei=dates.indexOf(r.fin);if(si<0&&ei<0)return;var s=Math.max(0,si<0?0:si),e=Math.min(dates.length-1,ei<0?dates.length-1:ei);if(s>dates.length-1)return;var _rGap=(r.prepDias!=null?r.prepDias:cfg.gapDays);var gs=e+1,ge=Math.min(dates.length-1,e+_rGap);if(gs<=dates.length-1){var gp=(gs/dates.length)*100,gw=((ge-gs+1)/dates.length)*100;var prepDias=(r.prepDias!=null?r.prepDias:cfg.gapDays);html+='<div class="tl-blk" style="left:'+gp+'%;width:'+gw+'%;background:repeating-linear-gradient(45deg,#fef3c7,#fef3c7 4px,#fcd34d 4px,#fcd34d 8px);color:#92400e;font-size:9px;border:1px dashed #f59e0b;cursor:pointer" onclick="event.stopPropagation();abrirEditPrepDias('+r.id+')" title="Preparación: '+prepDias+' días (clic para editar)">🔧 '+prepDias+'d</div>';}var col=rcol(r.id);var pct=(s/dates.length)*100,w=((e-s+1)/dates.length)*100;html+='<div class="tl-blk" style="left:'+pct+'%;width:'+w+'%;background:'+col[0]+';color:'+col[1]+'" onclick="showResDetail('+r.id+')" title="'+esc(r.cliente)+'">'+esc(r.cliente.split(' ')[0])+'</div>';});
     html+='</div></div>';
   });
   html+='</div><div style="display:flex;gap:14px;padding:10px 14px;border-top:1px solid var(--g100);font-size:12px;color:var(--g400);flex-wrap:wrap"><span>Leyenda:</span><span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#dbeafe;border:1px solid #1d4ed8;border-radius:3px;display:inline-block"></span>Reserva</span><span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:repeating-linear-gradient(45deg,#f9fafb,#f9fafb 3px,#e5e7eb 3px,#e5e7eb 6px);border-radius:3px;display:inline-block"></span>Preparacion ('+cfg.gapDays+' dias)</span><span style="display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#fee2e2;border:1px dashed #f87171;border-radius:3px;display:inline-block"></span>Bloqueado</span></div></div>';
