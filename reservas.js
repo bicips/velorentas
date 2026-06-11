@@ -1398,11 +1398,15 @@ function showClienteDetail(encoded){var parts=decodeURIComponent(encoded).split(
 
 // EXPORT CSV
 function imprimirHojasBici() {
+  // FIX: incluir todos los estados operativos (antes faltaban alquiler, entregada, pendiente_recoger)
+  var ESTADOS_IMP = ["pendiente","confirmada","en_preparacion","preparada",
+    "transito_furgo","transito_carlos","transito_seur",
+    "entregada","alquiler","pendiente_recoger"];
   var candidatas = reservas.filter(function(r){
-    return (["confirmada","proxima_entrega","en_preparacion","preparada","transito_furgo","transito_carlos","transito_seur","pendiente"].indexOf(r.estado)>=0)
+    return ESTADOS_IMP.indexOf(r.estado) >= 0
       && impExcluidas.indexOf(r.id) === -1;
   });
-  if (!candidatas.length) { toast("No hay reservas para imprimir"); return; }
+  if (!candidatas.length) { toast("No hay reservas activas para imprimir", 3000, "error"); return; }
 
   // Build modal content
   _abrirModalImpresion(candidatas);
