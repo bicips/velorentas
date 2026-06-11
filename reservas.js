@@ -984,7 +984,6 @@ function showResDetail(id){
   // Factura always available for relevant states
   if(['confirmada','proxima_entrega','en_preparacion','preparada','transito_furgo','transito_carlos','transito_seur','entregada','alquiler','pendiente_recoger','recogida'].indexOf(st)>=0)
     _estadosBtns+='<button class="btn bi bsm" onclick="closeM(\'mdetail\');genFactFromRes('+r.id+')">🧾 Factura</button>';
-  if(st!=='cancelada'&&st!=='anulada') _estadosBtns+='<button class="btn bd bsm" onclick="changeStatus('+r.id+',\'cancelada\')">❌ Cancelar</button>';
   document.getElementById('mdetail-ftr').innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;width:100%"><button class="btn bs bsm" onclick="closeM(\'mdetail\')">Cerrar</button><button class="btn bs bsm" onclick="closeM(\'mdetail\');openEditRes('+r.id+')">Editar</button><button class="btn ba bsm" onclick="closeM(\'mdetail\');openEditRes('+r.id+');setTimeout(openQRAsign,200)">Asignar bici</button>'+_estadosBtns+'</div>';
   openM('mdetail');
 }
