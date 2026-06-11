@@ -1,12 +1,6 @@
 // ── DATA ──────────────────────────────────────────────────
-const TD = {
-  urbana:   {label:'MTB',        icon:'🚲', color:'#3b82f6', sizes:['XS','S','M','L','XL']},
-  montana:  {label:'Powerfly',   icon:'🚵', color:'#22c55e', sizes:['S','M','L','XL']},
-  electrica:{label:'Checkpoint', icon:'⚡', color:'#f59e0b', sizes:['S','M','L']},
-  cargo:    {label:'Cargo',      icon:'📦', color:'#8b5cf6', sizes:['Único','L','XL']},
-  infantil: {label:'Infantil',   icon:'🛴', color:'#ec4899', sizes:['12"','16"','20"','24"']},
-  gravel:   {label:'Gravel',     icon:'🏔️', color:'#06b6d4', sizes:['XS','S','M','L','XL']}
-};
+// NOTA: tipos y bikes vienen de reservas.js (globales compartidas).
+// TD e IB eliminados — eran código muerto del archivo independiente anterior.
 const DCL = {
   urbana:   ['Frenos delantero y trasero','Cadena limpia y lubricada','Neumáticos presión correcta','Luces delantera y trasera','Sillín regulado y apretado','Manillar alineado','Cambios (si aplica)','Pedales bien apretados','Guardabarros sin rozar','Timbre funciona'],
   montana:  ['Freno delantero hidráulico','Freno trasero hidráulico','Suspensión delantera','Suspensión trasera (si aplica)','Cambios delanteros','Cambios traseros','Cadena limpia','Platos y piñones','Neumáticos sin cortes','Tija sillín y potencia'],
@@ -16,13 +10,6 @@ const DCL = {
   gravel:   ['Freno hidráulico delantero','Freno hidráulico trasero','Presión tubeless','Cambio trasero','Plato único','Tija telescópica','Potencia y manillar','Pedales SPD','Cadena y piñones','Horquilla rigidez']
 };
 const PS = ['Cámara de aire','Neumático','Pastillas de freno','Cable de freno','Funda cable','Cable cambio','Cadena','Piñón','Cassette','Plato','Pedales','Grip manillar','Sillín','Tija sillín','Potencia manillar','Rodamiento pedalier','Aceite cadena','Desengrasante','Parche tubeless','Disco de freno','Líquido hidráulico'];
-const IB = [
-  {id:1,numBici:'B-001',numSerie:'SN-2021-001',tipo:'urbana',talla:'M',modelo:'Trek Marlin 7',qr:'B-001',estado:'disponible',icono:''},
-  {id:2,numBici:'B-002',numSerie:'SN-2021-002',tipo:'urbana',talla:'L',modelo:'Trek Marlin 7',qr:'B-002',estado:'disponible',icono:''},
-  {id:3,numBici:'B-003',numSerie:'SN-2022-003',tipo:'montana',talla:'M',modelo:'Powerfly 5',qr:'B-003',estado:'averiada',icono:''},
-  {id:4,numBici:'B-004',numSerie:'SN-2023-004',tipo:'electrica',talla:'M',modelo:'Checkpoint SL',qr:'B-004',estado:'disponible',icono:''},
-  {id:5,numBici:'B-005',numSerie:'SN-2023-005',tipo:'infantil',talla:'20"',modelo:'Trek Precaliber',qr:'B-005',estado:'disponible',icono:''}
-];
 
 // ── STORAGE ───────────────────────────────────────────────
 // ── Variables propias del taller (compartidas con reservas.js) ─
@@ -238,8 +225,7 @@ function renderBL(){
 
 // Check if bike has pending/active reservations — reads shared DB cache
 function getReservasActivasBike(bikeId, numBici, talla, tipo){
-  var reservas=[];
-  reservas = window._sharedReservas || [];
+  // FIX: usa la global reservas (cargada por initApp) en lugar de _sharedReservas
   var today=new Date().toISOString().slice(0,10);
   return reservas.filter(function(r){
     if(r.estado==='cancelada'||r.estado==='finalizada')return false;
@@ -864,9 +850,8 @@ function togH(h){const b=h.nextElementSibling,o=b.style.display!=='none';b.style
 document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
 // PREPARAR — lee reservas marcadas desde reservas-bicicletas.html
 function getPrepararData(){
-  var ids=[];var reservas=[];
-  ids = window._sharedPreparar || [];
-  reservas = window._sharedReservas || [];
+  // FIX: usa la global reservas (cargada por initApp) en lugar de _sharedReservas
+  var ids = window._sharedPreparar || prepararIds || [];
   // Use == to handle string/number mismatch
   return reservas.filter(function(r){
     return ids.some(function(x){return x==r.id;});
@@ -1191,8 +1176,8 @@ function _hacerAsignacion(bikeId) {
   var bici = bikes.find(function(b){ return b.id === bikeId; });
   if (!bici) { toast('❌ Bicicleta no encontrada'); return; }
 
-  // Update reserva in shared reservas
-  var reservas = window._sharedReservas || [];
+  // FIX: usa la global reservas directamente, sin shadowing con var local
+  if (!reservas || !reservas.length) { toast('❌ No hay reservas cargadas'); return; }
   var res = reservas.find(function(r){ return r.id === ctx.resId; });
   if (!res) { toast('❌ Reserva no encontrada'); return; }
 
@@ -1210,9 +1195,7 @@ function _hacerAsignacion(bikeId) {
   // Save both to Supabase
   DB.saveReserva(res).catch(function(e){ console.error('saveReserva asignar', e); });
   DB.saveBici(bici).catch(function(e){ console.error('saveBici asignar', e); });
-
-  // Update shared cache
-  window._sharedReservas = reservas;
+  // FIX: reservas es la global — ya está actualizada, no hace falta _sharedReservas
 
   closeM('masignar');
   toast('✅ Bici '+bici.numBici+' asignada a '+esc(res.cliente));
