@@ -342,8 +342,29 @@ function openEditRes(id){
   document.getElementById('r-lugar-ini').value=r.lugarIni||'';
   document.getElementById('r-lugar-fin').value=r.lugarFin||'Santiago de Compostela';
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
-  asignadas=r.bikesAsig?r.bikesAsig.slice():[];
-  if(r.lineas&&r.lineas.length){lineas=r.lineas.map(function(l){return Object.assign({},l);});}else{lineas=[{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];}
+  // Cargar líneas primero para poder emparejar _lineaIdx
+  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){return Object.assign({},l);}):
+    [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
+  lineas=rLineas;
+  // Reconstruir _lineaIdx: emparejar cada bici asignada con su línea por tipo+talla en orden
+  var rawAsig=r.bikesAsig?r.bikesAsig.slice():[];
+  var usados={}; // lineaIdx -> cuántas bicis ya asignadas a esa línea
+  asignadas=rawAsig.map(function(a){
+    var entry=Object.assign({},a);
+    // Buscar línea que coincida tipo+talla y que no esté ya llena
+    for(var i=0;i<rLineas.length;i++){
+      var key=i;
+      if(rLineas[i].tipo===a.tipo && rLineas[i].talla===a.talla){
+        if(!usados[key]){ usados[key]=0; }
+        if(usados[key]<(rLineas[i].uds||1)){
+          entry._lineaIdx=i;
+          usados[key]++;
+          break;
+        }
+      }
+    }
+    return entry;
+  });
   document.getElementById('r-dinfo').style.display='none';
   document.getElementById('r-fact-btn').style.display=r.estado==='finalizada'?'inline-flex':'none';
   calcDays();
@@ -422,12 +443,15 @@ function assignBike(bike){
   var entrada={id:bike.id,num:bike.numBici,tipo:bike.tipo,talla:bike.talla,modelo:bike.modelo||''};
   if(_lineaAsigIdx!==null){
     entrada._lineaIdx=_lineaAsigIdx;
-    // Reemplazar si ya había una bici en esa línea
+    // Quitar cualquier bici ya vinculada a esta línea exacta
     asignadas=asignadas.filter(function(a){return a._lineaIdx!==_lineaAsigIdx;});
+    asignadas.push(entrada);
+    _lineaAsigIdx=null;
+    closeM('mmanasign');
+    renderLineas(); // refrescar para mostrar bici asignada en la línea
+  } else {
+    asignadas.push(entrada);
   }
-  asignadas.push(entrada);
-  _lineaAsigIdx=null;
-  closeM('mmanasign');
   renderAsig();
   var el=document.getElementById('qra-result');
   if(el)el.innerHTML='<div class="avr ok" style="display:block">✅ '+esc(bike.numBici)+' asignada correctamente</div>';
