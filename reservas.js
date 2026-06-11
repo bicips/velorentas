@@ -2155,16 +2155,44 @@ function togglePreparar(resId){
   resId=parseInt(resId)||resId;
   var idx=prepararIds.findIndex(function(x){return x==resId;});
   if(idx>=0){
+    // Quitar de preparación — sin confirmación
     prepararIds.splice(idx,1);
     toast('Reserva quitada de preparación');
+    savePreparar();
+    renderRes();
+    if(vistaTabla)renderTablaRes();
   } else {
-    prepararIds.push(resId);
+    // Activar para taller — pedir confirmación
     var r=reservas.find(function(x){return x.id===resId;});
-    toast('🔧 '+( r?r.cliente:'Reserva')+' — marcada para preparar');
+    var cliente=r?r.cliente:'esta reserva';
+    var ini=r?fmtD(r.ini):'-';
+    var modelo=r&&r.lineas&&r.lineas.length?(r.lineas.map(function(l){return (tipos[l.tipo]?tipos[l.tipo].label:l.tipo)+' '+l.talla;}).join(', ')):'-';
+    var modal=document.createElement('div');
+    modal.id='m-confirm-prep';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+    modal.innerHTML='<div style="background:#fff;border-radius:12px;width:420px;max-width:92vw;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+      +'<div style="font-size:28px;text-align:center;margin-bottom:12px">🔧</div>'
+      +'<div style="font-size:16px;font-weight:800;text-align:center;margin-bottom:6px">Activar para taller</div>'
+      +'<div style="font-size:13px;color:#6b7280;text-align:center;margin-bottom:16px">Esta reserva aparecerá en la sección de preparación del taller</div>'
+      +'<div style="background:#f3f4f6;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px">'
+        +'<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+esc(cliente)+'</div>'
+        +'<div style="color:#6b7280">📅 '+ini+' &nbsp;·&nbsp; 🚲 '+esc(modelo)+'</div>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end">'
+        +'<button onclick="document.getElementById('m-confirm-prep').remove()" style="padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:#f9fafb;font-weight:600">Cancelar</button>'
+        +'<button id="btn-confirm-prep" style="padding:9px 18px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✅ Confirmar</button>'
+      +'</div>'
+    +'</div>';
+    document.body.appendChild(modal);
+    document.getElementById('btn-confirm-prep').onclick=function(){
+      modal.remove();
+      prepararIds.push(resId);
+      toast('🔧 '+cliente+' — activada en taller');
+      savePreparar();
+      renderRes();
+      if(vistaTabla)renderTablaRes();
+    };
   }
-  savePreparar();
-  renderRes();
-  if(vistaTabla)renderTablaRes();
 }
 
 // IMPORTAR / EXPORTAR RESERVAS
