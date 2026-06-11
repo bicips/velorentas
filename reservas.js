@@ -505,20 +505,17 @@ function renderManList(){
     var thumb=b.icono&&b.icono.indexOf('data:')===0
       ?'<img src="'+b.icono+'" style="width:100%;height:100%;object-fit:cover;border-radius:6px"/>':t.icon;
 
-    // Comprobar si la bici está ocupada en otro reserva que solape con estas fechas
-    // (excluyendo la reserva actual que estamos editando)
-    var ocupadaPor=null;
-    if(ini&&fin){
-      reservas.forEach(function(r){
-        if(r.estado==='cancelada')return;
-        if(eidN&&r.id===eidN)return; // excluir reserva actual
-        if(!r.bikesAsig||!r.bikesAsig.length)return;
-        var tieneEstaBici=r.bikesAsig.some(function(a){return a.id===b.id;});
-        if(tieneEstaBici&&!(fin<r.ini||ini>r.fin)){
-          ocupadaPor=r.cliente;
-        }
-      });
-    }
+    // Bici bloqueada si está asignada en cualquier reserva activa (no finalizada)
+    // independientemente de fechas — hasta que la reserva termine (recogida/cancelada/anulada)
+    var ESTADOS_LIBRE = ['cancelada','anulada','recogida'];
+    var ocupadaPor = null;
+    reservas.forEach(function(r){
+      if(ESTADOS_LIBRE.indexOf(r.estado) >= 0) return; // reserva finalizada, bici libre
+      if(eidN && r.id === eidN) return; // excluir reserva que estamos editando
+      if(!r.bikesAsig || !r.bikesAsig.length) return;
+      var tieneEstaBici = r.bikesAsig.some(function(a){ return a.id === b.id; });
+      if(tieneEstaBici) ocupadaPor = r.cliente + ' (' + fmtD(r.ini) + '–' + fmtD(r.fin) + ')';
+    });
 
     var estadoBtn='';
     if(ya){
