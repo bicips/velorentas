@@ -867,6 +867,7 @@ function renderRes(){
         +'<button class="btn bs bxs" onclick="openEditRes('+r.id+')">✏️</button>'
         +'<button class="btn bd bxs" onclick="delRes('+r.id+')">🗑️</button>'
         +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Prep.':'Preparar')+'</button>'
+        +'<button type="button" onclick="_imprimirHojaUna('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid #fcd34d;background:#fef3c7;color:#b45309;font-size:11px;font-weight:700">🖨️ Hoja</button>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -1397,6 +1398,12 @@ function renderClientes(){var q=(document.getElementById('cli-srch')||{value:''}
 function showClienteDetail(encoded){var parts=decodeURIComponent(encoded).split('|'),nombre=parts[0],tel=parts[1];var cli=getClientes().find(function(c){return c.nombre===nombre&&c.tel===tel;});if(!cli)return;document.getElementById('mcli-tit').textContent='Cliente: '+cli.nombre;var sorted=cli.reservas.slice().sort(function(a,b){return b.ini.localeCompare(a.ini);});var html='<div style="background:var(--g50);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap"><div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;margin-bottom:2px">Teléfono</div><div style="font-weight:700">'+esc(cli.tel)+'</div></div>'+(cli.email?'<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;margin-bottom:2px">Email</div><div style="font-weight:700">'+esc(cli.email)+'</div></div>':'')+'<div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;margin-bottom:2px">Reservas</div><div style="font-weight:700">'+cli.reservas.length+'</div></div><div><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;margin-bottom:2px">Total</div><div style="font-weight:700;color:var(--te600)">'+cli.total.toFixed(2)+cfg.currency+'</div></div></div>'+sorted.map(function(r){var t=tipos[r.tipo]||{icon:'🚲',label:r.tipo};var sc=SCFG[r.estado]||{lbl:r.estado,cls:'bn-gray'};return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer" onclick="closeM(\'mcli\');showResDetail('+r.id+')"><span style="font-size:18px">'+t.icon+'</span><div style="flex:1"><div style="font-weight:600;font-size:13px">'+fmtD(r.ini)+' - '+fmtD(r.fin)+' - '+r.dias+' días</div><div style="font-size:12px;color:var(--g400)">'+t.label+' '+esc(r.talla)+(r.total?' - '+r.total+cfg.currency:'')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';}).join('');document.getElementById('mcli-body').innerHTML=html;openM('mcli');}
 
 // EXPORT CSV
+function _imprimirHojaUna(resId) {
+  var r = reservas.find(function(x){ return x.id === resId; });
+  if (!r) { toast('Reserva no encontrada', 2000, 'error'); return; }
+  _generarHojasBici([r]);
+}
+
 function imprimirHojasBici() {
   // FIX: incluir todos los estados operativos (antes faltaban alquiler, entregada, pendiente_recoger)
   var ESTADOS_IMP = ["pendiente","confirmada","en_preparacion","preparada",
