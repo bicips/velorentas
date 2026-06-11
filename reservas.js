@@ -2775,11 +2775,11 @@ async function initApp() {
     var dbCfg       = results[5];
     var dbTipos     = results[6];
     var dbExtrasCat = results[7];
-    var dbPreparar    = results[8];
-    var dbImpExcl     = results[9];
-    var dbHist      = results[9];
-    var dbCLS       = results[10];
-    var dbPhotos    = results[11];
+    var dbPreparar  = results[8];
+    var dbImpExcl   = results[9];
+    var dbHist      = results[10]; // FIX: era results[9] igual que dbImpExcl
+    var dbCLS       = results[11]; // FIX: era results[10]
+    var dbPhotos    = results[12]; // FIX: era results[11]
 
     // Aplicar datos reservas
     if (dbBikes.length)       bikes          = dbBikes;
