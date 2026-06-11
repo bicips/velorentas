@@ -2179,7 +2179,7 @@ function togglePreparar(resId){
         +'<div style="color:#6b7280">📅 '+ini+' &nbsp;·&nbsp; 🚲 '+esc(modelo)+'</div>'
       +'</div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
-        +'<button onclick="document.getElementById('m-confirm-prep').remove()" style="padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:#f9fafb;font-weight:600">Cancelar</button>'
+        +'<button onclick="document.getElementById(\'m-confirm-prep\').remove()" style="padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:#f9fafb;font-weight:600">Cancelar</button>'
         +'<button id="btn-confirm-prep" style="padding:9px 18px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✅ Confirmar</button>'
       +'</div>'
     +'</div>';
