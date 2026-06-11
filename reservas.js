@@ -176,6 +176,7 @@ function delBloqueo(id){if(!window.confirm('Eliminar este bloqueo?'))return;bloq
 // RESERVAS - LINEAS MULTIPLES
 var asignadas=[];
 var lineas=[];
+var _lineaAsigIdx=null; // índice de línea activa para asignación
 var currentResId=null; // ID of reservation being edited (for direct save)
 
 function addLinea(tipo,talla,uds,ppd){
@@ -232,6 +233,14 @@ function renderLineas(){
     html+='<input type="number" data-li="'+i+'" data-f="ppd" min="0" step="0.01" value="'+(l.ppd||'')+'" placeholder="0" style="width:68px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px"/>';
     html+='</div>';
     html+=availTxt;
+    // Bici asignada a esta línea
+    var bikeAsigLinea = asignadas.find(function(a){return a.tipo===l.tipo&&a.talla===l.talla&&a._lineaIdx===i;});
+    if(bikeAsigLinea){
+      html+='<span style="font-size:11px;font-weight:700;color:#0f766e;background:#ccfbf1;padding:3px 8px;border-radius:6px;white-space:nowrap">🚲 '+esc(bikeAsigLinea.num)+'</span>';
+      html+='<button data-rm-asig="'+i+'" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 8px;cursor:pointer;font-size:11px;font-weight:700;flex-shrink:0">✕</button>';
+    } else if(l.tipo&&l.talla) {
+      html+='<button data-asig-li="'+i+'" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">🔗 Asignar</button>';
+    }
     html+='<button data-rm="'+i+'" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;line-height:1">✕</button>';
     html+='</div>';
   });
@@ -252,6 +261,23 @@ function renderLineas(){
     btn.addEventListener('click',function(){
       var idx=parseInt(this.getAttribute('data-rm'));
       lineas.splice(idx,1);renderLineas();
+    });
+  });
+  // Botón asignar bici por línea
+  el.querySelectorAll('button[data-asig-li]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var idx=parseInt(this.getAttribute('data-asig-li'));
+      _lineaAsigIdx=idx;
+      renderManList();
+      openM('mmanasign');
+    });
+  });
+  // Botón quitar bici de línea
+  el.querySelectorAll('button[data-rm-asig]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var idx=parseInt(this.getAttribute('data-rm-asig'));
+      asignadas=asignadas.filter(function(a){return !(a._lineaIdx===idx&&a.tipo===lineas[idx].tipo&&a.talla===lineas[idx].talla);});
+      renderLineas();renderAsig();
     });
   });
 
@@ -392,7 +418,16 @@ function assignBike(bike){
     if(el)el.innerHTML='<div class="avr ko" style="display:block">'+esc(bike.numBici)+' ya está en la lista</div>';
     return;
   }
-  asignadas.push({id:bike.id,num:bike.numBici,tipo:bike.tipo,talla:bike.talla,modelo:bike.modelo||''});
+  // Vincular a la línea activa si viene de asignación por línea
+  var entrada={id:bike.id,num:bike.numBici,tipo:bike.tipo,talla:bike.talla,modelo:bike.modelo||''};
+  if(_lineaAsigIdx!==null){
+    entrada._lineaIdx=_lineaAsigIdx;
+    // Reemplazar si ya había una bici en esa línea
+    asignadas=asignadas.filter(function(a){return a._lineaIdx!==_lineaAsigIdx;});
+  }
+  asignadas.push(entrada);
+  _lineaAsigIdx=null;
+  closeM('mmanasign');
   renderAsig();
   var el=document.getElementById('qra-result');
   if(el)el.innerHTML='<div class="avr ok" style="display:block">✅ '+esc(bike.numBici)+' asignada correctamente</div>';
@@ -422,20 +457,26 @@ function assignBike(bike){
   }
 }
 function clearAsignadas(){asignadas=[];renderAsig();}
-function openManualAsign(){renderManList();openM('mmanasign');}
+function openManualAsign(){_lineaAsigIdx=null;renderManList();openM('mmanasign');}
 function renderManList(){
   var q=(document.getElementById('man-srch')||{value:''}).value.toLowerCase();
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
   var eid=document.getElementById('r-eid').value;
   var eidN=eid?parseInt(eid):null;
 
-  // Modelos válidos de esta reserva
-  var validLineas=lineas.filter(function(l){return l.tipo&&l.talla;});
+  // Si viene de un botón por línea, filtrar solo ese tipo+talla
+  var validLineas;
+  if(_lineaAsigIdx!==null && lineas[_lineaAsigIdx]){
+    var li=lineas[_lineaAsigIdx];
+    validLineas=li.tipo&&li.talla?[li]:[];
+  } else {
+    validLineas=lineas.filter(function(l){return l.tipo&&l.talla;});
+  }
 
   var list=bikes.filter(function(b){
-    // Solo bicis en estado disponible (no averiadas)
-    if(!bikeOperativa(b))return false;
-    // Solo modelos que coincidan con la reserva
+    // Excluir solo averiadas
+    if(b.estado==='averiada')return false;
+    // Solo modelos que coincidan con la línea activa
     if(validLineas.length){
       var matches=validLineas.some(function(l){return l.tipo===b.tipo&&l.talla===b.talla;});
       if(!matches)return false;
@@ -448,9 +489,11 @@ function renderManList(){
   var el=document.getElementById('man-list');if(!el)return;
 
   // Cabecera con modelos esperados
-  var headerHtml='';
-  if(validLineas.length){
-    headerHtml='<div style="padding:8px 12px;background:var(--b50);border-bottom:1px solid var(--b100);font-size:12px;color:var(--b700)">'
+    var headerHtml='';
+  if(_lineaAsigIdx!==null && validLineas.length){
+    var li=validLineas[0];
+    var tli=tipos[li.tipo]||{icon:'🚲',label:li.tipo};
+    headerHtml='<div style="padding:8px 12px;background:#eff6ff;border-bottom:1px solid #bfdbfe;font-size:12px;color:#1d4ed8;font-weight:700">'      +'🔗 Asignando bici para: '+tli.icon+' '+tli.label+' '+li.talla      +'</div>';  } else if(validLineas.length){    headerHtml='<div style="padding:8px 12px;background:var(--b50);border-bottom:1px solid var(--b100);font-size:12px;color:var(--b700)">'
       +'<strong>Modelos de esta reserva:</strong> '
       +validLineas.map(function(l){var t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};return t.icon+' '+t.label+' '+l.talla+(l.uds>1?' ×'+l.uds:'');}).join(' · ')
       +'</div>';
@@ -481,7 +524,7 @@ function renderManList(){
     if(ya){
       estadoBtn='<button class="btn bd bxs" onclick="asignadas.splice(asignadas.findIndex(function(a){return a.id==='+b.id+'}),1);renderManList();renderAsig()">Quitar</button>';
     } else if(ocupadaPor){
-      estadoBtn='<span style="font-size:11px;color:var(--r500);text-align:right">Asignada a<br>'+esc(ocupadaPor)+'</span>';
+      estadoBtn='<span style="font-size:11px;color:var(--r600);font-weight:700;text-align:right">⚠️ Ocupada:<br>'+esc(ocupadaPor)+'</span>';
     } else {
       estadoBtn='<button class="btn bb bxs" onclick="assignBike(bikes.find(function(x){return x.id==='+b.id+';}));renderManList()">Asignar</button>';
     }
@@ -529,7 +572,7 @@ function iniciarEscanerQR(){
   }
 }
 
-function openQRAsign(){
+function openQRAsign(){_lineaAsigIdx=null;
   document.getElementById('qra-inp').value='';
   document.getElementById('qra-result').innerHTML='';
   qraStatus('','');
