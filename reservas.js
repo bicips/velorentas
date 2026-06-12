@@ -346,25 +346,19 @@ function openEditRes(id){
   var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){return Object.assign({},l);}):
     [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
   lineas=rLineas;
-  // Reconstruir _lineaIdx: emparejar cada bici asignada con su línea por tipo+talla en orden
+  // Reconstruir _lineaIdx: emparejar cada bici con su línea por tipo+talla en orden
   var rawAsig=r.bikesAsig?r.bikesAsig.slice():[];
-  var usados={}; // lineaIdx -> cuántas bicis ya asignadas a esa línea
-  asignadas=rawAsig.map(function(a){
-    var entry=Object.assign({},a);
-    // Buscar línea que coincida tipo+talla y que no esté ya llena
+  // Contador independiente por lineaIdx para no mezclar líneas con mismo tipo+talla
+  var asigPorLinea={}; // lineaIdx -> bici asignada (máx 1 por línea)
+  rawAsig.forEach(function(a){
     for(var i=0;i<rLineas.length;i++){
-      var key=i;
-      if(rLineas[i].tipo===a.tipo && rLineas[i].talla===a.talla){
-        if(!usados[key]){ usados[key]=0; }
-        if(usados[key]<(rLineas[i].uds||1)){
-          entry._lineaIdx=i;
-          usados[key]++;
-          break;
-        }
+      if(rLineas[i].tipo===a.tipo && rLineas[i].talla===a.talla && !asigPorLinea[i]){
+        asigPorLinea[i]=Object.assign({},a,{_lineaIdx:i});
+        break;
       }
     }
-    return entry;
   });
+  asignadas=Object.values(asigPorLinea);
   document.getElementById('r-dinfo').style.display='none';
   document.getElementById('r-fact-btn').style.display=r.estado==='finalizada'?'inline-flex':'none';
   calcDays();
@@ -443,12 +437,20 @@ function assignBike(bike){
   var entrada={id:bike.id,num:bike.numBici,tipo:bike.tipo,talla:bike.talla,modelo:bike.modelo||''};
   if(_lineaAsigIdx!==null){
     entrada._lineaIdx=_lineaAsigIdx;
-    // Quitar cualquier bici ya vinculada a esta línea exacta
-    asignadas=asignadas.filter(function(a){return a._lineaIdx!==_lineaAsigIdx;});
+    // Quitar cualquier bici de esta línea (incluyendo las sin _lineaIdx del mismo tipo+talla)
+    var li=lineas[_lineaAsigIdx]||{};
+    asignadas=asignadas.filter(function(a){
+      // Quitar las explícitamente vinculadas a esta línea
+      if(a._lineaIdx===_lineaAsigIdx) return false;
+      // Quitar las sin _lineaIdx (legado) del mismo tipo+talla
+      if(a._lineaIdx===undefined && a.tipo===li.tipo && a.talla===li.talla) return false;
+      return true;
+    });
     asignadas.push(entrada);
     _lineaAsigIdx=null;
     closeM('mmanasign');
-    renderLineas(); // refrescar para mostrar bici asignada en la línea
+    renderLineas();
+    renderAsig();
   } else {
     asignadas.push(entrada);
   }
