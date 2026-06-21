@@ -1595,8 +1595,8 @@ function _generarHojasBici(listaFiltrada) {
       var uds = l.uds||1;
       for(var u=0;u<uds;u++){
         var t = tipos[l.tipo]||{label:l.tipo||"",icon:""};
-        var asig = r.bikesAsig&&r.bikesAsig.filter(function(a){return a.tipo===l.tipo&&a.talla===l.talla;});
-        var bikeNum = asig&&asig[u] ? asig[u].num : "-";
+        // FIX: usar l.bikeAsig directamente (fuente de verdad por línea), no filtrar por tipo+talla
+        var bikeNum = l.bikeAsig ? l.bikeAsig.num : "-";
         var extrasLinea = l.extras&&l.extras.length ? l.extras.slice() : [];
         var fechaIni = r.ini ? new Date(r.ini+"T00:00:00") : null;
         var fechaEntrega = fechaIni ? new Date(fechaIni.getTime()-86400000) : null;
