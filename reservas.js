@@ -3694,3 +3694,58 @@ function imprimirEtiquetasQR(){
   if(!w)toast('Permite las ventanas emergentes para imprimir las etiquetas');
   setTimeout(function(){URL.revokeObjectURL(url);},60000);
 }
+
+// ══════════════════════════════════════════════════════════════
+//  NÚMEROS DE PÁGINA (temporal): códigos fijos para hablar de cada pantalla.
+//  P = páginas, V = ventanas que se abren encima. Se ocultan con el botón 🔢 del menú.
+// ══════════════════════════════════════════════════════════════
+var PAG_NUM=[
+  ['v-dash','P01','Panel'],['v-flota','P02','Gestión de flota'],['v-cal','P03','Calendario'],['v-timeline','P04','Timeline'],
+  ['v-res','P05','Reservas'],['v-fact','P06','Facturas'],['v-informes','P07','Informes'],['v-tarifas','P08','Tarifas'],['v-clientes','P09','Clientes'],
+  ['vd','P10','Panel taller'],['preparar-view','P11','Preparar'],['vb','P12','Bicicletas taller'],['vt','P13','Ficha de taller de una bici'],
+  ['mres','V01','Nueva / editar reserva'],['mdetail','V02','Detalle de reserva'],['mmanasign','V03','Asignar bicicleta (lista)'],['mqrasign','V04','Escanear QR (reserva)'],
+  ['m-transito','V05','Seleccionar transporte'],['mday','V06','Reservas del día'],['mfact','V07','Factura'],['msend','V08','Enviar confirmación'],
+  ['mcli','V09','Historial del cliente'],['m-extras-cat','V10','Catálogo de extras'],['m-print-sel','V11','Imprimir lista'],['m-import-res','V12','Importar reservas'],
+  ['mbloqueo','V13','Bloquear bicicletas'],['mmodelos','V14','Gestión de tipos y modelos'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
+  ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (preparar)'],
+  ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos (taller)'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
+  ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
+];
+var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12'};
+function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}
+function aplicarNumerosPagina(){
+  if(!document.getElementById('pagnum-css')){
+    var st=document.createElement('style');st.id='pagnum-css';
+    st.textContent='.pagnum{display:none;font:800 11px/1 Inter,Arial,sans-serif;letter-spacing:.5px;background:#7c3aed;color:#fff;padding:3px 7px;border-radius:6px;vertical-align:middle;white-space:nowrap}'
+      +'body.mostrar-num .pagnum{display:inline-block}'
+      +'.pagnum-vista{position:absolute;top:6px;right:10px;z-index:5}'
+      +'.pagnum-modal{margin-left:8px;margin-right:auto}'
+      +'.pagnum-nav{margin-left:auto;font-size:9px;padding:2px 5px;background:rgba(124,58,237,.85)}';
+    document.head.appendChild(st);
+  }
+  PAG_NUM.forEach(function(x){
+    var el=document.getElementById(x[0]);if(!el||el.querySelector(':scope > .pagnum-vista, :scope .pagnum[data-pn="'+x[1]+'"]'))return;
+    var b=document.createElement('span');b.className='pagnum';b.setAttribute('data-pn',x[1]);b.textContent=x[1];b.title=x[1]+' · '+x[2];
+    if(x[1].charAt(0)==='V'){
+      // va en la cabecera, junto al título (no dentro: algunos títulos se reescriben al abrir la ventana)
+      var tit=el.querySelector('.mhdr .mtit, .modal-header .modal-title');
+      if(tit&&tit.parentNode){b.className+=' pagnum-modal';tit.parentNode.insertBefore(b,tit.nextSibling);}
+    } else {
+      if(getComputedStyle(el).position==='static')el.style.position='relative';
+      b.className+=' pagnum-vista';el.insertBefore(b,el.firstChild);
+    }
+  });
+  Object.keys(NAV_NUM).forEach(function(id){
+    var n=document.getElementById(id);if(!n||n.querySelector('.pagnum'))return;
+    var b=document.createElement('span');b.className='pagnum pagnum-nav';b.textContent=NAV_NUM[id];n.appendChild(b);
+  });
+  var btn=document.getElementById('btn-pagnum');
+  if(!btn){
+    var nav=document.querySelector('#sidebar nav')||document.getElementById('sidebar');
+    if(nav){btn=document.createElement('button');btn.id='btn-pagnum';btn.className='ni';btn.onclick=togglePagNum;nav.appendChild(btn);}
+  }
+  document.body.classList.toggle('mostrar-num',_numOn());
+  if(btn)btn.innerHTML='<span class="ic">🔢</span> Números de página: '+(_numOn()?'Sí':'No');
+}
+function togglePagNum(){try{localStorage.setItem('vr_num_pag',_numOn()?'0':'1');}catch(e){}aplicarNumerosPagina();}
+setTimeout(aplicarNumerosPagina,0);
