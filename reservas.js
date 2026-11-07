@@ -1621,6 +1621,21 @@ function abrirTransito(resId) {
 }
 
 
+function volverAPendiente(id){
+  var r=reservas.find(function(x){return x.id===id;});if(!r)return;
+  var era=(SCFG[r.estado]||{lbl:r.estado}).lbl;
+  if(!confirm('¿Volver la reserva de '+r.cliente+' a PENDIENTE (presupuesto)?\nAhora está: '+era+'.\n\nLas bicis asignadas se mantienen; si no las quieres, quítalas a mano.'))return;
+  changeStatus(id,'pendiente');
+  showResDetail(id);
+}
+function anularReserva(id){
+  var r=reservas.find(function(x){return x.id===id;});if(!r)return;
+  if(!confirm('¿ANULAR la reserva de '+r.cliente+' ('+fmtD(r.ini)+' → '+fmtD(r.fin)+')?\n\nDeja de ocupar stock y sus bicis vuelven a estar disponibles.\nPodrás reactivarla después si hace falta.'))return;
+  // fuera de la lista de Preparar
+  if(typeof prepararIds!=='undefined'){var i=prepararIds.findIndex(function(x){return x==id;});if(i>=0){prepararIds.splice(i,1);if(typeof savePreparar==='function')savePreparar();}}
+  changeStatus(id,'anulada');
+  showResDetail(id);
+}
 function changeStatus(id,st,extra){
   var r=reservas.find(function(x){return x.id===id;});
   if(!r)return;
@@ -1663,6 +1678,13 @@ function showResDetail(id){
   if(st==='entregada')      _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'alquiler\')">🚲 Alquiler</button>';
   if(st==='alquiler')       _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'pendiente_recoger\')">🔔 Pend. recoger</button>';
   if(st==='pendiente_recoger') _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'recogida\')">✔️ Recogida</button>';
+  // Marcha atrás: volver a pendiente (presupuesto) antes de salir de la nave, anular o reactivar
+  if(['confirmada','proxima_entrega','en_preparacion','preparada'].indexOf(st)>=0)
+    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">↩️ Volver a Pendiente</button>';
+  if(['pendiente','confirmada','proxima_entrega','en_preparacion','preparada'].indexOf(st)>=0)
+    _estadosBtns+='<button class="btn bd bsm" onclick="anularReserva('+r.id+')">🚫 Anular</button>';
+  if(st==='anulada'||st==='cancelada')
+    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">♻️ Reactivar (Pendiente)</button>';
   // Factura always available for relevant states
   if(['confirmada','proxima_entrega','en_preparacion','preparada','transito_furgo','transito_carlos','transito_seur','entregada','alquiler','pendiente_recoger','recogida'].indexOf(st)>=0)
     _estadosBtns+='<button class="btn bi bsm" onclick="closeM(\'mdetail\');genFactFromRes('+r.id+')">🧾 Factura</button>';
