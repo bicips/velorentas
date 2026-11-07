@@ -1,7 +1,7 @@
 // DATA
 var TIPOS_DEF={urbana:{label:'MTB',icon:'🚲',color:'#3b82f6',sizes:['XS','S','M','L','XL']},montana:{label:'Powerfly',icon:'🚵',color:'#22c55e',sizes:['S','M','L','XL']},electrica:{label:'Checkpoint',icon:'⚡',color:'#f59e0b',sizes:['S','M','L']},cargo:{label:'Cargo',icon:'📦',color:'#8b5cf6',sizes:['Único','L','XL']},infantil:{label:'Infantil',icon:'🛴',color:'#ec4899',sizes:['12"','16"','20"','24"']},gravel:{label:'Gravel',icon:'🏔️',color:'#06b6d4',sizes:['XS','S','M','L','XL']}};
 var BIKES_DEF=[{id:1,numBici:'B-001',tipo:'urbana',talla:'M',modelo:'Trek Marlin 7',estado:'disponible'},{id:2,numBici:'B-002',tipo:'urbana',talla:'L',modelo:'Trek Marlin 7',estado:'disponible'},{id:3,numBici:'B-003',tipo:'montana',talla:'M',modelo:'Powerfly 5',estado:'disponible'},{id:4,numBici:'B-004',tipo:'electrica',talla:'M',modelo:'Checkpoint SL',estado:'disponible'},{id:5,numBici:'B-005',tipo:'infantil',talla:'20"',modelo:'Trek Precaliber',estado:'disponible'}];
-// Tipos de pedal (el primero es el de serie y el valor por defecto)
+// Tipos de pedal. No hay valor por defecto: se eligen siempre a mano ('' = sin elegir)
 var PEDALES_DEF=['Planos','Automáticos SPD','Crankbrothers','Mixtos','Con calapiés','Del cliente'];
 function pedalesTipos(){return (cfg&&cfg.pedales&&cfg.pedales.length)?cfg.pedales:PEDALES_DEF;}
 var CFG_DEF={minDays:3,gapDays:6,currency:'€',bizName:'VeloRentas',cif:'',addr:'',phone:'',iva:21,fprefix:'F-2024-'};
@@ -262,7 +262,7 @@ function _unaLineaPorBici(arr){
     for(var u=0;u<n;u++){
       var c=Object.assign({},l);
       c.uds=1;
-      c.pedales=[(Array.isArray(l.pedales)&&l.pedales[u])?l.pedales[u]:PEDALES_DEF[0]];
+      c.pedales=[(Array.isArray(l.pedales)&&l.pedales[u])?l.pedales[u]:''];
       if(u>0){c.extras=[];delete c.bikeAsig;}
       else c.extras=(l.extras||[]).slice();
       out.push(c);
@@ -272,11 +272,11 @@ function _unaLineaPorBici(arr){
 }
 function duplicarLinea(i){
   var l=lineas[i];if(!l)return;
-  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
+  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:['']});
   renderLineas();renderExtrasBici();
 }
 function addLinea(tipo,talla,uds,ppd){
-  lineas.push({tipo:tipo||'',talla:talla||'',uds:1,ppd:ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
+  lineas.push({tipo:tipo||'',talla:talla||'',uds:1,ppd:ppd||0,extras:[],pedales:['']});
   renderLineas();
   renderExtrasBici();
 }
@@ -338,15 +338,15 @@ function renderLineas(){
     // Pedales: uno por cada bici de la línea (por defecto, los de serie)
     var nUds=l.uds||1, pTipos=pedalesTipos();
     if(!Array.isArray(l.pedales))l.pedales=[];
-    while(l.pedales.length<nUds)l.pedales.push(pTipos[0]);
+    while(l.pedales.length<nUds)l.pedales.push('');
     if(l.pedales.length>nUds)l.pedales.length=nUds;
     html+='<div style="flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:42px">';
     html+='<span style="font-size:11px;color:#6b7280;font-weight:700">Pedales</span>';
     for(var u=0;u<nUds;u++){
-      var pOpts=pTipos.map(function(pt){return '<option'+(l.pedales[u]===pt?' selected':'')+'>'+esc(pt)+'</option>';}).join('');
-      if(pTipos.indexOf(l.pedales[u])<0)pOpts+='<option selected>'+esc(l.pedales[u])+'</option>';
+      var pOpts='<option value=""'+(l.pedales[u]?'':' selected')+'>— Elegir —</option>'+pTipos.map(function(pt){return '<option'+(l.pedales[u]===pt?' selected':'')+'>'+esc(pt)+'</option>';}).join('');
+      if(l.pedales[u]&&pTipos.indexOf(l.pedales[u])<0)pOpts+='<option selected>'+esc(l.pedales[u])+'</option>';
       html+=(nUds>1?'<span style="font-size:11px;color:#9ca3af">Bici '+(u+1)+'</span>':'')
-        +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:'+(l.pedales[u]===pTipos[0]?'#fff':'#fef3c7')+';color:#111">'+pOpts+'</select>';
+        +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid '+(l.pedales[u]?'#e5e7eb':'#fca5a5')+';border-radius:6px;background:'+(l.pedales[u]?'#fff':'#fef2f2')+';color:#111">'+pOpts+'</select>';
     }
     // Extras de esta bici, al lado de los pedales: desplegable con casillas + etiquetas de los elegidos
     var exL=l.extras||[];
@@ -403,7 +403,7 @@ function renderLineas(){
       if(!lineas[li])return;
       if(!Array.isArray(lineas[li].pedales))lineas[li].pedales=[];
       lineas[li].pedales[pu]=this.value;
-      this.style.background=(this.value===pedalesTipos()[0]?'#fff':'#fef3c7');
+      this.style.background=(this.value?'#fff':'#fef2f2');this.style.borderColor=(this.value?'#e5e7eb':'#fca5a5');
     });
   });
 
@@ -2177,7 +2177,7 @@ function _generarHojasBici(listaFiltrada) {
         var bikeNum = l.bikeAsig ? l.bikeAsig.num : "-";
         var extrasLinea = l.extras&&l.extras.length ? l.extras.slice() : [];
         nBici++;
-        var pedal = (Array.isArray(l.pedales)&&l.pedales[u]) ? l.pedales[u] : PEDALES_DEF[0];
+        var pedal = (Array.isArray(l.pedales)&&l.pedales[u]) ? l.pedales[u] : '';
         var fechaIni = r.ini ? new Date(r.ini+"T00:00:00") : null;
         var fechaEntrega = fechaIni ? new Date(fechaIni.getFullYear(), fechaIni.getMonth(), fechaIni.getDate()-1) : null; // siempre el día antes del inicio (por calendario, no restando 24 h)
         paginas.push({resId:r.id,cliente:r.cliente||"",tel:r.tel||"",
@@ -2227,7 +2227,7 @@ function _generarHojasBici(listaFiltrada) {
       +"<div class=\"campo\"><div class=\"lbl\">Extras y accesorios</div><div class=\"ext-val\">"+extHtml+"</div></div>"
       // Fila 7: Observaciones
       +"<div class=\"campo\"><div class=\"lbl\">Observaciones</div><div class=\"obs-val\">"+xe(p.notas)+"</div></div>"
-      +"<div class=\"ped\"><div class=\"ped-l\">PEDALES</div><div class=\"ped-v\">"+xe(String(p.pedal||"").toUpperCase())+"</div><div class=\"ped-c\">&#9744;</div></div>"
+      +"<div class=\"ped\"><div class=\"ped-l\">PEDALES</div><div class=\"ped-v\""+(p.pedal?"":" style=\"color:#dc2626\"")+">"+(p.pedal?xe(String(p.pedal).toUpperCase()):"SIN ELEGIR")+"</div><div class=\"ped-c\">&#9744;</div></div>"
       +"</div><div class=\"pie\"><div class=\"pie-txt\">Impreso: "+hoyStr+"</div><div class=\"firma\">Firma transportista</div></div>"
       +"</div>";
   });
