@@ -2363,6 +2363,7 @@ function abrirRecogidaQR() {
   closeSB();
   document.getElementById('rec-resultado').innerHTML = '';
   document.getElementById('rec-qr-inp').value = '';
+  _recStatus('','');
   openM('m-recogida');
 }
 
@@ -2384,22 +2385,58 @@ function toggleCamaraRecogida() {
     if(btn){ btn.textContent='📷 Activar cámara'; btn.style.background='#7c3aed'; }
     return;
   }
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+  _recStatus('Activando cámara…','ok');
+  // Igual que el escáner que ya funciona en el alta de bicis: lector nativo del móvil
+  // (BarcodeDetector) y, si no existe, jsQR sobre una imagen reducida (más rápido y fiable).
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}})
+  .catch(function(){return navigator.mediaDevices.getUserMedia({video:true});})
   .then(function(s){
     _recCamStream=s; _recCamActiva=true;
-    v.srcObject=s; v.style.cssText='display:block;width:100%;min-height:200px;border-radius:8px;object-fit:cover';
+    v.srcObject=s; v.muted=true; v.setAttribute('playsinline','');
+    v.style.cssText='display:block;width:100%;min-height:200px;max-height:300px;border-radius:8px;object-fit:cover';
     if(ph) ph.style.display='none';
     if(btn){ btn.textContent='⏹ Parar cámara'; btn.style.background='#6b7280'; }
-    v.play();
+    var pl=v.play(); if(pl&&pl.catch)pl.catch(function(){});
+    _recStatus('📷 Acerca la etiqueta QR de la bici (a unos 15–20 cm)','ok');
+    var bd=null;try{if(window.BarcodeDetector)bd=new BarcodeDetector({formats:['qr_code']});}catch(e){bd=null;}
+    var ocupado=false,vuelta=0,c=document.createElement('canvas'),ctx=c.getContext('2d',{willReadFrequently:true});
     _recCamInterval=setInterval(function(){
-      if(!v.videoWidth) return;
-      var c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight;
-      c.getContext('2d').drawImage(v,0,0);
-      try{ var q=jsQR(c.getContext('2d').getImageData(0,0,c.width,c.height).data,c.width,c.height);
-        if(q&&q.data){ toggleCamaraRecogida(); _procesarRecogida(q.data); }
+      if(!_recCamActiva||ocupado||!v.videoWidth||v.readyState<2) return;
+      // alterna imagen reducida (rápida) y a tamaño completo (para etiquetas pequeñas o lejanas)
+      vuelta++;var esc=(vuelta%2&&!bd)?1:Math.min(1,800/Math.max(v.videoWidth,v.videoHeight));
+      c.width=Math.round(v.videoWidth*esc); c.height=Math.round(v.videoHeight*esc);
+      ctx.drawImage(v,0,0,c.width,c.height);
+      if(bd){
+        ocupado=true;
+        bd.detect(c).then(function(r){ocupado=false;if(r&&r.length&&_recCamActiva)_recLeido(r[0].rawValue);})
+          .catch(function(){ocupado=false;bd=null;}); // si falla el nativo, pasa a jsQR
+        return;
+      }
+      if(typeof jsQR==='undefined'){_recStatus('⚠️ No se ha cargado el lector QR (¿sin internet?). Usa «Hacer foto» o escribe el código.','err');return;}
+      try{var q=jsQR(ctx.getImageData(0,0,c.width,c.height).data,c.width,c.height,{inversionAttempts:'attemptBoth'});
+        if(q&&q.data)_recLeido(q.data);
       }catch(e){}
-    },300);
-  }).catch(function(e){ toast('⚠️ Cámara: '+e.message); });
+    },250);
+  }).catch(function(e){
+    _recStatus('⚠️ No se pudo abrir la cámara ('+(e&&e.message||e)+'). Usa «Hacer foto» o escribe el código.','err');
+  });
+}
+function _recStatus(msg,tipo){
+  var el=document.getElementById('rec-cam-status');if(!el)return;
+  el.textContent=msg||'';el.style.display=msg?'':'none';
+  el.style.color=tipo==='err'?'#991b1b':'#1e3a8a';el.style.background=tipo==='err'?'#fee2e2':'#eff6ff';
+}
+function _recLeido(txt){
+  _pararCamaraRecogida();
+  if(navigator.vibrate)try{navigator.vibrate(80);}catch(e){}
+  _recStatus('','');
+  _procesarRecogida(txt);
+}
+function recogidaFoto(ev){
+  if(typeof qrScanFromFileEvent!=='function'){toast('⚠️ Lector de fotos no disponible');return;}
+  qrScanFromFileEvent(ev,function(txt){_recStatus('','');_procesarRecogida(txt);},
+    function(msg){_recStatus('⚠️ '+(msg||'No se ha encontrado ningún QR en la foto. Prueba más cerca y con luz.'),'err');},
+    function(){_recStatus('Leyendo la foto…','ok');});
 }
 
 function _pararCamaraRecogida() {
@@ -2421,7 +2458,9 @@ function buscarRecogidaManual() {
 }
 
 function _procesarRecogida(codigo) {
-  var q = codigo.trim().toUpperCase();
+  var leido = String(codigo||'').trim();
+  var q = (typeof bcpNormalizar==='function') ? bcpNormalizar(leido) : leido.toUpperCase();
+  var mb = q.match(/BCP-\d{4}/); if(mb && !bikes.some(function(b){return (b.qr||'').toUpperCase()===q;})) q = mb[0];
   // Find bike by num, QR or serial
   var bici = bikes.find(function(b){
     return (b.numBici||'').toUpperCase()===q
@@ -2432,7 +2471,7 @@ function _procesarRecogida(codigo) {
   if(!el) return;
 
   if(!bici) {
-    el.innerHTML = '<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#991b1b;font-weight:700">❌ No se encontró ninguna bici con ese código</div>';
+    el.innerHTML = '<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:12px;color:#991b1b;font-weight:700">❌ Código leído: «'+esc(leido)+'»<br>No hay ninguna bici con ese código. Revisa en Tipos y modelos (V21) que la bici tenga asignada esa etiqueta.</div>';
     return;
   }
 

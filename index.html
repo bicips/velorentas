@@ -1309,10 +1309,14 @@
         </div>
       </div>
       <div style="display:flex;gap:8px;margin:12px 0">
-        <input id="rec-qr-inp" placeholder="O escribe Nº bici / código QR..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px"/>
+        <input id="rec-qr-inp" onkeydown="if(event.key==='Enter')buscarRecogidaManual()" placeholder="O escribe Nº bici / código QR (BCP-0001)..." style="flex:1;padding:9px 12px;border:1px solid #e5e7eb;border-radius:8px;font-size:14px"/>
         <button onclick="buscarRecogidaManual()" style="padding:9px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Buscar</button>
       </div>
-      <button id="rec-cam-btn" onclick="toggleCamaraRecogida()" style="width:100%;padding:11px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">📷 Activar cámara</button>
+      <div id="rec-cam-status" style="display:none;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="rec-cam-btn" onclick="toggleCamaraRecogida()" style="flex:2;padding:11px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">📷 Activar cámara</button>
+        <label style="flex:1;padding:11px;background:#fff;color:#7c3aed;border:2px solid #7c3aed;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;text-align:center">📸 Hacer foto<input type="file" accept="image/*" capture="environment" style="display:none" onchange="recogidaFoto(event)"/></label>
+      </div>
       <div id="rec-resultado"></div>
     </div>
   </div>
