@@ -583,7 +583,11 @@ function saveBikeM(){
   const num=document.getElementById('ab-num').value.trim();
   if(!num){toast('⚠️ El número de bicicleta es obligatorio');return;}
   const ser=document.getElementById('ab-ser').value.trim();
-  const qr=document.getElementById('ab-qr').value.trim()||num;
+  const qrIn=document.getElementById('ab-qr').value.trim().toUpperCase();
+  const qr=qrIn||num;
+  if(qrIn.indexOf('BCP')===0&&typeof bcpValido==='function'&&!bcpValido(qrIn)){toast('⚠️ Código de etiqueta no válido: debe ser BCP-0001 a BCP-1000');return;}
+  const _dupQr=bikes.find(b=>String(b.id)!==String(document.getElementById('ab-eid').value)&&String(b.qr||'').toUpperCase()===qr.toUpperCase());
+  if(_dupQr){toast('⚠️ El código '+qr+' ya está en la bici '+_dupQr.numBici);return;}
   const modelo=document.getElementById('ab-mod').value.trim();
   const icono=document.getElementById('ab-ico').value;
   const tipo=document.getElementById('ab-tipo').value,talla=document.getElementById('ab-tal').value;
@@ -736,7 +740,7 @@ function processQR(data){
   var found=bikes.find(function(b){
     var fields=[b.numBici||'',b.numSerie||'',b.qr||''].map(function(s){return s.toUpperCase();});
     if(fields.indexOf(q)>=0)return true;
-    return fields.some(function(f){return f.length>2&&(f.indexOf(q)>=0||q.indexOf(f)>=0);});
+    return false; // solo coincidencia exacta: evita confundir B-01 con B-010
   });
   if(found){closeM('mqr');toast('QR: '+found.numBici);openT(found.id);}
   else{
@@ -1309,4 +1313,17 @@ async function refreshPreparar(){
   if(lbl)lbl.textContent=n?n+' reserva'+(n>1?'s':'')+' pendiente'+(n>1?'s':''):'';
   updPrepBadge();
   toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para preparar':'Sin reservas pendientes');
+}
+// Escanear la etiqueta BCP al dar de alta / editar una bici (foto con la cámara)
+function scanEtiquetaBici(ev){
+  if(typeof qrScanFromFileEvent!=='function'){toast('Escáner no disponible');return;}
+  qrScanFromFileEvent(ev,function(txt){
+    var c=String(txt||'').trim().toUpperCase();
+    var m=c.match(/BCP-\d{4}/);if(m)c=m[0];
+    if(!bcpValido(c)){toast('⚠️ No es una etiqueta de bici BCP: '+c);return;}
+    var eid=document.getElementById('ab-eid').value;
+    var dup=bikes.find(function(b){return String(b.id)!==String(eid)&&String(b.qr||'').toUpperCase()===c;});
+    if(dup){toast('⚠️ '+c+' ya está en la bici '+dup.numBici);return;}
+    document.getElementById('ab-qr').value=c;toast('✅ Etiqueta '+c+' leída');
+  },function(err){toast('⚠️ '+(err||'No se pudo leer el QR'));});
 }

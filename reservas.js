@@ -1201,7 +1201,7 @@ function processQRAsign(data){
   var bike=bikes.find(function(b){
     var fields=[b.numBici||'',b.qr||'',b.numSerie||''].map(function(s){return s.toUpperCase();});
     if(fields.indexOf(q)>=0)return true;
-    return fields.some(function(f){return f.length>2&&(f.indexOf(q)>=0||q.indexOf(f)>=0);});
+    return false; // solo coincidencia exacta: evita confundir B-01 con B-010
   });
 
   if(!bike){
@@ -3624,3 +3624,54 @@ async function initApp() {
 // FIX: setTimeout(0) en vez de 800ms — garantiza que taller-merged.js (que se carga después)
 // ya esté parseado, pero sin retraso visible en cada carga
 setTimeout(initApp, 0);
+
+// ══════════════════════════════════════════════════════════════
+//  ETIQUETAS QR DE BICI (BCP-0001 … BCP-1000)
+//  Códigos propios, únicos, para pegar en cada bici y vincular al darla de alta.
+// ══════════════════════════════════════════════════════════════
+var BCP_MAX=1000;
+function bcpCodigo(n){return 'BCP-'+String(n).padStart(4,'0');}
+function bcpValido(c){return /^BCP-\d{4}$/.test(String(c||'').toUpperCase())&&parseInt(String(c).slice(4))>=1&&parseInt(String(c).slice(4))<=BCP_MAX;}
+function bcpUsados(){var m={};bikes.forEach(function(b){var q=String(b.qr||'').toUpperCase();if(bcpValido(q))m[q]=b;});return m;}
+function abrirEtiquetasQR(){
+  var us=bcpUsados(),n=Object.keys(us).length,sig=1;
+  while(sig<=BCP_MAX&&us[bcpCodigo(sig)])sig++;
+  var info=document.getElementById('etq-info');
+  if(info)info.innerHTML='Códigos de <b>'+bcpCodigo(1)+'</b> a <b>'+bcpCodigo(BCP_MAX)+'</b>. Vinculados a bicis: <b>'+n+'</b>'+(sig<=BCP_MAX?' · Primer código libre: <b>'+bcpCodigo(sig)+'</b>':'');
+  var d=document.getElementById('etq-desde'),h=document.getElementById('etq-hasta');
+  if(d&&!d.value)d.value=sig<=BCP_MAX?sig:1;
+  if(h&&!h.value)h.value=Math.min(BCP_MAX,(parseInt(d.value)||1)+174);
+  etqCalc();
+  openM('metiquetas');
+}
+function etqCalc(){
+  var d=parseInt((document.getElementById('etq-desde')||{}).value),h=parseInt((document.getElementById('etq-hasta')||{}).value),el=document.getElementById('etq-calc');
+  if(!el)return;
+  if(!d||!h||d<1||h>BCP_MAX||d>h){el.textContent='Rango no válido (de 1 a '+BCP_MAX+').';el.style.color='#dc2626';return;}
+  var n=h-d+1;el.style.color='';el.textContent=n+' etiquetas → '+Math.ceil(n/35)+' hoja'+(Math.ceil(n/35)!==1?'s':'')+' A4 (35 por hoja).';
+}
+function imprimirEtiquetasQR(){
+  var d=parseInt(document.getElementById('etq-desde').value),h=parseInt(document.getElementById('etq-hasta').value);
+  if(!d||!h||d<1||h>BCP_MAX||d>h){toast('Rango no válido (de 1 a '+BCP_MAX+')');return;}
+  var codes=[];for(var i=d;i<=h;i++)codes.push(bcpCodigo(i));
+  var POR=35,pages='';
+  for(var p=0;p<codes.length;p+=POR){
+    var cells='';
+    codes.slice(p,p+POR).forEach(function(c){cells+='<div class="et"><div class="qr" data-c="'+c+'"></div><div class="tx">'+c+'</div><div class="br">bicips.com</div></div>';});
+    pages+='<div class="pg">'+cells+'</div>';
+  }
+  var css='@page{size:A4;margin:0}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif}'
+    +'.pg{width:210mm;height:297mm;padding:8.5mm 5mm;display:grid;grid-template-columns:repeat(5,40mm);grid-auto-rows:40mm;page-break-after:always}'
+    +'.et{width:40mm;height:40mm;border:0.2mm dashed #bbb;display:flex;flex-direction:column;align-items:center;justify-content:center}'
+    +'.qr{width:25mm;height:25mm}.qr img,.qr canvas{width:25mm!important;height:25mm!important}'
+    +'.tx{font-size:11pt;font-weight:900;letter-spacing:.5px;margin-top:1mm}.br{font-size:5.5pt;color:#555}'
+    +'.aviso{font:12px Arial;padding:10px;background:#fffbeb;border-bottom:1px solid #fcd34d}@media print{.aviso{display:none}}';
+  var js='window.onload=function(){document.querySelectorAll(".qr").forEach(function(e){new QRCode(e,{text:e.getAttribute("data-c"),width:240,height:240,correctLevel:QRCode.CorrectLevel.M});});};';
+  var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>Etiquetas QR '+codes[0]+' – '+codes[codes.length-1]+'</title>'
+    +'<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><style>'+css+'</style></head><body>'
+    +'<div class="aviso">Imprime al <b>100 % (tamaño real)</b>, sin "ajustar a la página" y sin márgenes. Hoja recomendada: <b>Avery L4775-20</b> (A4 adhesiva de poliéster blanco para láser, hoja completa). Corta por las líneas.</div>'
+    +pages+'<script>'+js+'<\/script></body></html>';
+  var blob=new Blob([html],{type:'text/html;charset=utf-8'}),url=URL.createObjectURL(blob),w=window.open(url,'_blank');
+  if(!w)toast('Permite las ventanas emergentes para imprimir las etiquetas');
+  setTimeout(function(){URL.revokeObjectURL(url);},60000);
+}
