@@ -47,3 +47,63 @@
   /* Números de página (P01…) más pequeños para no tapar */
   .pag-num-badge, [id^="pagnum"] { transform: scale(.85); transform-origin: bottom right; }
 }
+
+/* ═══ Móvil compacto: todo un poco más pequeño para ver más en pantalla ═══ */
+@media (max-width: 768px) {
+  body { font-size: 13px; }
+
+  /* Barra superior más baja */
+  .topbar { height: 48px !important; min-height: 48px; padding: 0 10px !important; }
+  #pgtitle, #topbar-title { font-size: 15px; }
+  .topbar .btn, .topbar .qr-btn { padding: 5px 9px !important; font-size: 13px; min-height: 32px; }
+  .mtoggle, .menu-toggle { width: 32px; height: 32px; }
+
+  /* Márgenes de página */
+  .pg { padding: 10px !important; }
+  .page-body { padding: 10px !important; }
+
+  /* Títulos de página */
+  .m-h1 { font-size: 17px !important; margin-bottom: 0 !important; }
+  .st { font-size: 14px; }
+  .shdr { margin-bottom: 8px; gap: 6px; }
+
+  /* Tarjetas de resumen: las 4 en una fila, sin icono */
+  .sg4, .stats-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; margin-bottom: 12px !important; }
+  .scard, .stat-card { padding: 8px 6px !important; border-radius: 10px; text-align: center; }
+  .sico, .stat-icon { display: none !important; }
+  .sval, .stat-value { font-size: 19px !important; margin-bottom: 2px; }
+  .slbl, .stat-label { font-size: 10px !important; line-height: 1.2; }
+
+  /* Modelos del taller: 2 por fila y más bajos */
+  .types-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .type-card { padding: 10px !important; }
+  .type-card-header { margin-bottom: 6px; }
+  .type-thumb { width: 34px !important; height: 34px !important; font-size: 18px; }
+  .type-name { font-size: 13.5px; }
+  .type-count-badge { font-size: 18px; }
+
+  /* Botones y campos un poco menores */
+  .btn.bsm, .btn-sm { padding: 6px 10px; font-size: 12.5px; }
+  .fi, .form-input, select.fi { padding: 7px 10px; font-size: 14px; } /* 14px: así el iPhone no hace zoom al escribir */
+  .card, .scard { border-radius: 10px; }
+
+  /* Reservas: tarjetas más compactas */
+  #rlist .trow { padding: 9px 10px; gap: 6px; }
+  #rlist .trow-main { font-size: 14px; }
+  #rlist .trow-sub { font-size: 11.5px; gap: 1px 8px; grid-template-columns: 1fr 1fr; }
+  #rlist .trow-acts { padding-top: 6px; }
+  #rlist .trow-acts .btn { padding: 5px 9px; font-size: 12px; min-height: 30px; }
+
+  /* Ventanas */
+  .modal-header { padding: 12px 14px !important; }
+  .modal-body { padding: 12px 14px !important; }
+  .modal-footer { padding: 10px 14px !important; }
+  .modal-title { font-size: 16px; }
+
+  /* Bloques de dos columnas pasan a una */
+  .m-1col { grid-template-columns: 1fr !important; gap: 10px !important; }
+  .m-1col .shdr { flex-direction: row; align-items: center !important; }
+
+  /* Menú lateral más ajustado */
+  .ni { padding-top: 7px !important; padding-bottom: 7px !important; font-size: 13.5px; }
+}
