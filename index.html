@@ -59,7 +59,6 @@
       <div class="sb-grp-items">
         <button class="ni" id="nav-taller-dash" onclick="switchSection('taller','dashboard')"><span class="ic">🔧</span> Panel taller</button>
         <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller','bikes')"><span class="ic">🔩</span> Bicicletas</button>
-        <button class="ni" id="nav-bicis-tipo" onclick="switchSection('taller');openM('met');renderET()"><span class="ic">🗂️</span> Bicis por tipo</button>
       </div>
     </div>
 
@@ -139,20 +138,6 @@
     </div>
 
     <!-- Modal Gestión de Modelos -->
-    <div class="mover" id="mmodelos">
-      <div class="mbox">
-        <div class="mhdr"><div class="mtit">⚙️ Gestión de tipos y modelos</div><button class="mcls" onclick="closeM('mmodelos')">✕</button></div>
-        <div class="mbdy">
-          <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-            <button class="btn bb bsm" onclick="openNuevoModelo()">➕ Nuevo modelo</button>
-            <button class="btn bs bsm" onclick="exportarModelosCSV()">⬇️ Exportar CSV</button>
-            <label class="btn bs bsm" style="cursor:pointer">⬆️ Importar CSV<input type="file" id="modelos-csv-inp" accept=".csv" style="display:none" onchange="importarModelosCSV(event)"></label>
-          </div>
-          <div id="modelos-list"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal Nuevo/Editar Modelo -->
     <div class="mover" id="mmodelo-edit">
       <div class="mbox">
@@ -1159,20 +1144,34 @@
       <button class="modal-close" onclick="closeM('met')">✕</button>
     </div>
     <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="openNuevoModelo()">➕ Nuevo modelo</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportarModelosCSV()">⬇️ Exportar CSV</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer">⬆️ Importar CSV<input type="file" accept=".csv" style="display:none" onchange="importarModelosCSV(event)"></label>
+      </div>
       <div class="type-tabs" id="et-tabs"></div>
       <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px;margin-bottom:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Editar tipo seleccionado</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Datos del modelo seleccionado</div>
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0"><label class="form-label">Nombre</label><input class="form-input" id="et-n" placeholder="Nombre del tipo"/></div>
           <div class="form-group" style="margin-bottom:0"><label class="form-label">Icono (emoji)</label><input class="form-input" id="et-i" placeholder="🚲" maxlength="4"/></div>
+          <div class="form-group" style="margin-bottom:0;max-width:110px"><label class="form-label">Color</label><input class="form-input" id="et-color" type="color" style="height:40px;padding:2px 4px"/></div>
         </div>
+        <div class="form-group" id="et-cat-wrap" style="margin:12px 0 0;display:none"><label class="form-label">Tipo de bici (para el precio)</label><select class="form-input" id="et-cat"></select></div>
         <div class="form-group" style="margin:12px 0 0">
           <label class="form-label">Tallas disponibles <span style="font-weight:400;text-transform:none">(separadas por coma)</span></label>
           <input class="form-input" id="et-sz" placeholder="XS, S, M, L, XL"/>
         </div>
-        <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="saveET()">Guardar cambios</button></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary btn-sm" onclick="saveET()">Guardar cambios</button>
+          <button class="btn btn-danger btn-sm" onclick="borrarModeloET()">🗑️ Eliminar modelo</button>
+          <span id="et-clave" style="font-size:11px;color:var(--gray-400);margin-left:auto"></span>
+        </div>
       </div>
-      <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Bicicletas de este tipo</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px">Bicicletas de este modelo <span id="et-nb"></span></div>
+        <button class="btn btn-secondary btn-xs" onclick="nuevaBiciDeModelo()">➕ Añadir bici de este modelo</button>
+      </div>
       <div id="et-bikes" style="max-height:280px;overflow-y:auto"></div>
     </div>
   </div>

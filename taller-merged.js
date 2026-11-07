@@ -781,15 +781,46 @@ function addPart(){const n=document.getElementById('p-n').value.trim();if(!n){to
 
 // ── EDIT TIPOS ────────────────────────────────────────────
 function renderET(){
-  etc=etc||Object.keys(tipos)[0];
-  document.getElementById('et-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>`<button class="type-tab ${etc===k?'active':''}" onclick="swET('${k}')">${t.icon} ${t.label}</button>`).join('');
-  const t=tipos[etc]||{};document.getElementById('et-n').value=t.label||'';document.getElementById('et-i').value=t.icon||'';document.getElementById('et-sz').value=(t.sizes||[]).join(', ');
+  if(!tipos[etc])etc=Object.keys(tipos)[0];
+  document.getElementById('et-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>{const n=bikes.filter(b=>b.tipo===k).length;return `<button class="type-tab ${etc===k?'active':''}" onclick="swET('${k}')">${t.icon} ${esc(t.label)} <span style="opacity:.6;font-size:11px">(${n})</span></button>`;}).join('');
+  const t=tipos[etc]||{};
+  document.getElementById('et-n').value=t.label||'';document.getElementById('et-i').value=t.icon||'';document.getElementById('et-sz').value=(t.sizes||[]).join(', ');
+  const ec=document.getElementById('et-color');if(ec)ec.value=/^#[0-9a-f]{6}$/i.test(t.color||'')?t.color:'#3b82f6';
+  const cw=document.getElementById('et-cat-wrap'),cs=document.getElementById('et-cat');
+  if(cw&&cs&&typeof categoriasBici==='function'){cw.style.display='';cs.innerHTML='<option value="">— Sin tipo (precio antiguo por talla) —</option>'+categoriasBici().map(c=>`<option${c===t.categoria?' selected':''}>${esc(c)}</option>`).join('');}
+  const cl=document.getElementById('et-clave');if(cl)cl.textContent=etc?'clave interna: '+etc:'';
   renderETB();
 }
 function swET(k){etc=k;renderET();}
-function saveET(){const name=document.getElementById('et-n').value.trim(),icon=document.getElementById('et-i').value.trim(),sizes=document.getElementById('et-sz').value.split(',').map(s=>s.trim()).filter(Boolean);if(!name||!icon){toast('⚠️ Nombre e icono requeridos');return;}tipos[etc]={...tipos[etc],label:name,icon,sizes};st();renderET();rDB();toast('✅ Tipo actualizado');}
+function saveET(){
+  const name=document.getElementById('et-n').value.trim(),icon=document.getElementById('et-i').value.trim(),sizes=document.getElementById('et-sz').value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!name||!icon){toast('⚠️ Nombre e icono requeridos');return;}
+  if(!sizes.length){toast('⚠️ Añade al menos una talla');return;}
+  // aviso si se quita una talla que tienen bicis de este modelo
+  const quitadas=[...new Set(bikes.filter(b=>b.tipo===etc&&b.talla&&sizes.indexOf(b.talla)<0).map(b=>b.talla))];
+  if(quitadas.length&&!confirm('Hay bicis de este modelo con talla '+quitadas.join(', ')+' que ya no estará en la lista.\nLas bicis conservan su talla, pero no podrás elegirla en reservas nuevas.\n\n¿Guardar igualmente?'))return;
+  const upd={label:name,icon:icon,sizes:sizes};
+  const ec=document.getElementById('et-color');if(ec&&ec.value)upd.color=ec.value;
+  const cs=document.getElementById('et-cat');if(cs&&document.getElementById('et-cat-wrap').style.display!=='none')upd.categoria=cs.value;
+  tipos[etc]={...tipos[etc],...upd};
+  st();renderET();if(typeof initFlotaSelects==='function')initFlotaSelects();if(typeof renderModelosList==='function')renderModelosList();rDB();
+  toast('✅ Modelo guardado');
+}
+function borrarModeloET(){
+  const n=bikes.filter(b=>b.tipo===etc).length;
+  if(n){toast('⚠️ No se puede eliminar: hay '+n+' bici'+(n!==1?'s':'')+' de este modelo. Muévelas o elimínalas primero.');return;}
+  if(Object.keys(tipos).length<=1){toast('⚠️ Tiene que quedar al menos un modelo');return;}
+  if(!confirm('¿Eliminar el modelo "'+((tipos[etc]||{}).label||etc)+'"?'))return;
+  delete tipos[etc];etc=Object.keys(tipos)[0];st();renderET();if(typeof initFlotaSelects==='function')initFlotaSelects();rDB();toast('🗑️ Modelo eliminado');
+}
+function nuevaBiciDeModelo(){
+  const k=etc;closeM('met');abReset();
+  const ts=document.getElementById('ab-tipo');if(ts){ts.value=k;abSizes();}
+  window._ebDesdeET=true;openM('madd');
+}
 function renderETB(){
   const list=bikes.filter(b=>b.tipo===etc);
+  const nb=document.getElementById('et-nb');if(nb)nb.textContent='('+list.length+')';
   document.getElementById('et-bikes').innerHTML=list.length?list.map(b=>{
     const be=BIKE_ESTADOS[b.estado]||BIKE_ESTADOS.disponible;
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
@@ -1365,3 +1396,7 @@ function _etiquetaLeida(txt){
   cerrarCamaraEtiqueta();
   toast('✅ Etiqueta '+c+' asignada');
 }
+
+// Todas las ventanas (de reservas y del taller) se sacan de su sección para poder abrirlas desde
+// cualquier página: si no, una ventana de la sección oculta no se ve aunque se abra.
+(function(){document.querySelectorAll('.mover, .modal-overlay').forEach(function(el){if(el.id&&el.parentNode!==document.body)document.body.appendChild(el);});})();
