@@ -1,0 +1,49 @@
+/* ═══ Adaptación a teléfono (paso 1) ═══
+   Solo afecta a pantallas de hasta 768 px: en el ordenador no cambia nada. */
+@media (max-width: 768px) {
+  /* Elementos que solo tienen sentido en el ordenador */
+  .m-escritorio { display: none !important; }
+  .m-ocultar { display: none; }
+
+  /* Barra superior compacta (reservas y taller) */
+  .topbar { gap: 8px; }
+  .topbar .tb-l, .topbar .topbar-left { min-width: 0; flex: 1; }
+  .topbar .tb-r, .topbar .topbar-right { gap: 6px !important; flex-shrink: 0; }
+  #pgtitle, #topbar-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 17px; }
+  .topbar-left > div { min-width: 0; }
+  .topbar-date { display: none; }
+  .topbar .btn, .topbar .qr-btn { padding: 8px 11px !important; font-size: 15px; min-height: 40px; }
+
+  /* Cabeceras de página: título arriba, botones debajo */
+  .shdr { flex-direction: column; align-items: stretch !important; gap: 10px; }
+
+  /* Filtros de estado: desplegable en lugar de 13 botones */
+  #res-status-tabs { display: none !important; }
+  #res-status-sel { display: block !important; }
+
+  /* Reservas como tarjetas: datos arriba, botones en una fila abajo */
+  #rlist .trow { flex-wrap: wrap; padding: 12px; gap: 8px; }
+  #rlist .trow-info { flex: 1 1 calc(100% - 60px); min-width: 0; }
+  #rlist .trow-main { font-size: 15px; white-space: normal; }
+  #rlist .trow-sub { grid-template-columns: 1fr; font-size: 12.5px; }
+  #rlist .trow-sub span { white-space: normal; }
+  #rlist .trow-acts { width: 100%; flex-basis: 100%; justify-content: flex-start; align-items: center;
+    margin-top: 2px; padding-top: 8px; border-top: 1px dashed var(--g200, #e5e7eb); }
+  #rlist .trow-acts .btn { padding: 8px 12px; font-size: 13px; min-height: 36px; }
+  #rlist .trow-acts .badge { margin-right: auto; }
+
+  /* Ventanas: casi a pantalla completa y con desplazamiento */
+  .modal, .mover > div { max-width: calc(100vw - 16px) !important; }
+  .modal-body { overflow-x: hidden; }
+
+  /* Recogida bici: el campo no empuja al botón fuera */
+  #rec-qr-inp { min-width: 0; }
+
+  /* Taller: lista de bicis legible */
+  .bike-row { flex-wrap: wrap; }
+  .bike-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+  .bike-details { display: flex !important; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; }
+
+  /* Números de página (P01…) más pequeños para no tapar */
+  .pag-num-badge, [id^="pagnum"] { transform: scale(.85); transform-origin: bottom right; }
+}

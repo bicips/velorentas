@@ -9,6 +9,15 @@
 <script src="qr-engine.js"></script>
 <link rel="stylesheet" href="reservas.css"/>
 <link rel="stylesheet" href="taller.css"/>
+<link rel="stylesheet" href="movil.css"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<meta name="theme-color" content="#0d9488"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="Bicips"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+<link rel="icon" type="image/png" href="icons/icon-192.png"/>
 <style>
 #taller-section { display:none; }
 #taller-section.active { display:flex; flex:1; flex-direction:column; min-height:100vh; }
@@ -92,9 +101,9 @@
       <div class="ptitle" id="pgtitle">Panel</div>
     </div>
     <div class="tb-r">
-      <button class="btn bs bsm" id="btn-atras-r" onclick="irAtras()" style="display:none" title="Volver a la página anterior">← Atrás</button>
+      <button class="btn bs bsm" id="btn-atras-r" onclick="irAtras()" style="display:none" title="Volver a la página anterior">←<span class="m-ocultar"> Atrás</span></button>
       <button class="btn bs bsm" onclick="openM('mcfg');loadCfg()">⚙️</button>
-      <button class="btn bb bsm" onclick="openNewRes()">+ Nueva reserva</button>
+      <button class="btn bb bsm" onclick="openNewRes()" title="Nueva reserva">+<span class="m-ocultar"> Nueva reserva</span></button>
     </div>
   </header>
   <div class="pg">
@@ -200,10 +209,10 @@
       <div class="shdr">
         <div><div class="st">Reservas</div><div class="sd-" id="rcount"></div></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <button class="btn bs bsm" onclick="exportarReservas()">⬇️ Exportar CSV</button>
-          <button class="btn bs bsm" onclick="openImportRes()">⬆️ Importar CSV</button>
-          <button class="btn bs bsm" onclick="openPrintSelector()">🖨️ Imprimir lista</button>
-          <button id="btn-vista" class="btn bs bsm" onclick="toggleVistaRes()" style="border:1px solid var(--g300)">📊 Vista tabla</button>
+          <button class="m-escritorio btn bs bsm" onclick="exportarReservas()">⬇️ Exportar CSV</button>
+          <button class="m-escritorio btn bs bsm" onclick="openImportRes()">⬆️ Importar CSV</button>
+          <button class="m-escritorio btn bs bsm" onclick="openPrintSelector()">🖨️ Imprimir lista</button>
+          <button id="btn-vista" class="m-escritorio btn bs bsm" onclick="toggleVistaRes()" style="border:1px solid var(--g300)">📊 Vista tabla</button>
           
           <button class="btn bb bsm" onclick="openNewRes()">+ Nueva reserva</button>
         </div>
@@ -219,6 +228,7 @@
             </div>
             <button id="btn-cal-filter" onclick="toggleDateRow()" title="Filtrar por fechas" style="flex-shrink:0;width:38px;height:38px;border-radius:8px;border:1px solid var(--g200);background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">📅</button>
           </div>
+          <select id="res-status-sel" class="fi" style="display:none;width:100%" onchange="setRFSel(this.value)"></select>
           <div class="ftabs" id="res-status-tabs" style="flex-wrap:wrap;gap:4px">
             <button class="ftab on" onclick="setRF('all',this)">Todas</button>
             <button class="ftab" onclick="setRF('anulada',this)">🚫 Anuladas</button>
@@ -256,7 +266,7 @@
         </div>
 
         <!-- Row 2: ordenación + selección -->
-        <div style="display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--g100);background:var(--g50);flex-wrap:wrap;align-items:center">
+        <div class="m-escritorio" style="display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--g100);background:var(--g50);flex-wrap:wrap;align-items:center">
           <!-- Ordenar -->
           <span style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0">Ordenar:</span>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -799,9 +809,9 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-secondary btn-sm" onclick="irAtras()" style="gap:4px" title="Volver a la página anterior">← Atrás</button>
+      <button class="btn btn-secondary btn-sm" onclick="irAtras()" style="gap:4px" title="Volver a la página anterior">←<span class="m-ocultar"> Atrás</span></button>
       <button class="qr-btn" onclick="window._qrModoAlta=false;openM('mqr')">
-        <span>📷</span> Escanear QR
+        <span>📷</span><span class="m-ocultar"> Escanear QR</span>
       </button>
     </div>
   </header>
@@ -1349,6 +1359,12 @@
 <script src="db.js"></script>
 <script src="reservas.js"></script>
 <script src="taller-merged.js"></script>
+<script>
+// App instalable en el móvil (y siempre la versión más nueva del programa)
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(e){ console.warn('SW', e); }); });
+}
+</script>
 <script>
 var _currentSection = 'reservas';
 function switchSection(section, tallerView) {

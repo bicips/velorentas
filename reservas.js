@@ -1333,7 +1333,11 @@ function getFechaFilter(){
   return{ini:fi||'0000-00-00',fin:ff||'9999-99-99'};
 }
 
-function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');resSel=[];renderRes();}
+function setRF(v,btn){resF=v;document.querySelectorAll('#v-res .ftab').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');resSel=[];var s=document.getElementById('res-status-sel');if(s&&s.value!==v)s.value=v;renderRes();}
+// Móvil: los botones de estado se muestran como desplegable (mismas opciones)
+function setRFSel(v){var bt=null;document.querySelectorAll('#res-status-tabs .ftab').forEach(function(b){if((b.getAttribute('onclick')||'').indexOf("'"+v+"'")>=0)bt=b;});setRF(v,bt);}
+(function(){var s=document.getElementById('res-status-sel');if(!s)return;
+  s.innerHTML=Array.prototype.map.call(document.querySelectorAll('#res-status-tabs .ftab'),function(b){var m=(b.getAttribute('onclick')||'').match(/setRF\('([^']+)'/);return m?'<option value="'+m[1]+'">'+b.textContent.trim()+'</option>':'';}).join('');})();
 
 function setSort(field,btn){
   if(resSort===field){resSortDir*=-1;}else{resSort=field;resSortDir=1;}
@@ -1755,9 +1759,10 @@ function renderCal(){
     }
   });
 
-  var CW=13;    // cell width px
-  var RH=20;    // row height px — compact
-  var LW=100;   // label column width px — shorter
+  var _mov=window.innerWidth<=768; // en el teléfono, días más grandes para poder tocarlos
+  var CW=_mov?22:13;    // cell width px
+  var RH=_mov?28:20;    // row height px — compact
+  var LW=_mov?84:100;   // label column width px — shorter
   var HDR1=22;  // month header height
   var HDR2=18;  // day header height
 
