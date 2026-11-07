@@ -194,6 +194,60 @@ function htmlAvisoFaltaStock(faltas,titulo){
     +'<div style="font-size:11.5px;color:#7f1d1d;margin-top:4px">Solo es un aviso: decide tú si cambias fechas, modelo o talla.</div>'
     +'</div>';
 }
+// ── "¿POR QUÉ?": explica de dónde sale el número de bicis disponibles ──
+// Solo muestra los mismos datos que usa getAvailCount; no cambia ningún cálculo.
+function explicarStock(tipo,talla,ini,fin,excludeId){
+  var t=tipos[tipo]||{label:tipo,icon:'🚲',sizes:[]};
+  var tallasModelo=(t.sizes||[]);
+  var delModelo=bikes.filter(function(b){return b.tipo===tipo;});
+  // 1) flota del modelo por talla
+  var porTalla={};
+  delModelo.forEach(function(b){var k=b.talla||'(sin talla)';(porTalla[k]=porTalla[k]||[]).push(b);});
+  var filasT=Object.keys(porTalla).sort().map(function(k){
+    var bs=porTalla[k],op=bs.filter(bikeOperativa).length,av=bs.length-op;
+    var raro=(k==='(sin talla)')?' ⚠️ sin talla: no cuentan en ninguna talla':(tallasModelo.indexOf(k)<0?' ⚠️ esta talla no está en la lista de tallas del modelo':'');
+    return '<tr'+(k===talla?' style="background:#eff6ff;font-weight:700"':'')+'><td>'+esc(k)+'</td><td style="text-align:center">'+bs.length+'</td><td style="text-align:center">'+op+'</td><td style="text-align:center">'+(av||'')+'</td><td style="font-size:11.5px;color:#b45309">'+raro+'</td></tr>';
+  }).join('');
+  // bicis de otros modelos con nombre parecido (p. ej. creadas con otra clave)
+  var parecidas=bikes.filter(function(b){return b.tipo!==tipo&&String(b.modelo||b.tipo||'').toLowerCase().indexOf(String(t.label||'').toLowerCase())>=0;});
+  // 2) bicis de esta talla
+  var deTalla=delModelo.filter(function(b){return b.talla===talla;});
+  var filasB=deTalla.map(function(b){var e=BIKE_ESTADOS&&BIKE_ESTADOS[b.estado]||{icon:'',lbl:b.estado};
+    return '<div>'+(bikeOperativa(b)?'✅':'❌')+' <b>'+esc(b.numBici)+'</b> · '+e.icon+' '+esc(e.lbl||b.estado||'')+(bikeOperativa(b)?'':' — no cuenta (averiada o de baja)')+'</div>';}).join('')||'<div style="color:#6b7280">No hay ninguna bici de esta talla en la flota.</div>';
+  var total=deTalla.filter(bikeOperativa).length;
+  // 3) reservas que ocupan esas fechas
+  var ocup=0,filasR=[];
+  reservas.forEach(function(r){
+    if(ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)>=0)return;
+    if(excludeId&&r.id===excludeId)return;
+    var g=(r.prepDias!=null?r.prepDias:cfg.gapDays),rFinG=addD(r.fin,g);
+    if(fin<r.ini||ini>rFinG)return;
+    var u=_udsDeReserva(r,tipo,talla);if(!u)return;
+    ocup+=u;
+    var sc=SCFG[r.estado]||{lbl:r.estado,icon:''};
+    filasR.push('<div>• <b>'+esc(r.cliente)+'</b>: '+u+' bici'+(u>1?'s':'')+' · '+fmtD(r.ini)+' → '+fmtD(r.fin)+' <span style="color:#6b7280">(+'+g+' días de preparación hasta '+fmtD(rFinG)+')</span> · '+sc.icon+' '+esc(sc.lbl)+' <a href="#" onclick="closeM(\'mexpl\');showResDetail('+r.id+');return false">ver</a></div>');
+  });
+  // 4) bloqueos
+  var niG=addD(ini,-cfg.gapDays),blq=0,filasBl=[];
+  bloqueos.forEach(function(b){if(b.tipo!==tipo||b.talla!==talla)return;if(!(fin<b.ini||niG>b.fin)){blq+=(b.uds||1);filasBl.push('<div>• '+(b.uds||1)+' bloqueada'+((b.uds||1)>1?'s':'')+' · '+fmtD(b.ini)+' → '+fmtD(b.fin)+(b.motivo?' · '+esc(b.motivo):'')+'</div>');}});
+  var disp=Math.max(0,total-blq-ocup);
+  var h='<div style="font-size:15px;font-weight:800;margin-bottom:2px">'+t.icon+' '+esc(t.label)+' · talla '+esc(talla)+'</div>'
+    +'<div style="font-size:12.5px;color:#6b7280;margin-bottom:12px">Fechas consultadas: '+fmtD(ini)+(fin!==ini?' → '+fmtD(fin):'')+'</div>'
+    +'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:14px">'
+      +'<b>'+total+'</b> en flota (sin averiadas) − <b>'+blq+'</b> bloqueadas − <b>'+ocup+'</b> en reservas = <b style="font-size:17px">'+disp+' disponible'+(disp!==1?'s':'')+'</b></div>'
+    +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:6px 0">Bicis de esta talla</div>'+filasB
+    +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Reservas que las ocupan en esas fechas</div>'+(filasR.join('')||'<div style="color:#6b7280">Ninguna.</div>')
+    +(filasBl.length?'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Bloqueos</div>'+filasBl.join(''):'')
+    +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Todo el modelo '+esc(t.label)+' por talla</div>'
+    +(filasT?'<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="color:#6b7280;font-size:11.5px"><th style="text-align:left">Talla</th><th>Total</th><th>Operativas</th><th>Averiadas/baja</th><th></th></tr>'+filasT+'</table>':'<div style="color:#6b7280">No hay bicis de este modelo.</div>')
+    +(parecidas.length?'<div style="margin-top:10px;background:#fef3c7;border-radius:8px;padding:8px 10px;font-size:12.5px;color:#92400e">⚠️ Hay '+parecidas.length+' bici(s) que dicen "'+esc(t.label)+'" pero están guardadas en otro modelo: '+parecidas.map(function(b){return esc(b.numBici)+' ('+esc((tipos[b.tipo]||{label:b.tipo}).label)+')';}).join(', ')+'. No cuentan aquí.</div>':'');
+  var m=document.getElementById('mexpl');
+  if(!m){m=document.createElement('div');m.className='mover';m.id='mexpl';
+    m.innerHTML='<div class="mbox" style="max-width:560px"><div class="mhdr"><div class="mtit">🔍 ¿Por qué hay estas bicis disponibles?</div><button class="mcls" onclick="closeM(\'mexpl\')">✕</button></div><div class="mbdy" id="mexpl-body" style="max-height:70vh;overflow:auto"></div></div>';
+    document.body.appendChild(m);}
+  document.getElementById('mexpl-body').innerHTML=h;
+  openM('mexpl');
+}
 function getAvailBikes(tipo,talla,ini,fin,excludeId){
   var niG=addD(ini,-cfg.gapDays); // usado solo para bloqueos manuales (mantenimiento)
   var blqUds=0;
@@ -239,7 +293,7 @@ function renderDash(){
   var da=document.getElementById('d-arrivals');if(da)da.innerHTML=arr.length?arr.map(function(r){return miniRow(r,'entrada');}).join(''):emptyHTML('📅','Sin entradas');
   var dd=document.getElementById('d-departs');if(dd)dd.innerHTML=dep.length?dep.map(function(r){return miniRow(r,'salida');}).join(''):emptyHTML('🏁','Sin salidas');
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">';
-  Object.keys(tipos).forEach(function(k){var t=tipos[k];t.sizes.forEach(function(talla){var total=bikes.filter(function(b){return b.tipo===k&&b.talla===talla&&bikeOperativa(b);}).length;if(!total)return;var libre=getAvailCount(k,talla,today,today);html+='<div style="background:#fff;border:1px solid var(--g200);border-radius:10px;padding:12px 14px;border-left:4px solid '+t.color+'"><div style="font-size:11px;font-weight:700;color:var(--g500);margin-bottom:6px;text-transform:uppercase">'+t.icon+' '+t.label+' - '+talla+'</div><div style="font-size:24px;font-weight:800;color:'+(libre>0?'var(--gr600)':'var(--r600)')+'">'+libre+'</div><div style="font-size:11px;color:var(--g400)">libre'+(libre!==1?'s':'')+' de '+total+'</div></div>';});});
+  Object.keys(tipos).forEach(function(k){var t=tipos[k];t.sizes.forEach(function(talla){var total=bikes.filter(function(b){return b.tipo===k&&b.talla===talla&&bikeOperativa(b);}).length;if(!total)return;var libre=getAvailCount(k,talla,today,today);html+='<div title="Toca para ver de dónde sale el número" onclick="explicarStock(\''+k+'\',\''+talla+'\',\''+today+'\',\''+today+'\')" style="cursor:pointer;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:12px 14px;border-left:4px solid '+t.color+'"><div style="font-size:11px;font-weight:700;color:var(--g500);margin-bottom:6px;text-transform:uppercase">'+t.icon+' '+t.label+' - '+talla+'</div><div style="font-size:24px;font-weight:800;color:'+(libre>0?'var(--gr600)':'var(--r600)')+'">'+libre+'</div><div style="font-size:11px;color:var(--g400)">libre'+(libre!==1?'s':'')+' de '+total+'</div></div>';});});
   html+='</div>';
   var da2=document.getElementById('d-avail');if(da2)da2.innerHTML=html;
 }
@@ -372,6 +426,7 @@ function renderLineas(){
       availTxt=cnt>=ped
         ?'<span style="font-size:11px;color:#16a34a;font-weight:700;white-space:nowrap">✅ '+cnt+' disp.</span>'
         :'<span title="Pides '+ped+' de esta talla y solo hay '+cnt+'" style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">❌ '+ped+' pedidas · '+cnt+' disp.</span>';
+      availTxt+=' <a href="#" title="Ver de dónde sale este número" style="font-size:11px;white-space:nowrap" onclick="explicarStock(\''+l.tipo+'\',\''+String(l.talla).replace(/'/g,"\\'")+'\',\''+ini+'\',\''+fin+'\','+(eidN||'null')+');return false">🔍 ¿por qué?</a>';
     }
     html+='<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap;background:'+(i%2===0?'#fff':'#f9fafb')+'">';
     html+='<div style="width:34px;height:34px;background:'+(t.color||'#eee')+'22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(t.icon||'🚲')+'</div>';
