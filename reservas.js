@@ -3586,7 +3586,8 @@ async function initApp() {
       DB.getConfig('imp_excluidas', []),
       DB.getConfig('historial', {}),
       DB.getConfig('clistas', null),
-      DB.getConfig('photos', {})
+      DB.getConfig('photos', {}),
+      DB.getConfig('clistasEntrega', {})
     ]);
 
     var dbBikes     = results[0];
@@ -3617,7 +3618,9 @@ async function initApp() {
 
     // Aplicar datos taller (variables de taller-merged.js)
     if (typeof hist !== 'undefined' && dbHist && dbHist !== null && !Array.isArray(dbHist) && Object.keys(dbHist).length) hist = dbHist;
-    if (typeof CLS !== 'undefined' && Array.isArray(dbCLS) && dbCLS.length) CLS = dbCLS;
+    // FIX: los checklists son un objeto {modelo:[ítems]}; antes se exigía un array y nunca se cargaban
+    if (typeof CLS !== 'undefined' && dbCLS && typeof dbCLS === 'object' && !Array.isArray(dbCLS) && Object.keys(dbCLS).length) CLS = dbCLS;
+    if (typeof CLE !== 'undefined' && results[13] && typeof results[13] === 'object' && !Array.isArray(results[13])) CLE = results[13];
     if (typeof photos !== 'undefined' && dbPhotos && dbPhotos !== null && !Array.isArray(dbPhotos) && Object.keys(dbPhotos).length) photos = dbPhotos;
 
     // Caché compartida preparar
@@ -3720,7 +3723,7 @@ var PAG_NUM=[
   ['mbloqueo','V13','Bloquear bicicletas'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
   ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (preparar)'],
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
-  ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
+  ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Checklist antes de entrega'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
 var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12','nav-recogida':'V18','nav-modelos':'V21','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
 function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}

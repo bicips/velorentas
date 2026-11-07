@@ -1170,6 +1170,7 @@
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px">Bicicletas de este modelo <span id="et-nb"></span></div>
+        <button class="btn btn-secondary btn-xs" onclick="abrirChecklistEntregaModelo(etc)">☑️ Checklist de entrega</button>
         <button class="btn btn-secondary btn-xs" onclick="nuevaBiciDeModelo()">➕ Añadir bici de este modelo</button>
       </div>
       <div id="et-bikes" style="max-height:280px;overflow-y:auto"></div>
@@ -1205,6 +1206,34 @@
 </div>
 
 <!-- Edit checklist -->
+<div class="modal-overlay" id="mce">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">☑️ Checklist antes de entrega</div>
+      <button class="modal-close" onclick="closeM('mce')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="ce-titulo" style="font-size:16px;font-weight:700;margin-bottom:4px"></div>
+      <div id="ce-ultima" style="font-size:12.5px;color:var(--gray-500);margin-bottom:8px"></div>
+      <div id="ce-aviso-aver" style="display:none;background:#fee2e2;color:#991b1b;border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px">⚠️ Esta bici está marcada como averiada. Repárala en el taller antes de entregarla.</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="ce-prog" style="font-weight:700;font-size:13px"></span>
+        <span><button class="btn btn-ghost btn-xs" onclick="ceTodo(true)">Marcar todo</button> <button class="btn btn-ghost btn-xs" onclick="ceTodo(false)">Desmarcar</button></span>
+      </div>
+      <div id="ce-items" style="max-height:340px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white;padding:6px;margin-bottom:10px"></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+        <div><label class="form-label">Revisado por *</label><input class="form-input" id="ce-tec" placeholder="Nombre"/></div>
+        <div><label class="form-label">Notas</label><input class="form-input" id="ce-notas" placeholder="Observaciones (obligatorio explicar si no está apta)"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeM('mce')">Cancelar</button>
+      <button class="btn btn-danger" onclick="saveCE(false)">❌ No apta</button>
+      <button class="btn btn-success" onclick="saveCE(true)">✅ Apta para entregar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="mecl">
   <div class="modal wide">
     <div class="modal-header">
@@ -1212,7 +1241,9 @@
       <button class="modal-close" onclick="closeM('mecl')">✕</button>
     </div>
     <div class="modal-body">
+      <div class="type-tabs" id="ecl-modo" style="margin-bottom:6px"></div>
       <div class="type-tabs" id="ecl-tabs"></div>
+      <div id="ecl-nota" style="display:none;background:#fef3c7;color:#92400e;border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px"></div>
       <div id="ecl-items" style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white;padding:8px;margin-bottom:12px"></div>
       <div style="display:flex;gap:8px">
         <input class="form-input" id="ecl-new" placeholder="+ Nuevo ítem del checklist..." onkeydown="if(event.key==='Enter')addCLI()"/>
