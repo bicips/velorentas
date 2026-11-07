@@ -4,6 +4,26 @@ var BIKES_DEF=[{id:1,numBici:'B-001',tipo:'urbana',talla:'M',modelo:'Trek Marlin
 // Tipos de pedal. No hay valor por defecto: se eligen siempre a mano ('' = sin elegir)
 var PEDALES_DEF=['Planos','Automáticos SPD','Crankbrothers','Mixtos','Con calapiés','Del cliente'];
 function pedalesTipos(){return (cfg&&cfg.pedales&&cfg.pedales.length)?cfg.pedales:PEDALES_DEF;}
+// ── TARIFAS: precio por día según el TIPO de bici (no por modelo ni talla) ──
+var CATEGORIAS_DEF=['MTB','Trekking','Eléctrica','Doble suspensión','Eléctrica doble suspensión'];
+function categoriasBici(){return (cfg&&cfg.categorias&&cfg.categorias.length)?cfg.categorias:CATEGORIAS_DEF;}
+// Precio por día de una línea: tarifa del tipo de bici del modelo; si el modelo aún no tiene
+// tipo asignado, se usa la tarifa antigua por modelo+talla (para no romper nada).
+function precioDiaLinea(tipo,talla){
+  var t=tipos[tipo]||{};
+  if(t.categoria&&tarifas['cat:'+t.categoria])return tarifas['cat:'+t.categoria];
+  return tarifas[tipo+'_'+talla]||0;
+}
+// Mínimo de días que se cobra: excepción de la reserva > periodo de fechas > mínimo general.
+function minDiasAplicable(ini,excepcion){
+  if(excepcion!=null&&excepcion!==''&&!isNaN(parseInt(excepcion)))return Math.max(1,parseInt(excepcion));
+  var per=(cfg.minPeriodos||[]).find(function(pp){return ini&&pp.desde&&pp.hasta&&ini>=pp.desde&&ini<=pp.hasta;});
+  if(per)return Math.max(1,parseInt(per.min)||1);
+  return cfg.minDays||1;
+}
+function _minExcForm(){var el=document.getElementById('r-min-exc');return el?el.value:'';}
+// Días que se cobran = máx(días reales, mínimo). El stock y el calendario usan siempre las fechas reales.
+function diasCobrados(ini,fin,excepcion){if(!ini||!fin)return 0;var d=diffD(ini,fin)+1;return Math.max(d,minDiasAplicable(ini,excepcion));}
 var CFG_DEF={minDays:3,gapDays:6,currency:'€',bizName:'VeloRentas',cif:'',addr:'',phone:'',iva:21,fprefix:'F-2024-'};
 // ── Compatibilidad localStorage (usado para prep/print prefs) ──
 function ld(k,d){try{var s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}}
@@ -310,7 +330,7 @@ function renderLineas(){
     });
     // availability
     var availTxt='';
-    if(l.tipo&&l.talla&&ini&&fin&&diffD(ini,fin)+1>=cfg.minDays){
+    if(l.tipo&&l.talla&&ini&&fin&&ini<=fin){
       var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);
       availTxt=cnt>=l.uds
         ?'<span style="font-size:11px;color:#16a34a;font-weight:700;white-space:nowrap">✅ '+cnt+' disp.</span>'
@@ -415,7 +435,7 @@ function renderLineas(){
       if(field==='tipo'){lineas[idx].tipo=this.value;lineas[idx].talla='';lineas[idx].ppd=0;renderLineas();return;}
       if(field==='talla'){
         lineas[idx].talla=this.value;
-        var p=tarifas[lineas[idx].tipo+'_'+this.value];if(p)lineas[idx].ppd=p;
+        var p=precioDiaLinea(lineas[idx].tipo,this.value);if(p)lineas[idx].ppd=p;
         // Comprobar si hay más líneas de este tipo+talla que stock disponible
         var iniV=document.getElementById('r-ini').value,finV=document.getElementById('r-fin').value;
         var eidV=document.getElementById('r-eid').value,eidNv=eidV?parseInt(eidV):null;
@@ -491,9 +511,10 @@ function renderLineas(){
 function recalcPPD(){
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
   if(!ini||!fin)return;
-  var dias=diffD(ini,fin)+1;
+  if(ini>fin)return;
   var totalPPD=lineas.reduce(function(s,l){return s+(l.ppd||0)*(l.uds||1);},0);
-  if(totalPPD){document.getElementById('r-ppd').value=totalPPD.toFixed(2);if(dias>=cfg.minDays)document.getElementById('r-total').value=(totalPPD*dias).toFixed(2);}
+  if(totalPPD)document.getElementById('r-ppd').value=totalPPD.toFixed(2);
+  if(typeof recalcTotal==='function')recalcTotal();
 }
 
 function checkAllLineas(){
@@ -501,7 +522,7 @@ function checkAllLineas(){
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
   var eid=document.getElementById('r-eid').value,eidN=eid?parseInt(eid):null;
   if(!ini||!fin||!lineas.length){el.style.display='none';return;}
-  if(diffD(ini,fin)+1<cfg.minDays){el.style.display='none';return;}
+  if(ini>fin){el.style.display='none';return;}
   var msgs=[],hasError=false;
   lineas.forEach(function(l){if(!l.tipo||!l.talla)return;var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);var t=tipos[l.tipo]||{label:l.tipo};if(cnt<l.uds){hasError=true;msgs.push('❌ '+t.label+' '+l.talla+': solo '+cnt+' disp., necesitas '+l.uds);}else{msgs.push('✅ '+t.label+' '+l.talla+' ×'+l.uds+': disponible');}});
   if(!msgs.length){el.style.display='none';return;}
@@ -512,7 +533,7 @@ function openNewRes(preTipo,preTalla){
   document.getElementById('mres-tit').textContent='Nueva reserva';
   currentResId=null;
   document.getElementById('r-eid').value='';
-  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega'].forEach(function(id){document.getElementById(id).value='';});
+  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega','r-min-exc'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('r-estado').value='pendiente';
   document.getElementById('r-ini').value=todayS();
   document.getElementById('r-fin').value=addD(todayS(),cfg.minDays-1);
@@ -521,7 +542,7 @@ function openNewRes(preTipo,preTalla){
   document.getElementById('r-fact-btn').style.display='none';
   asignadas=[];
   lineas=[];
-  if(preTipo){lineas.push({tipo:preTipo,talla:preTalla||'',uds:1,ppd:tarifas[preTipo+'_'+(preTalla||'')]||0});}
+  if(preTipo){lineas.push({tipo:preTipo,talla:preTalla||'',uds:1,ppd:precioDiaLinea(preTipo,preTalla||'')});}
   else{lineas.push({tipo:'',talla:'',uds:1,ppd:0});}
   openM('mres');
   renderLineas();renderAsig();initExtrasModal();
@@ -545,6 +566,7 @@ function openEditRes(id){
   document.getElementById('r-lugar-ini').value=r.lugarIni||'';
   document.getElementById('r-lugar-fin').value=r.lugarFin||'Santiago de Compostela';
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
+  if(document.getElementById('r-min-exc'))document.getElementById('r-min-exc').value=(r.minExc&&r.minExc.dias)?r.minExc.dias:'';
   // Cargar líneas primero para poder emparejar _lineaIdx
   var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();return c;}):
     [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
@@ -603,7 +625,7 @@ function renderModelosList(){
       +'<div style="width:36px;height:36px;border-radius:8px;background:'+t.color+'22;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+t.icon+'</div>'
       +'<div style="flex:1;min-width:0">'
         +'<div style="font-weight:700;font-size:14px">'+esc(t.label)+'</div>'
-        +'<div style="font-size:11px;color:var(--g400)">clave: '+esc(k)+' · tallas: '+t.sizes.join(', ')+' · '+nBikes+' bici'+(nBikes!==1?'s':'')+'</div>'
+        +'<div style="font-size:11px;color:var(--g400)">'+(t.categoria?'<b style="color:#0f766e">'+esc(t.categoria)+'</b> · ':'<b style="color:#b45309">sin tipo de bici</b> · ')+'clave: '+esc(k)+' · tallas: '+t.sizes.join(', ')+' · '+nBikes+' bici'+(nBikes!==1?'s':'')+'</div>'
       +'</div>'
       +'<button class="btn bs bxs" onclick="openEditModelo(\''+k+'\')">✏️</button>'
       +'<button class="btn bd bxs" onclick="deleteModelo(\''+k+'\')">🗑️</button>'
@@ -611,6 +633,7 @@ function renderModelosList(){
   }).join('');
 }
 
+function _fillModCat(v){var el=document.getElementById('mod-cat');if(!el)return;el.innerHTML='<option value="">— Sin tipo (precio antiguo por talla) —</option>'+categoriasBici().map(function(c){return '<option'+(c===v?' selected':'')+'>'+esc(c)+'</option>';}).join('');}
 function openNuevoModelo(){
   document.getElementById('mmodelo-edit-tit').textContent='Nuevo modelo';
   document.getElementById('mod-key-orig').value='';
@@ -620,6 +643,7 @@ function openNuevoModelo(){
   document.getElementById('mod-icon').value='🚲';
   document.getElementById('mod-color').value='#3b82f6';
   document.getElementById('mod-sizes').value='S,M,L';
+  _fillModCat('');
   openM('mmodelo-edit');
 }
 
@@ -634,6 +658,7 @@ function openEditModelo(key){
   document.getElementById('mod-icon').value=t.icon;
   document.getElementById('mod-color').value=t.color;
   document.getElementById('mod-sizes').value=t.sizes.join(',');
+  _fillModCat(t.categoria||'');
   openM('mmodelo-edit');
 }
 
@@ -650,7 +675,8 @@ function saveModelo(){
   if(!sizes.length){toast('Añade al menos una talla');return;}
   if(!keyOrig && tipos[key]){toast('Ya existe un modelo con esa clave');return;}
 
-  tipos[key]={label:label,icon:icon,color:color,sizes:sizes};
+  var categoria=(document.getElementById('mod-cat')||{value:''}).value;
+  tipos[key]=Object.assign({},tipos[key]||{},{label:label,icon:icon,color:color,sizes:sizes,categoria:categoria});
   saveTipos();
   closeM('mmodelo-edit');
   renderModelosList();
@@ -673,10 +699,10 @@ function deleteModelo(key){
 }
 
 function exportarModelosCSV(){
-  var headers=['clave','nombre','icono','color','tallas'];
+  var headers=['clave','nombre','icono','color','tallas','tipo_bici'];
   var rows=Object.keys(tipos).map(function(k){
     var t=tipos[k];
-    return [k,t.label,t.icon,t.color,t.sizes.join('|')];
+    return [k,t.label,t.icon,t.color,t.sizes.join('|'),t.categoria||''];
   });
   var csv=headers.join(',')+'\n'+rows.map(function(r){
     return r.map(function(v){
@@ -718,7 +744,9 @@ function importarModelosCSV(event){
         var sizes=(cols[4]||'').split('|').map(function(s){return s.trim();}).filter(Boolean);
         if(!key||!label||!sizes.length){errors.push('Fila '+(i+1)+': datos incompletos');continue;}
         if(tipos[key])updated++;else added++;
-        tipos[key]={label:label,icon:icon,color:color,sizes:sizes};
+        var catCsv=(cols[5]||'').trim();
+        tipos[key]=Object.assign({},tipos[key]||{},{label:label,icon:icon,color:color,sizes:sizes});
+        if(catCsv)tipos[key].categoria=catCsv;
       }
       saveTipos();
       renderModelosList();
@@ -758,9 +786,11 @@ function calcDays(){
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
   var el=document.getElementById('r-dinfo');
   if(!ini||!fin){el.style.display='none';return;}
-  var d=diffD(ini,fin)+1;el.style.display='block';
-  if(d<cfg.minDays){el.style.cssText='display:block;background:var(--r50);color:var(--r600);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML='Mínimo '+cfg.minDays+' días — seleccionados: '+d;}
-  else{el.style.cssText='display:block;background:var(--gr50);color:var(--gr700);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML=d+' días de alquiler';}
+  if(ini>fin){el.style.cssText='display:block;background:var(--r50);color:var(--r600);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML='La fecha de fin es anterior a la de inicio';return;}
+  var d=diffD(ini,fin)+1,exc=_minExcForm(),min=minDiasAplicable(ini,exc),cob=Math.max(d,min);
+  var origen=(exc!==''&&exc!=null)?'excepción de esta reserva':((cfg.minPeriodos||[]).some(function(pp){return ini>=pp.desde&&ini<=pp.hasta;})?'mínimo del periodo':'mínimo general');
+  if(d<min){el.style.cssText='display:block;background:#fffbeb;color:#92400e;font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px;border:1px solid #fcd34d';el.innerHTML=d+' día'+(d!==1?'s':'')+' de alquiler · <b>se cobran '+cob+'</b> ('+origen+': '+min+' días)';}
+  else{el.style.cssText='display:block;background:var(--gr50);color:var(--gr700);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML=d+' días de alquiler'+(origen!=='mínimo general'?' <span style="opacity:.7">('+origen+': '+min+')</span>':'');}
 }
 function calcPrice(){recalcPPD();}
 function chkAvail(){checkAllLineas();}
@@ -773,7 +803,6 @@ function saveRes(){
   var validLineas=lineas.filter(function(l){return l.tipo&&l.talla;});
   if(!validLineas.length){toast('Añade al menos una bicicleta con modelo y talla');return;}
   if(!ini||!fin||ini>fin){toast('Fechas inválidas');return;}
-  if(diffD(ini,fin)+1<cfg.minDays){toast('Mínimo '+cfg.minDays+' días');return;}
   var eid=document.getElementById('r-eid').value,eidN=eid?parseInt(eid):null;
   var errStock=[];
   validLineas.forEach(function(l){
@@ -811,7 +840,7 @@ function saveRes(){
   var bikeId=primAsig?primAsig.id:null;
   var bikeNum=primAsig?primAsig.num:'';
   var totalUds=validLineas.reduce(function(s,l){return s+(l.uds||1);},0);
-  var res={id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
+  var res={id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,diasCobrados:diasCobrados(ini,fin,_minExcForm()),minDias:minDiasAplicable(ini,_minExcForm()),minExc:(_minExcForm()!==''?{dias:parseInt(_minExcForm()),fecha:new Date().toISOString()}:null),ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
   if(eidN){var ix=reservas.findIndex(function(r){return r.id===eidN;});if(ix>=0)reservas[ix]=res;else reservas.push(res);}else reservas.push(res);
   sR();closeM('mres');toast('Reserva guardada');updBadge();
   if(CV==='dash')renderDash();if(CV==='cal')renderCal();if(CV==='timeline')renderTL();if(CV==='res')renderRes();if(CV==='flota')renderFlota();
@@ -2048,9 +2077,46 @@ function doSendSMS(){var phone=getSendPhone();if(!phone){toast('Sin telefono reg
 function copyMsgClipboard(){var msg=getSendMsg();if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){toast('Mensaje copiado');});}else{var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Mensaje copiado');}closeM('msend');}
 
 // TARIFAS
-function renderTarifas(){var html='';Object.keys(tipos).forEach(function(k){var t=tipos[k];html+='<div style="margin-bottom:20px"><div style="font-weight:700;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--g100)"><span>'+t.icon+'</span> '+esc(t.label)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">';t.sizes.forEach(function(talla){var key=k+'_'+talla,val=tarifas[key]||'';html+='<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px"><div style="flex:1;font-size:13px;font-weight:600">'+esc(talla)+'</div><input type="number" class="fi" data-key="'+key+'" min="0" step="0.01" value="'+val+'" placeholder="0.00" style="width:90px;padding:6px 8px;font-size:13px" oninput="tarifas[\''+key+'\']=parseFloat(this.value)||0"/><span style="font-size:13px;color:var(--g500)">'+cfg.currency+'/dia</span></div>';});html+='</div></div>';});var el=document.getElementById('tarifas-body');if(el)el.innerHTML=html;}
-function saveTarifas(){document.querySelectorAll('[data-key]').forEach(function(inp){tarifas[inp.dataset.key]=parseFloat(inp.value)||0;});sT();toast('Tarifas guardadas');}
-function getPriceForRes(tipo,talla){return tarifas[tipo+'_'+talla]||0;}
+function renderTarifas(){
+  var el=document.getElementById('tarifas-body');if(!el)return;
+  var cur=cfg.currency||'€';
+  var h='<div style="font-weight:800;font-size:15px;margin-bottom:4px">Precio por día según el tipo de bici</div>'
+    +'<div style="font-size:12px;color:var(--g500);margin-bottom:12px">El mismo todo el año. Cada modelo se asigna a un tipo en <b>Modelos</b>. Los cambios solo afectan a reservas nuevas: cada reserva guarda su precio.</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-bottom:10px">';
+  categoriasBici().forEach(function(c){
+    var v=tarifas['cat:'+c]||'';
+    var nMod=Object.keys(tipos).filter(function(k){return tipos[k].categoria===c;}).map(function(k){return tipos[k].label;});
+    h+='<div style="padding:10px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px"><div style="flex:1;font-size:13px;font-weight:700">'+esc(c)+'</div>'
+      +'<input type="number" class="fi" data-cat="'+esc(c)+'" min="0" step="0.01" value="'+v+'" placeholder="Sin precio" style="width:100px;padding:6px 8px;font-size:13px"/><span style="font-size:12px;color:var(--g500)">'+cur+'/día</span></div>'
+      +'<div style="font-size:11px;color:var(--g400);margin-top:4px">'+(nMod.length?'Modelos: '+nMod.map(esc).join(', '):'Ningún modelo asignado')+'</div></div>';
+  });
+  h+='</div>';
+  var sinTipo=Object.keys(tipos).filter(function(k){return !tipos[k].categoria;}).map(function(k){return tipos[k].label;});
+  if(sinTipo.length)h+='<div style="font-size:12px;background:#fffbeb;color:#92400e;border:1px solid #fcd34d;border-radius:8px;padding:8px 12px;margin-bottom:6px">⚠️ Modelos sin tipo de bici (siguen con el precio antiguo por talla): <b>'+sinTipo.map(esc).join(', ')+'</b>. Asígnales un tipo en Modelos.</div>';
+  h+='<div style="border-top:1px solid var(--g200);margin:18px 0 12px"></div>'
+    +'<div style="font-weight:800;font-size:15px;margin-bottom:4px">Mínimo de días que se cobra</div>'
+    +'<div style="font-size:12px;color:var(--g500);margin-bottom:12px">Si el cliente alquila menos días, se le cobra el mínimo. El calendario y el stock usan siempre las fechas reales.</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span style="font-size:13px;font-weight:700">Mínimo general</span><input type="number" class="fi" id="t-min" min="1" value="'+(cfg.minDays||3)+'" style="width:70px;padding:6px 8px"/><span style="font-size:12px;color:var(--g500)">días</span></div>'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">Mínimo distinto por periodo</div>'
+    +'<div style="font-size:11px;color:var(--g400);margin-bottom:8px">Manda el periodo en el que cae la fecha de inicio del alquiler.</div><div id="t-periodos">';
+  (cfg.minPeriodos||[]).forEach(function(pp,i){
+    h+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--g100);font-size:13px"><span style="flex:1">Del <b>'+fmtD(pp.desde)+'</b> al <b>'+fmtD(pp.hasta)+'</b> → mínimo <b>'+pp.min+'</b> días</span><button class="btn bd bxs" onclick="delMinPeriodo('+i+')">Eliminar</button></div>';
+  });
+  if(!(cfg.minPeriodos||[]).length)h+='<div style="font-size:12px;color:var(--g400);font-style:italic;padding:4px 0">Sin periodos: se aplica el mínimo general.</div>';
+  h+='</div><div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px"><span style="font-size:12px">Desde</span><input type="date" class="fi" id="t-p-desde" style="width:150px;padding:6px 8px"/><span style="font-size:12px">hasta</span><input type="date" class="fi" id="t-p-hasta" style="width:150px;padding:6px 8px"/><span style="font-size:12px">mínimo</span><input type="number" class="fi" id="t-p-min" min="1" style="width:70px;padding:6px 8px"/><button class="btn bs bxs" onclick="addMinPeriodo()">+ Añadir periodo</button></div>';
+  el.innerHTML=h;
+}
+function addMinPeriodo(){
+  var d=document.getElementById('t-p-desde').value,hh=document.getElementById('t-p-hasta').value,m=parseInt(document.getElementById('t-p-min').value);
+  if(!d||!hh||!m){toast('Pon fecha desde, hasta y mínimo de días');return;}
+  if(d>hh){toast('La fecha "desde" debe ser anterior a "hasta"');return;}
+  cfg.minPeriodos=(cfg.minPeriodos||[]).concat([{desde:d,hasta:hh,min:m}]).sort(function(a,b){return a.desde.localeCompare(b.desde);});
+  sC();renderTarifas();toast('Periodo añadido');
+}
+function delMinPeriodo(i){if(!window.confirm('¿Eliminar este periodo?'))return;cfg.minPeriodos.splice(i,1);sC();renderTarifas();}
+function saveTarifas(){document.querySelectorAll('#tarifas-body [data-cat]').forEach(function(inp){var v=parseFloat(inp.value);if(v>0)tarifas['cat:'+inp.dataset.cat]=v;else delete tarifas['cat:'+inp.dataset.cat];});var m=parseInt((document.getElementById('t-min')||{}).value);if(m>0){cfg.minDays=m;var cm=document.getElementById('c-min');if(cm)cm.value=m;sC();}sT();toast('Tarifas guardadas');renderTarifas();}
+function getPriceForRes(tipo,talla){return precioDiaLinea(tipo,talla);}
 
 // INFORMES
 function renderInformes(){
@@ -2596,7 +2662,8 @@ function recalcTotal(){
   var ini = document.getElementById('r-ini').value;
   var fin = document.getElementById('r-fin').value;
   if(!ini||!fin) return;
-  var dias = diffD(ini,fin)+1;
+  if(ini>fin) return;
+  var dias = diasCobrados(ini,fin,_minExcForm()); // días que se cobran (mínimo incluido)
   var totalBikes = lineas.reduce(function(s,l){return s+(l.ppd||0)*(l.uds||1);},0) * dias;
   var totalExtras = lineas.reduce(function(s,l){
     return s+(l.extras||[]).reduce(function(s2,e){return s2+(e.precio||0)*(e.qty||1);},0);
@@ -2604,6 +2671,7 @@ function recalcTotal(){
   var totalGlobal = totalBikes + totalExtras;
   document.getElementById('r-total').value = totalGlobal ? totalGlobal.toFixed(2) : '';
   if(dias>0) document.getElementById('r-ppd').value = totalBikes ? (totalBikes/dias).toFixed(2) : '';
+  calcDays();
 }
 
 function initExtrasModal(){
