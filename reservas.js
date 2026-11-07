@@ -341,10 +341,28 @@ function renderLineas(){
       html+=(nUds>1?'<span style="font-size:11px;color:#9ca3af">Bici '+(u+1)+'</span>':'')
         +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:'+(l.pedales[u]===pTipos[0]?'#fff':'#fef3c7')+';color:#111">'+pOpts+'</select>';
     }
+    // Extras de esta bici, al lado de los pedales (pulsar para poner/quitar)
+    html+='<span style="font-size:11px;color:#6b7280;font-weight:700;margin-left:8px">Extras</span>';
+    var exL=l.extras||[];
+    catalogoExtras.forEach(function(ce){
+      var ya=exL.find(function(x){return x.id===ce.id;});
+      html+='<button type="button" data-xli="'+i+'" data-xid="'+ce.id+'" title="'+esc(ce.nombre)+(ce.precio?' (+'+ce.precio+cfg.currency+')':'')+'" style="display:inline-flex;align-items:center;gap:3px;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid '+(ya?'#0d9488':'#e5e7eb')+';background:'+(ya?'#ccfbf1':'#fff')+';color:'+(ya?'#0f766e':'#6b7280')+'">'+(ce.icono||'')+' '+esc(ce.nombre)+(ya&&(ya.qty||1)>1?' ×'+ya.qty:'')+'</button>';
+    });
     html+='</div>';
     html+='</div>';
   });
   el.innerHTML=html;
+  el.querySelectorAll('button[data-xli]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var li=parseInt(this.getAttribute('data-xli')),xid=parseInt(this.getAttribute('data-xid'));
+      if(!lineas[li])return;
+      if(!lineas[li].extras)lineas[li].extras=[];
+      var k=lineas[li].extras.findIndex(function(x){return x.id===xid;});
+      if(k>=0)lineas[li].extras.splice(k,1);
+      else{var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1});}
+      renderLineas();if(typeof recalcTotal==='function')recalcTotal();
+    });
+  });
   el.querySelectorAll('button[data-dup]').forEach(function(btn){
     btn.addEventListener('click',function(){duplicarLinea(parseInt(this.getAttribute('data-dup')));});
   });
@@ -2434,7 +2452,7 @@ function delExtraCat(i){
 // Render extras section: one accordion per linea
 function renderExtrasBici(){
   var el = document.getElementById('r-extras-bici');
-  if(!el) return;
+  if(!el){ if(document.getElementById('r-lineas')) renderLineas(); return; } // los extras van ahora en cada línea
   var validLineas = lineas.filter(function(l){return l.tipo && l.talla;});
   if(!validLineas.length){
     el.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--g400);font-style:italic">Añade bicicletas arriba para asignarles extras</div>';

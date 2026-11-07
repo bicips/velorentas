@@ -436,6 +436,7 @@
           <button type="button" onclick="addLinea()" style="width:100%;padding:10px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
             <span style="font-size:18px">+</span> Añadir otro modelo de bicicleta
           </button>
+          <button type="button" onclick="openGestionExtras()" style="margin-top:6px;width:100%;padding:7px;background:#fff;color:#374151;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer">⚙️ Catálogo de extras</button>
         </div>
         <div id="r-avail" style="display:none;padding:10px 14px;font-size:13px;border-top:1px solid var(--g100)"></div>
       </div>
@@ -474,15 +475,6 @@
           <button class="btn bd bsm" type="button" onclick="clearAsignadas()">✕ Limpiar</button>
         </div>
         <div style="font-size:11px;color:var(--g400);margin-top:6px">Asigna la bici física en la entrega. La reserva ya bloquea disponibilidad por modelo/talla.</div>
-      </div>
-
-      <!-- EXTRAS POR BICICLETA -->
-      <div style="border:1px solid var(--g200);border-radius:12px;overflow:hidden;margin-top:14px">
-        <div style="background:var(--g800);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
-          <span style="font-weight:700;font-size:13px">🎒 Extras por bicicleta</span>
-          <button type="button" onclick="openGestionExtras()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">⚙️ Catálogo</button>
-        </div>
-        <div id="r-extras-bici" style="padding:0"></div>
       </div>
 
       <!-- campos ocultos de compatibilidad -->
