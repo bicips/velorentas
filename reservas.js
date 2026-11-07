@@ -1,6 +1,9 @@
 // DATA
 var TIPOS_DEF={urbana:{label:'MTB',icon:'🚲',color:'#3b82f6',sizes:['XS','S','M','L','XL']},montana:{label:'Powerfly',icon:'🚵',color:'#22c55e',sizes:['S','M','L','XL']},electrica:{label:'Checkpoint',icon:'⚡',color:'#f59e0b',sizes:['S','M','L']},cargo:{label:'Cargo',icon:'📦',color:'#8b5cf6',sizes:['Único','L','XL']},infantil:{label:'Infantil',icon:'🛴',color:'#ec4899',sizes:['12"','16"','20"','24"']},gravel:{label:'Gravel',icon:'🏔️',color:'#06b6d4',sizes:['XS','S','M','L','XL']}};
 var BIKES_DEF=[{id:1,numBici:'B-001',tipo:'urbana',talla:'M',modelo:'Trek Marlin 7',estado:'disponible'},{id:2,numBici:'B-002',tipo:'urbana',talla:'L',modelo:'Trek Marlin 7',estado:'disponible'},{id:3,numBici:'B-003',tipo:'montana',talla:'M',modelo:'Powerfly 5',estado:'disponible'},{id:4,numBici:'B-004',tipo:'electrica',talla:'M',modelo:'Checkpoint SL',estado:'disponible'},{id:5,numBici:'B-005',tipo:'infantil',talla:'20"',modelo:'Trek Precaliber',estado:'disponible'}];
+// Tipos de pedal (el primero es el de serie y el valor por defecto)
+var PEDALES_DEF=['Planos','Automáticos SPD','Crankbrothers','Mixtos','Con calapiés','Del cliente'];
+function pedalesTipos(){return (cfg&&cfg.pedales&&cfg.pedales.length)?cfg.pedales:PEDALES_DEF;}
 var CFG_DEF={minDays:3,gapDays:6,currency:'€',bizName:'VeloRentas',cif:'',addr:'',phone:'',iva:21,fprefix:'F-2024-'};
 // ── Compatibilidad localStorage (usado para prep/print prefs) ──
 function ld(k,d){try{var s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}}
@@ -242,8 +245,38 @@ var lineas=[];
 var _lineaAsigIdx=null; // índice de línea activa para asignación
 var currentResId=null; // ID of reservation being edited (for direct save)
 
+// Una línea = una bici. Las líneas antiguas con varias unidades se separan al abrirlas:
+// cada bici con sus pedales; los extras y la bici asignada se quedan en la primera
+// (así los importes y la asignación no cambian).
+var _extrasAbierto=null; // línea con el desplegable de extras abierto (para no cerrarlo al marcar)
+document.addEventListener('click',function(e){
+  if(_extrasAbierto===null)return;
+  if(e.target.closest&&e.target.closest('details[data-xdet]'))return;
+  _extrasAbierto=null;
+  document.querySelectorAll('#r-lineas details[data-xdet]').forEach(function(d){d.open=false;});
+});
+function _unaLineaPorBici(arr){
+  var out=[];
+  (arr||[]).forEach(function(l){
+    var n=Math.max(1,parseInt(l.uds)||1);
+    for(var u=0;u<n;u++){
+      var c=Object.assign({},l);
+      c.uds=1;
+      c.pedales=[(Array.isArray(l.pedales)&&l.pedales[u])?l.pedales[u]:PEDALES_DEF[0]];
+      if(u>0){c.extras=[];delete c.bikeAsig;}
+      else c.extras=(l.extras||[]).slice();
+      out.push(c);
+    }
+  });
+  return out;
+}
+function duplicarLinea(i){
+  var l=lineas[i];if(!l)return;
+  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
+  renderLineas();renderExtrasBici();
+}
 function addLinea(tipo,talla,uds,ppd){
-  lineas.push({tipo:tipo||'',talla:talla||'',uds:uds||1,ppd:ppd||0,extras:[]});
+  lineas.push({tipo:tipo||'',talla:talla||'',uds:1,ppd:ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
   renderLineas();
   renderExtrasBici();
 }
@@ -287,10 +320,7 @@ function renderLineas(){
     html+='<div style="width:34px;height:34px;background:'+(t.color||'#eee')+'22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(t.icon||'🚲')+'</div>';
     html+='<select data-li="'+i+'" data-f="tipo" style="flex:1;min-width:100px;padding:7px 8px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#111">'+tipoOpts+'</select>';
     html+='<select data-li="'+i+'" data-f="talla" style="width:80px;padding:7px 8px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#111">'+tallaOpts+'</select>';
-    html+='<div style="display:flex;align-items:center;gap:4px">';
-    html+='<span style="font-size:11px;color:#6b7280">Ud.</span>';
-    html+='<input type="number" data-li="'+i+'" data-f="uds" min="1" value="'+l.uds+'" style="width:54px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;text-align:center"/>';
-    html+='</div>';
+    html+='<span style="font-size:11px;font-weight:700;color:#6b7280;white-space:nowrap">Bici '+(i+1)+'</span>';
     html+='<div style="display:flex;align-items:center;gap:4px">';
     html+='<span style="font-size:11px;color:#6b7280">€/d</span>';
     html+='<input type="number" data-li="'+i+'" data-f="ppd" min="0" step="0.01" value="'+(l.ppd||'')+'" placeholder="0" style="width:68px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px"/>';
@@ -303,10 +333,79 @@ function renderLineas(){
     } else if(l.tipo&&l.talla) {
       html+='<button data-asig-li="'+i+'" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">🔗 Asignar</button>';
     }
+    if(l.tipo&&l.talla)html+='<button type="button" data-dup="'+i+'" title="Añadir otra bici igual" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">+ Igual</button>';
     html+='<button data-rm="'+i+'" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;line-height:1">✕</button>';
+    // Pedales: uno por cada bici de la línea (por defecto, los de serie)
+    var nUds=l.uds||1, pTipos=pedalesTipos();
+    if(!Array.isArray(l.pedales))l.pedales=[];
+    while(l.pedales.length<nUds)l.pedales.push(pTipos[0]);
+    if(l.pedales.length>nUds)l.pedales.length=nUds;
+    html+='<div style="flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:42px">';
+    html+='<span style="font-size:11px;color:#6b7280;font-weight:700">Pedales</span>';
+    for(var u=0;u<nUds;u++){
+      var pOpts=pTipos.map(function(pt){return '<option'+(l.pedales[u]===pt?' selected':'')+'>'+esc(pt)+'</option>';}).join('');
+      if(pTipos.indexOf(l.pedales[u])<0)pOpts+='<option selected>'+esc(l.pedales[u])+'</option>';
+      html+=(nUds>1?'<span style="font-size:11px;color:#9ca3af">Bici '+(u+1)+'</span>':'')
+        +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:'+(l.pedales[u]===pTipos[0]?'#fff':'#fef3c7')+';color:#111">'+pOpts+'</select>';
+    }
+    // Extras de esta bici, al lado de los pedales: desplegable con casillas + etiquetas de los elegidos
+    var exL=l.extras||[];
+    html+='<details data-xdet="'+i+'"'+(_extrasAbierto===i?' open':'')+' style="position:relative;margin-left:8px">';
+    html+='<summary style="list-style:none;cursor:pointer;padding:5px 10px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;border-radius:6px;background:#fff;color:#374151;user-select:none">Extras'+(exL.length?' ('+exL.length+')':'')+' ▾</summary>';
+    html+='<div style="position:absolute;z-index:50;top:calc(100% + 4px);left:0;min-width:230px;max-height:260px;overflow:auto;background:#fff;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:6px">';
+    catalogoExtras.forEach(function(ce){
+      var ya=exL.some(function(x){return x.id===ce.id;});
+      html+='<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;background:'+(ya?'#f0fdfa':'transparent')+'">'
+        +'<input type="checkbox" data-xli="'+i+'" data-xid="'+ce.id+'"'+(ya?' checked':'')+' style="width:16px;height:16px"/>'
+        +'<span>'+(ce.icono||'')+'</span><span style="flex:1">'+esc(ce.nombre)+'</span>'
+        +(ce.precio?'<span style="color:#9ca3af;font-size:12px">+'+ce.precio+cfg.currency+'</span>':'')+'</label>';
+    });
+    html+='</div></details>';
+    if(exL.length){
+      exL.forEach(function(e){
+        html+='<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#ccfbf1;color:#0f766e;border:1px solid #5eead4">'+(e.icono||'')+' '+esc(e.nombre)+((e.qty||1)>1?' ×'+e.qty:'')
+          +'<button type="button" data-xrm="'+i+'" data-xid="'+e.id+'" title="Quitar" style="border:none;background:transparent;color:#0f766e;cursor:pointer;font-size:13px;font-weight:900;padding:0 4px">✕</button></span>';
+      });
+    } else {
+      html+='<span style="font-size:12px;color:#9ca3af;font-style:italic">Sin extras</span>';
+    }
+    html+='</div>';
     html+='</div>';
   });
   el.innerHTML=html;
+  function _toggleExtra(li,xid,poner){
+    if(!lineas[li])return;
+    if(!lineas[li].extras)lineas[li].extras=[];
+    var k=lineas[li].extras.findIndex(function(x){return x.id===xid;});
+    if(!poner&&k>=0)lineas[li].extras.splice(k,1);
+    else if(poner&&k<0){var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1});}
+    renderLineas();if(typeof recalcTotal==='function')recalcTotal();
+  }
+  el.querySelectorAll('input[data-xli]').forEach(function(cb){
+    cb.addEventListener('change',function(){_extrasAbierto=parseInt(this.getAttribute('data-xli'));_toggleExtra(_extrasAbierto,parseInt(this.getAttribute('data-xid')),this.checked);});
+  });
+  el.querySelectorAll('button[data-xrm]').forEach(function(btn){
+    btn.addEventListener('click',function(){_toggleExtra(parseInt(this.getAttribute('data-xrm')),parseInt(this.getAttribute('data-xid')),false);});
+  });
+  el.querySelectorAll('details[data-xdet]').forEach(function(d){
+    d.addEventListener('toggle',function(){
+      var li=parseInt(this.getAttribute('data-xdet'));
+      if(this.open){_extrasAbierto=li;el.querySelectorAll('details[data-xdet]').forEach(function(o){if(o!==d)o.open=false;});}
+      else if(_extrasAbierto===li)_extrasAbierto=null;
+    });
+  });
+  el.querySelectorAll('button[data-dup]').forEach(function(btn){
+    btn.addEventListener('click',function(){duplicarLinea(parseInt(this.getAttribute('data-dup')));});
+  });
+  el.querySelectorAll('select[data-ped]').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var li=parseInt(this.getAttribute('data-ped')),pu=parseInt(this.getAttribute('data-pu'));
+      if(!lineas[li])return;
+      if(!Array.isArray(lineas[li].pedales))lineas[li].pedales=[];
+      lineas[li].pedales[pu]=this.value;
+      this.style.background=(this.value===pedalesTipos()[0]?'#fff':'#fef3c7');
+    });
+  });
 
   // Attach events via delegation on the container
   el.querySelectorAll('select[data-li],input[data-li]').forEach(function(inp){
@@ -447,7 +546,7 @@ function openEditRes(id){
   document.getElementById('r-lugar-fin').value=r.lugarFin||'Santiago de Compostela';
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
   // Cargar líneas primero para poder emparejar _lineaIdx
-  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){return Object.assign({},l);}):
+  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();return c;}):
     [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
   // Usar lineas[i].bikeAsig directamente si ya viene de Supabase
   // Solo reconstruir desde bikesAsig para reservas antiguas sin bikeAsig en líneas
@@ -466,7 +565,7 @@ function openEditRes(id){
       }
     });
   }
-  lineas=rLineas;
+  lineas=_unaLineaPorBici(rLineas);
   _syncAsignadas();
   document.getElementById('r-dinfo').style.display='none';
   document.getElementById('r-fact-btn').style.display=(['confirmada','proxima_entrega','en_preparacion','preparada','transito_furgo','transito_carlos','transito_seur','entregada','alquiler','pendiente_recoger','recogida','finalizada'].indexOf(r.estado)>=0)?'inline-flex':'none';
@@ -2069,6 +2168,7 @@ function _generarHojasBici(listaFiltrada) {
   var paginas = [];
   lista.forEach(function(r){
     var lineas = r.lineas&&r.lineas.length ? r.lineas : [{tipo:r.tipo,talla:r.talla,uds:r.uds||1,extras:r.extras||[]}];
+    var totalBicis = lineas.reduce(function(s,l){return s+(l.uds||1);},0), nBici = 0;
     lineas.forEach(function(l){
       var uds = l.uds||1;
       for(var u=0;u<uds;u++){
@@ -2076,6 +2176,8 @@ function _generarHojasBici(listaFiltrada) {
         // FIX: usar l.bikeAsig directamente (fuente de verdad por línea), no filtrar por tipo+talla
         var bikeNum = l.bikeAsig ? l.bikeAsig.num : "-";
         var extrasLinea = l.extras&&l.extras.length ? l.extras.slice() : [];
+        nBici++;
+        var pedal = (Array.isArray(l.pedales)&&l.pedales[u]) ? l.pedales[u] : PEDALES_DEF[0];
         var fechaIni = r.ini ? new Date(r.ini+"T00:00:00") : null;
         var fechaEntrega = fechaIni ? new Date(fechaIni.getFullYear(), fechaIni.getMonth(), fechaIni.getDate()-1) : null; // siempre el día antes del inicio (por calendario, no restando 24 h)
         paginas.push({resId:r.id,cliente:r.cliente||"",tel:r.tel||"",
@@ -2084,11 +2186,11 @@ function _generarHojasBici(listaFiltrada) {
           fechaIni:fechaIni?fechaIni.toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           fechaFin:r.fin?new Date(r.fin+"T00:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           dias:r.dias||"",modelo:t.label,icon:t.icon||"",talla:l.talla||r.talla||"",
-          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||""});
+          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||"",pedal:pedal,nBici:nBici,totalBicis:totalBicis});
       }
     });
   });
-  var css="*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;color:#111}.hoja{width:190mm;margin:10mm auto;border:2px solid #111;border-radius:4px;overflow:hidden;page-break-after:always}.hoja:last-child{page-break-after:auto}.cab{display:flex;justify-content:space-between;align-items:center;padding:6mm 8mm;border-bottom:2px solid #111}.cab img{height:20mm;width:auto;max-width:80mm;object-fit:contain}.cab-qr{display:flex;flex-direction:column;align-items:center;gap:2px}.qr-lbl{font-size:9px;font-weight:700;color:#374151;text-align:center}.body{padding:4mm 8mm 2mm}.campo{border:1.5px solid #374151;border-radius:4px;margin-bottom:4px;overflow:hidden}.lbl{background:#1f2937;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px}.val{padding:5px 10px;font-size:14px;font-weight:800;min-height:22px}.val.grande{font-size:18px;font-weight:900}.val.alerta{font-size:15px;font-weight:900;color:#b45309;background:#fffbeb}.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px}.g2 .campo,.g3 .campo{margin-bottom:0}.ext-val{padding:5px 10px;display:flex;flex-wrap:wrap;gap:4px;min-height:22px}.tag{background:#fef3c7;border:1px solid #fcd34d;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700;color:#92400e}.obs-val{padding:5px 10px;min-height:18mm;font-size:13px}.pie{border-top:2px solid #111;padding:4mm 8mm;display:flex;justify-content:space-between;align-items:flex-end;background:#f9fafb}.pie-txt{font-size:10px;color:#6b7280}.firma{border-top:1px solid #374151;width:65mm;text-align:center;padding-top:3px;font-size:10px;color:#6b7280;font-weight:700}@media print{@page{margin:8mm;size:A4 portrait}body{margin:0}.hoja{margin:0 auto;border-radius:0}}";
+  var css=".ped{display:flex;align-items:stretch;border:3px solid #111;border-radius:4px;margin-top:6px;overflow:hidden}.ped-l{background:#111;color:#fff;font-weight:900;font-size:14px;letter-spacing:2px;padding:10px 14px;display:flex;align-items:center}.ped-v{flex:1;font-size:28px;font-weight:900;padding:8px 14px;display:flex;align-items:center}.ped-c{font-size:30px;padding:4px 14px;display:flex;align-items:center}.bxn{border:2px solid #111;border-radius:4px;padding:4px 12px;text-align:center;margin-left:auto;margin-right:12px}.bxn-l{font-size:10px;font-weight:700}.bxn-v{font-size:24px;font-weight:900;line-height:1.1}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;color:#111}.hoja{width:190mm;margin:10mm auto;border:2px solid #111;border-radius:4px;overflow:hidden;page-break-after:always}.hoja:last-child{page-break-after:auto}.cab{display:flex;justify-content:space-between;align-items:center;padding:6mm 8mm;border-bottom:2px solid #111}.cab img{height:20mm;width:auto;max-width:80mm;object-fit:contain}.cab-qr{display:flex;flex-direction:column;align-items:center;gap:2px}.qr-lbl{font-size:9px;font-weight:700;color:#374151;text-align:center}.body{padding:4mm 8mm 2mm}.campo{border:1.5px solid #374151;border-radius:4px;margin-bottom:4px;overflow:hidden}.lbl{background:#1f2937;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px}.val{padding:5px 10px;font-size:14px;font-weight:800;min-height:22px}.val.grande{font-size:18px;font-weight:900}.val.alerta{font-size:15px;font-weight:900;color:#b45309;background:#fffbeb}.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px}.g2 .campo,.g3 .campo{margin-bottom:0}.ext-val{padding:5px 10px;display:flex;flex-wrap:wrap;gap:4px;min-height:22px}.tag{background:#fef3c7;border:1px solid #fcd34d;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700;color:#92400e}.obs-val{padding:5px 10px;min-height:18mm;font-size:13px}.pie{border-top:2px solid #111;padding:4mm 8mm;display:flex;justify-content:space-between;align-items:flex-end;background:#f9fafb}.pie-txt{font-size:10px;color:#6b7280}.firma{border-top:1px solid #374151;width:65mm;text-align:center;padding-top:3px;font-size:10px;color:#6b7280;font-weight:700}@media print{@page{margin:8mm;size:A4 portrait}body{margin:0}.hoja{margin:0 auto;border-radius:0}}";
   function xe(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
   var hojas="";
   paginas.forEach(function(p,i){
@@ -2099,6 +2201,7 @@ function _generarHojasBici(listaFiltrada) {
     hojas+="<div class=\"hoja\">"
       // Cabecera: logo izq, QR der
       +"<div class=\"cab\"><img src=\""+LOGO+"\" alt=\"Bicips\"/>"
+      +"<div class=\"bxn\"><div class=\"bxn-l\">BICI</div><div class=\"bxn-v\">"+p.nBici+" de "+p.totalBicis+"</div></div>"
       +"<div class=\"cab-qr\"><div id=\"qr"+i+"\"></div><div class=\"qr-lbl\">Reserva #"+p.resId+"</div></div></div>"
       +"<div class=\"body\">"
       // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
@@ -2124,6 +2227,7 @@ function _generarHojasBici(listaFiltrada) {
       +"<div class=\"campo\"><div class=\"lbl\">Extras y accesorios</div><div class=\"ext-val\">"+extHtml+"</div></div>"
       // Fila 7: Observaciones
       +"<div class=\"campo\"><div class=\"lbl\">Observaciones</div><div class=\"obs-val\">"+xe(p.notas)+"</div></div>"
+      +"<div class=\"ped\"><div class=\"ped-l\">PEDALES</div><div class=\"ped-v\">"+xe(String(p.pedal||"").toUpperCase())+"</div><div class=\"ped-c\">&#9744;</div></div>"
       +"</div><div class=\"pie\"><div class=\"pie-txt\">Impreso: "+hoyStr+"</div><div class=\"firma\">Firma transportista</div></div>"
       +"</div>";
   });
@@ -2379,7 +2483,7 @@ function delExtraCat(i){
 // Render extras section: one accordion per linea
 function renderExtrasBici(){
   var el = document.getElementById('r-extras-bici');
-  if(!el) return;
+  if(!el){ if(document.getElementById('r-lineas')) renderLineas(); return; } // los extras van ahora en cada línea
   var validLineas = lineas.filter(function(l){return l.tipo && l.talla;});
   if(!validLineas.length){
     el.innerHTML = '<div style="padding:12px 14px;font-size:12px;color:var(--g400);font-style:italic">Añade bicicletas arriba para asignarles extras</div>';
