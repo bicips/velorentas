@@ -217,7 +217,6 @@ function renderBL(){
       <div class="bike-actions">
         <button class="btn btn-ghost btn-icon" title="Historial" onclick="openHB(${b.id})">📋</button>
         <button class="btn btn-ghost btn-icon" title="Editar" onclick="openEB(${b.id})">✏️</button>
-        <button class="btn btn-danger btn-sm" title="Eliminar" onclick="delBike(${b.id})">🗑️</button>
         <button class="btn ${b.estado==='disponible'?'btn-secondary':'btn-success'} btn-sm" onclick="toggleE(${b.id})">${b.estado==='disponible'?'⚠️ Averiar':'✅ Activar'}</button>
         <button class="btn btn-primary btn-sm" onclick="openT(${b.id})">🔧 Taller</button>
       </div>

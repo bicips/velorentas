@@ -3729,7 +3729,7 @@ function aplicarNumerosPagina(){
     var st=document.createElement('style');st.id='pagnum-css';
     st.textContent='.pagnum{display:none;font:800 11px/1 Inter,Arial,sans-serif;letter-spacing:.5px;background:#7c3aed;color:#fff;padding:3px 7px;border-radius:6px;vertical-align:middle;white-space:nowrap}'
       +'body.mostrar-num .pagnum{display:inline-block}'
-      +'.pagnum-vista{position:absolute;top:6px;right:10px;z-index:5}'
+      +'.pagnum-vista{position:fixed;bottom:12px;right:14px;z-index:550;font-size:12px;padding:5px 9px;box-shadow:0 2px 8px rgba(0,0,0,.2)}'
       +'.pagnum-modal{margin-left:8px;margin-right:auto}'
       +'.pagnum-nav{margin-left:auto;font-size:9px;padding:2px 5px;background:rgba(124,58,237,.85)}';
     document.head.appendChild(st);
