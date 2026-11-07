@@ -577,19 +577,22 @@ function setABE(v){
 function handleBikePic(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const d=ev.target.result;document.getElementById('ab-ico').value=d;document.getElementById('ab-pic-img').src=d;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');};r.readAsDataURL(f);e.target.value='';}
 function clearBikePic(){document.getElementById('ab-ico').value='';document.getElementById('ab-pic-img').src='';document.getElementById('ab-pic-img').style.display='none';document.getElementById('ab-pic-ph').style.display='block';document.getElementById('ab-pic-del').classList.add('hidden');}
 function setBikePicPreview(src){if(src&&src.startsWith('data:')){document.getElementById('ab-ico').value=src;document.getElementById('ab-pic-img').src=src;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');}else{clearBikePic();}}
-function abReset(){window._ebIcono='';window._ebDesdeET=false;document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
-function openEB(id){const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');openM('madd');}
+function _abQrError(m){var e=document.getElementById('ab-qr-err');if(e){e.textContent=m||'';e.style.display=m?'block':'none';}var i=document.getElementById('ab-qr');if(i)i.style.borderColor=m?'#dc2626':'';}
+function abReset(){_abQrError('');window._ebIcono='';window._ebDesdeET=false;document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
+function openEB(id){_abQrError('');const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');openM('madd');}
 function saveBikeM(){
   const num=document.getElementById('ab-num').value.trim();
   if(!num){toast('⚠️ El número de bicicleta es obligatorio');return;}
   const ser=document.getElementById('ab-ser').value.trim();
-  const qrIn=document.getElementById('ab-qr').value.trim().toUpperCase();
+  const _qrEl=document.getElementById('ab-qr');
+  const qrIn=(typeof bcpNormalizar==='function')?bcpNormalizar(_qrEl.value):_qrEl.value.trim().toUpperCase();
+  _qrEl.value=qrIn; _abQrError('');
   const qr=qrIn||num;
-  if(qrIn.indexOf('BCP')===0&&typeof bcpValido==='function'&&!bcpValido(qrIn)){toast('⚠️ Código de etiqueta no válido: debe ser BCP-0001 a BCP-1000');return;}
+  if(qrIn.indexOf('BCP')===0&&typeof bcpValido==='function'&&!bcpValido(qrIn)){_abQrError('Código no válido: las etiquetas van de BCP-0001 a BCP-1000.');toast('⚠️ Código de etiqueta no válido: debe ser BCP-0001 a BCP-1000');return;}
   // Solo las etiquetas BCP tienen que ser únicas. Los códigos antiguos pueden estar repetidos
   // en bicis ya dadas de alta y eso no debe impedir editar la bici.
   const _dupQr=(typeof bcpValido==='function'&&bcpValido(qr))?bikes.find(b=>String(b.id)!==String(document.getElementById('ab-eid').value)&&String(b.qr||'').toUpperCase()===qr.toUpperCase()):null;
-  if(_dupQr){toast('⚠️ El código '+qr+' ya está en la bici '+_dupQr.numBici);return;}
+  if(_dupQr){_abQrError('El código '+qr+' ya está en la bici '+_dupQr.numBici+'. Usa otra etiqueta.');toast('⚠️ El código '+qr+' ya está en la bici '+_dupQr.numBici);return;}
   const modelo=document.getElementById('ab-mod').value.trim();
   const _icoForm=document.getElementById('ab-ico').value;
   // si la bici tenía un icono (emoji) y no se ha puesto foto, se conserva
@@ -1332,7 +1335,7 @@ function scanEtiquetaBici(ev){
     var eid=document.getElementById('ab-eid').value;
     var dup=bikes.find(function(b){return String(b.id)!==String(eid)&&String(b.qr||'').toUpperCase()===c;});
     if(dup){toast('⚠️ '+c+' ya está en la bici '+dup.numBici);return;}
-    document.getElementById('ab-qr').value=c;toast('✅ Etiqueta '+c+' leída');
+    document.getElementById('ab-qr').value=c;_abQrError('');toast('✅ Etiqueta '+c+' leída');
   },function(err){toast('⚠️ '+(err||'No se pudo leer el QR'));});
 }
 
@@ -1352,7 +1355,7 @@ function cerrarCamaraEtiqueta(){
   var tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='Escanear código QR';
 }
 function _etiquetaLeida(txt){
-  var c=String(txt||'').trim().toUpperCase();
+  var c=(typeof bcpNormalizar==='function')?bcpNormalizar(txt):String(txt||'').trim().toUpperCase();
   var m=c.match(/BCP-\d{4}/);if(m)c=m[0];
   if(!bcpValido(c)){qrStatus('Leído "'+c+'": no es una etiqueta de bici (BCP-0001 a BCP-1000). Prueba otra vez.','err');setTimeout(function(){if(window._qrModoAlta&&!qron)openQRCamera();},1500);return;}
   var eid=document.getElementById('ab-eid').value;

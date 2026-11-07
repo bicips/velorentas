@@ -3632,6 +3632,12 @@ setTimeout(initApp, 0);
 var BCP_MAX=1000;
 function bcpCodigo(n){return 'BCP-'+String(n).padStart(4,'0');}
 function bcpValido(c){return /^BCP-\d{4}$/.test(String(c||'').toUpperCase())&&parseInt(String(c).slice(4))>=1&&parseInt(String(c).slice(4))<=BCP_MAX;}
+// Acepta BCP-1, BCP-01, BCP-001, BCP 0001, bcp1… y lo deja como BCP-0001. Si no es un código BCP, lo devuelve tal cual (en mayúsculas).
+function bcpNormalizar(c){
+  var t=String(c||'').trim().toUpperCase(),m=t.match(/^BCP[\s\-_]*0*(\d{1,4})$/);
+  if(m){var n=parseInt(m[1]);if(n>=1&&n<=BCP_MAX)return bcpCodigo(n);}
+  return t;
+}
 function bcpUsados(){var m={};bikes.forEach(function(b){var q=String(b.qr||'').toUpperCase();if(bcpValido(q))m[q]=b;});return m;}
 function abrirEtiquetasQR(){
   var us=bcpUsados(),n=Object.keys(us).length,sig=1;
