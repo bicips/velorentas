@@ -1263,8 +1263,8 @@ function _hacerAsignacion(bikeId) {
 
   // FIX: usa la global reservas directamente, sin shadowing con var local
   if (!reservas || !reservas.length) { toast('❌ No hay reservas cargadas'); return; }
-  var res = reservas.find(function(r){ return r.id === ctx.resId; });
-  if (!res) { toast('❌ Reserva no encontrada'); return; }
+  var res = reservas.find(function(r){ return String(r.id) === String(ctx.resId); });
+  if (!res) { toast('❌ Reserva no encontrada. Pulsa Actualizar y vuelve a intentarlo.',5000,'error'); return; }
 
   // Bloquear si la bici está asignada en otra reserva activa
   var ESTADOS_LIBRE = ESTADOS_LIBRE_GLOBAL;
@@ -1279,7 +1279,7 @@ function _hacerAsignacion(bikeId) {
     if(!tieneEstaBici && r.bikesAsig && r.bikesAsig.length){
       tieneEstaBici = r.bikesAsig.some(function(a){ return a.id === bici.id; });
     }
-    if(tieneEstaBici) ocupadaEn = r.cliente;
+    if(tieneEstaBici) ocupadaEn = r.cliente + ' (' + (typeof fmtD==='function'?fmtD(r.ini)+' → '+fmtD(r.fin):(r.ini||'')+' → '+(r.fin||'')) + ', ' + ((SCFG[r.estado]||{}).lbl||r.estado) + ')';
   });
   // Bloquear si la bici está en otra línea de esta misma reserva
   if(!ocupadaEn && res.lineas){
@@ -1289,7 +1289,25 @@ function _hacerAsignacion(bikeId) {
       }
     });
   }
-  if(ocupadaEn){ toast('❌ '+bici.numBici+' ya está asignada a '+ocupadaEn); return; }
+  if(ocupadaEn){
+    var msgOc='❌ '+bici.numBici+' ya está asignada a '+ocupadaEn+'. Quítala primero de esa reserva o elige otra bici.';
+    var rq=document.getElementById('asig-qr-result');
+    if(rq)rq.innerHTML='<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px;color:#991b1b;font-weight:700">'+esc(msgOc)+'</div>';
+    toast(msgOc,5000,'error');
+    return;
+  }
+  // Una bici averiada no se puede asignar
+  if(bici.estado==='averiada'){
+    var msgAv='❌ '+bici.numBici+' está AVERIADA: repárala en el taller antes de asignarla.';
+    var rq2=document.getElementById('asig-qr-result');
+    if(rq2)rq2.innerHTML='<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px;color:#991b1b;font-weight:700">'+esc(msgAv)+'</div>';
+    toast(msgAv,5000,'error');
+    return;
+  }
+  // Modelo / talla distintos a los de la línea: avisar y dejar decidir
+  if((bici.tipo!==ctx.tipo||bici.talla!==ctx.talla)&&!confirm(bici.numBici+' es '+((tipos[bici.tipo]||{}).label||bici.tipo)+' '+bici.talla+', pero esta línea pide '+((tipos[ctx.tipo]||{}).label||ctx.tipo)+' '+ctx.talla+'.\n¿Asignarla igualmente?')){
+    return;
+  }
 
   // Update lineas[lineaIdx].bikeAsig — fuente de verdad por línea
   if (!res.lineas) {

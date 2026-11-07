@@ -42,10 +42,13 @@ function toast(m,ms,tipo){
   ms=ms||2600;
   var t=document.getElementById('toast');
   if(!t)return;
+  // FIX: el aviso estaba dentro de la sección Reservas; en el Taller (Preparar, Bicicletas…) no se veía
+  if(t.parentNode!==document.body)document.body.appendChild(t);
   var bg=tipo==='error'?'#dc2626':tipo==='success'?'#16a34a':'#1f2937';
   t.textContent=m;
   t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap;display:block';
-  setTimeout(function(){t.style.display='none';},ms);
+  clearTimeout(window._toastTimer); // un aviso nuevo no lo apaga el temporizador del anterior
+  window._toastTimer=setTimeout(function(){t.style.display='none';},ms);
 }
 // La última ventana que se abre queda siempre delante de las que ya estén abiertas
 function openM(id){
