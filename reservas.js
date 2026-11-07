@@ -56,7 +56,8 @@ function openM(id){
   el.classList.add('on');
 }
 function closeM(id){var el=document.getElementById(id);if(!el)return;el.classList.remove('on');if(id!=='mqr')el.style.zIndex='';}
-document.querySelectorAll('.mover').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m){m.classList.remove('on');if(m.id==='mqrasign')stopQRa();}});});
+// Las ventanas NO se cierran al pulsar el fondo: se cerraban sin querer (por ejemplo, al seleccionar texto
+// en un campo y soltar el ratón fuera) y se perdía lo que se estaba haciendo. Se cierran con ✕ o Cancelar.
 var SCFG={
   anulada:          {lbl:'Anulada',           cls:'bn-red',    icon:'🚫'},
   pendiente:        {lbl:'Pendiente',          cls:'bn-amber',  icon:'⏳'},
