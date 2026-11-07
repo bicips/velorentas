@@ -245,8 +245,31 @@ var lineas=[];
 var _lineaAsigIdx=null; // índice de línea activa para asignación
 var currentResId=null; // ID of reservation being edited (for direct save)
 
+// Una línea = una bici. Las líneas antiguas con varias unidades se separan al abrirlas:
+// cada bici con sus pedales; los extras y la bici asignada se quedan en la primera
+// (así los importes y la asignación no cambian).
+function _unaLineaPorBici(arr){
+  var out=[];
+  (arr||[]).forEach(function(l){
+    var n=Math.max(1,parseInt(l.uds)||1);
+    for(var u=0;u<n;u++){
+      var c=Object.assign({},l);
+      c.uds=1;
+      c.pedales=[(Array.isArray(l.pedales)&&l.pedales[u])?l.pedales[u]:PEDALES_DEF[0]];
+      if(u>0){c.extras=[];delete c.bikeAsig;}
+      else c.extras=(l.extras||[]).slice();
+      out.push(c);
+    }
+  });
+  return out;
+}
+function duplicarLinea(i){
+  var l=lineas[i];if(!l)return;
+  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
+  renderLineas();renderExtrasBici();
+}
 function addLinea(tipo,talla,uds,ppd){
-  lineas.push({tipo:tipo||'',talla:talla||'',uds:uds||1,ppd:ppd||0,extras:[]});
+  lineas.push({tipo:tipo||'',talla:talla||'',uds:1,ppd:ppd||0,extras:[],pedales:[PEDALES_DEF[0]]});
   renderLineas();
   renderExtrasBici();
 }
@@ -290,10 +313,7 @@ function renderLineas(){
     html+='<div style="width:34px;height:34px;background:'+(t.color||'#eee')+'22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(t.icon||'🚲')+'</div>';
     html+='<select data-li="'+i+'" data-f="tipo" style="flex:1;min-width:100px;padding:7px 8px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#111">'+tipoOpts+'</select>';
     html+='<select data-li="'+i+'" data-f="talla" style="width:80px;padding:7px 8px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#111">'+tallaOpts+'</select>';
-    html+='<div style="display:flex;align-items:center;gap:4px">';
-    html+='<span style="font-size:11px;color:#6b7280">Ud.</span>';
-    html+='<input type="number" data-li="'+i+'" data-f="uds" min="1" value="'+l.uds+'" style="width:54px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px;text-align:center"/>';
-    html+='</div>';
+    html+='<span style="font-size:11px;font-weight:700;color:#6b7280;white-space:nowrap">Bici '+(i+1)+'</span>';
     html+='<div style="display:flex;align-items:center;gap:4px">';
     html+='<span style="font-size:11px;color:#6b7280">€/d</span>';
     html+='<input type="number" data-li="'+i+'" data-f="ppd" min="0" step="0.01" value="'+(l.ppd||'')+'" placeholder="0" style="width:68px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px"/>';
@@ -306,6 +326,7 @@ function renderLineas(){
     } else if(l.tipo&&l.talla) {
       html+='<button data-asig-li="'+i+'" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">🔗 Asignar</button>';
     }
+    if(l.tipo&&l.talla)html+='<button type="button" data-dup="'+i+'" title="Añadir otra bici igual" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:6px;padding:5px 9px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">+ Igual</button>';
     html+='<button data-rm="'+i+'" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;line-height:1">✕</button>';
     // Pedales: uno por cada bici de la línea (por defecto, los de serie)
     var nUds=l.uds||1, pTipos=pedalesTipos();
@@ -324,6 +345,9 @@ function renderLineas(){
     html+='</div>';
   });
   el.innerHTML=html;
+  el.querySelectorAll('button[data-dup]').forEach(function(btn){
+    btn.addEventListener('click',function(){duplicarLinea(parseInt(this.getAttribute('data-dup')));});
+  });
   el.querySelectorAll('select[data-ped]').forEach(function(sel){
     sel.addEventListener('change',function(){
       var li=parseInt(this.getAttribute('data-ped')),pu=parseInt(this.getAttribute('data-pu'));
@@ -492,7 +516,7 @@ function openEditRes(id){
       }
     });
   }
-  lineas=rLineas;
+  lineas=_unaLineaPorBici(rLineas);
   _syncAsignadas();
   document.getElementById('r-dinfo').style.display='none';
   document.getElementById('r-fact-btn').style.display=(['confirmada','proxima_entrega','en_preparacion','preparada','transito_furgo','transito_carlos','transito_seur','entregada','alquiler','pendiente_recoger','recogida','finalizada'].indexOf(r.estado)>=0)?'inline-flex':'none';
