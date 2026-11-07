@@ -586,7 +586,9 @@ function saveBikeM(){
   const qrIn=document.getElementById('ab-qr').value.trim().toUpperCase();
   const qr=qrIn||num;
   if(qrIn.indexOf('BCP')===0&&typeof bcpValido==='function'&&!bcpValido(qrIn)){toast('⚠️ Código de etiqueta no válido: debe ser BCP-0001 a BCP-1000');return;}
-  const _dupQr=bikes.find(b=>String(b.id)!==String(document.getElementById('ab-eid').value)&&String(b.qr||'').toUpperCase()===qr.toUpperCase());
+  // Solo las etiquetas BCP tienen que ser únicas. Los códigos antiguos pueden estar repetidos
+  // en bicis ya dadas de alta y eso no debe impedir editar la bici.
+  const _dupQr=(typeof bcpValido==='function'&&bcpValido(qr))?bikes.find(b=>String(b.id)!==String(document.getElementById('ab-eid').value)&&String(b.qr||'').toUpperCase()===qr.toUpperCase()):null;
   if(_dupQr){toast('⚠️ El código '+qr+' ya está en la bici '+_dupQr.numBici);return;}
   const modelo=document.getElementById('ab-mod').value.trim();
   const icono=document.getElementById('ab-ico').value;
