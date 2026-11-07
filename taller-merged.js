@@ -577,8 +577,8 @@ function setABE(v){
 function handleBikePic(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const d=ev.target.result;document.getElementById('ab-ico').value=d;document.getElementById('ab-pic-img').src=d;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');};r.readAsDataURL(f);e.target.value='';}
 function clearBikePic(){document.getElementById('ab-ico').value='';document.getElementById('ab-pic-img').src='';document.getElementById('ab-pic-img').style.display='none';document.getElementById('ab-pic-ph').style.display='block';document.getElementById('ab-pic-del').classList.add('hidden');}
 function setBikePicPreview(src){if(src&&src.startsWith('data:')){document.getElementById('ab-ico').value=src;document.getElementById('ab-pic-img').src=src;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');}else{clearBikePic();}}
-function abReset(){document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
-function openEB(id){const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;abSizes();document.getElementById('ab-tal').value=b.talla;setABE(b.estado||'disponible');openM('madd');}
+function abReset(){window._ebIcono='';window._ebDesdeET=false;document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
+function openEB(id){const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');openM('madd');}
 function saveBikeM(){
   const num=document.getElementById('ab-num').value.trim();
   if(!num){toast('⚠️ El número de bicicleta es obligatorio');return;}
@@ -591,14 +591,18 @@ function saveBikeM(){
   const _dupQr=(typeof bcpValido==='function'&&bcpValido(qr))?bikes.find(b=>String(b.id)!==String(document.getElementById('ab-eid').value)&&String(b.qr||'').toUpperCase()===qr.toUpperCase()):null;
   if(_dupQr){toast('⚠️ El código '+qr+' ya está en la bici '+_dupQr.numBici);return;}
   const modelo=document.getElementById('ab-mod').value.trim();
-  const icono=document.getElementById('ab-ico').value;
+  const _icoForm=document.getElementById('ab-ico').value;
+  // si la bici tenía un icono (emoji) y no se ha puesto foto, se conserva
+  const icono=_icoForm||(document.getElementById('ab-eid').value&&window._ebIcono&&window._ebIcono.indexOf('data:')!==0?window._ebIcono:'');
   const tipo=document.getElementById('ab-tipo').value,talla=document.getElementById('ab-tal').value;
+  if(!tipo||!talla){toast('⚠️ Elige tipo y talla de la bicicleta');return;}
   const estado=document.getElementById('ab-est').value||'disponible';
   const eid=document.getElementById('ab-eid').value;
   function doSave(){
     if(eid){const idx=bikes.findIndex(b=>String(b.id)===String(eid));if(idx>=0)bikes[idx]={...bikes[idx],numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};toast('✅ Bicicleta actualizada');}
     else{bikes.push({id:Date.now(),numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado});toast('✅ Bicicleta añadida');}
     sb();closeM('madd');rDB();if(cv==='bikes')rBV();
+    if(window._ebDesdeET){window._ebDesdeET=false;openM('met');renderET();}
   }
   if(estado==='averiada'&&eid){
     const prevBike=bikes.find(b=>String(b.id)===String(eid));
@@ -788,7 +792,7 @@ function renderETB(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)">
       <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${be.bg};color:${be.txt}">${be.icon} ${be.lbl}</span>
       <div style="flex:1"><strong style="font-size:13px">${esc(b.numBici)}</strong> <span style="font-size:12px;color:var(--gray-400)">${esc(b.modelo||'')} · ${esc(b.talla)}</span></div>
-      <button class="btn btn-secondary btn-xs" onclick="closeM('met');openEB(${b.id})">✏️ Editar</button>
+      <button class="btn btn-secondary btn-xs" onclick="closeM('met');openEB(${typeof b.id==='number'?b.id:"'"+String(b.id).replace(/'/g,'')+"'"});window._ebDesdeET=true">✏️ Editar</button>
       <button class="btn btn-danger btn-xs" onclick="delBikeFromET(${b.id})">🗑️</button>
     </div>`;
   }).join(''):`<div class="empty-state" style="padding:24px"><div class="empty-state-text">No hay bicicletas de este tipo</div></div>`;
