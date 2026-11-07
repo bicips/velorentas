@@ -870,6 +870,11 @@ function assignBike(bike){
     lineas[_lineaAsigIdx].bikeAsig={id:bike.id,num:bike.numBici,tipo:bike.tipo,talla:bike.talla};
     _lineaAsigIdx=null;
     closeM('mmanasign');
+    if(document.getElementById('mqrasign')&&document.getElementById('mqrasign').classList.contains('on')){
+      stopQRa();
+      setTimeout(function(){closeM('mqrasign');},900);
+      toast('✅ '+bike.numBici+' asignada');
+    }
   }
   // FIX: marcar la bici como 'asignada' en la flota (igual que hace el taller)
   if(bike.estado!=='asignada'&&bike.estado!=='averiada'){
@@ -1043,7 +1048,19 @@ function iniciarEscanerQR(){
   }
 }
 
-function openQRAsign(){_lineaAsigIdx=null;
+// Desde "Asignar" de una bici concreta: abrir la cámara para esa línea
+function openQRAsignLinea(){
+  var li=_lineaAsigIdx;
+  closeM('mmanasign');
+  openQRAsign();
+  _lineaAsigIdx=li;
+  var l=lineas[li], info=document.getElementById('qra-linea-info');
+  if(info){
+    if(l){var t=tipos[l.tipo]||{label:l.tipo};info.style.display='block';info.innerHTML='Asignando a <b>Bici '+(li+1)+'</b>: '+esc(t.label)+' talla '+esc(l.talla)+(l.altura?' · '+esc(l.altura)+' cm':'');}
+    else info.style.display='none';
+  }
+}
+function openQRAsign(){_lineaAsigIdx=null;var _inf=document.getElementById('qra-linea-info');if(_inf)_inf.style.display='none';
   document.getElementById('qra-inp').value='';
   document.getElementById('qra-result').innerHTML='';
   qraStatus('','');
@@ -1184,6 +1201,25 @@ function processQRAsign(data){
     return;
   }
 
+  if(bike.estado==='averiada'){
+    if(resEl)resEl.innerHTML+='<div class="avr ko" style="display:block">⚠️ '+esc(bike.numBici)+' está <b>averiada</b> y no se puede asignar.</div>';
+    return;
+  }
+  var yaEn=lineas.findIndex(function(l,ix){return l.bikeAsig&&l.bikeAsig.id===bike.id&&ix!==_lineaAsigIdx;});
+  if(yaEn>=0){
+    if(resEl)resEl.innerHTML+='<div class="avr ko" style="display:block">⚠️ '+esc(bike.numBici)+' ya está asignada a la Bici '+(yaEn+1)+' de esta reserva.</div>';
+    return;
+  }
+  if(_lineaAsigIdx!==null&&lineas[_lineaAsigIdx]){
+    var lx=lineas[_lineaAsigIdx];
+    if(lx.tipo!==bike.tipo||lx.talla!==bike.talla){
+      var tb=tipos[bike.tipo]||{label:bike.tipo},tl2=tipos[lx.tipo]||{label:lx.tipo};
+      if(resEl)resEl.innerHTML+='<div class="avr ko" style="display:block">⚠️ '+esc(bike.numBici)+' es '+esc(tb.label)+' '+esc(bike.talla)+' y la Bici '+(_lineaAsigIdx+1)+' es '+esc(tl2.label)+' '+esc(lx.talla)+'. No coincide.</div>';
+      return;
+    }
+    assignBike(bike);
+    return;
+  }
   var validLineas=lineas.filter(function(l){return l.tipo&&l.talla;});
   if(validLineas.length){
     var matches=validLineas.some(function(l){return l.tipo===bike.tipo&&l.talla===bike.talla;});
