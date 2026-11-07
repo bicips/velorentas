@@ -92,6 +92,7 @@
       <div class="ptitle" id="pgtitle">Panel</div>
     </div>
     <div class="tb-r">
+      <button class="btn bs bsm" id="btn-atras-r" onclick="irAtras()" style="display:none" title="Volver a la página anterior">← Atrás</button>
       <button class="btn bs bsm" onclick="openM('mcfg');loadCfg()">⚙️</button>
       <button class="btn bb bsm" onclick="openNewRes()">+ Nueva reserva</button>
     </div>
@@ -798,7 +799,7 @@
       </div>
     </div>
     <div class="topbar-right">
-      <button class="btn btn-secondary btn-sm" onclick="switchSection('reservas')" style="gap:4px">← Reservas</button>
+      <button class="btn btn-secondary btn-sm" onclick="irAtras()" style="gap:4px" title="Volver a la página anterior">← Atrás</button>
       <button class="qr-btn" onclick="window._qrModoAlta=false;openM('mqr')">
         <span>📷</span> Escanear QR
       </button>
