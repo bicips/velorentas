@@ -151,6 +151,49 @@ function getAvailCount(tipo,talla,ini,fin,excludeId){
   });
   return Math.max(0,total-blqUds-udsOcupadas);
 }
+// ── AVISO DE FALTA DE STOCK (solo informa: nunca cancela, mueve ni reasigna) ──
+// Día a día, para cada modelo+talla de la reserva r: unidades en flota (sin averiadas ni
+// baja) − bloqueos − unidades de TODAS las reservas activas que ocupan ese día (incluida r,
+// con su margen de preparación después del fin). Si sale negativo, faltan bicis ese día.
+// Devuelve [{tipo,label,talla,desde,hasta,faltan}] agrupando días seguidos con la misma falta.
+function _udsDeReserva(r,tipo,talla){
+  if(r.lineas&&r.lineas.length)return r.lineas.reduce(function(s,l){return s+((l.tipo===tipo&&l.talla===talla)?(l.uds||1):0);},0);
+  return (r.tipo===tipo&&r.talla===talla)?(r.uds||1):0;
+}
+function faltaStockReserva(r){
+  if(!r||!r.ini||!r.fin||ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)>=0)return [];
+  var pares={};
+  (r.lineas&&r.lineas.length?r.lineas:[{tipo:r.tipo,talla:r.talla}]).forEach(function(l){if(l.tipo&&l.talla)pares[l.tipo+'|'+l.talla]={tipo:l.tipo,talla:l.talla};});
+  var out=[];
+  Object.keys(pares).forEach(function(k){
+    var tipo=pares[k].tipo,talla=pares[k].talla;
+    var total=bikes.filter(function(b){return b.tipo===tipo&&b.talla===talla&&bikeOperativa(b);}).length;
+    var activas=reservas.filter(function(x){return ESTADOS_LIBRE_GLOBAL.indexOf(x.estado)<0&&x.ini&&x.fin&&_udsDeReserva(x,tipo,talla)>0;});
+    var tramo=null;
+    for(var d=r.ini;d<=r.fin;d=addD(d,1)){
+      var ocup=0;
+      activas.forEach(function(x){var g=(x.prepDias!=null?x.prepDias:cfg.gapDays);if(d>=x.ini&&d<=addD(x.fin,g))ocup+=_udsDeReserva(x,tipo,talla);});
+      bloqueos.forEach(function(b){if(b.tipo===tipo&&b.talla===talla&&d>=b.ini&&d<=addD(b.fin,cfg.gapDays))ocup+=(b.uds||1);});
+      var falta=ocup-total;
+      if(falta>0){
+        if(tramo&&tramo.faltan===falta&&addD(tramo.hasta,1)===d)tramo.hasta=d;
+        else{tramo={tipo:tipo,label:(tipos[tipo]||{label:tipo}).label,talla:talla,desde:d,hasta:d,faltan:falta};out.push(tramo);}
+      } else tramo=null;
+    }
+  });
+  return out;
+}
+function textoFaltaStock(f){
+  return f.label+' talla '+f.talla+': faltan '+f.faltan+' bici'+(f.faltan>1?'s':'')+' '+(f.desde===f.hasta?'el '+fmtD(f.desde):'del '+fmtD(f.desde)+' al '+fmtD(f.hasta));
+}
+function htmlAvisoFaltaStock(faltas,titulo){
+  if(!faltas||!faltas.length)return '';
+  return '<div class="aviso-falta-stock" style="background:#fef2f2;border:2px solid #fca5a5;border-radius:10px;padding:10px 12px;margin-bottom:10px;color:#991b1b;font-size:13px">'
+    +'<div style="font-weight:800;margin-bottom:4px">🚨 '+(titulo||'Esta reserva no tiene stock suficiente')+'</div>'
+    +faltas.map(function(f){return '<div>• '+esc(textoFaltaStock(f))+'</div>';}).join('')
+    +'<div style="font-size:11.5px;color:#7f1d1d;margin-top:4px">Solo es un aviso: decide tú si cambias fechas, modelo o talla.</div>'
+    +'</div>';
+}
 function getAvailBikes(tipo,talla,ini,fin,excludeId){
   var niG=addD(ini,-cfg.gapDays); // usado solo para bloqueos manuales (mantenimiento)
   var blqUds=0;
@@ -1442,7 +1485,7 @@ function renderRes(){
       +'<div class="trow-info">'
         +'<div class="trow-main">'
           +esc(r.cliente)
-          +(r.sinStock?' <span title="'+esc(r.sinStock.detalle||'')+'" style="font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-weight:700">SIN STOCK</span>':'')
+          +(function(){var fs=faltaStockReserva(r);return fs.length?' <span title="'+esc(fs.map(textoFaltaStock).join(' · '))+'" style="font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-weight:700">SIN STOCK</span>':'';})()
           +(r.origen==='publico'?' <span style="font-size:10px;background:rgba(20,184,166,.1);color:var(--te600);padding:1px 6px;border-radius:4px">Web</span>':'')
           +(isHoy?' <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;font-weight:700">ENTRADA HOY</span>':'')
           +(isEntrando?' <span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:4px;font-weight:700">SALIDA HOY</span>':'')
@@ -1581,6 +1624,10 @@ function abrirTransito(resId) {
 function changeStatus(id,st,extra){
   var r=reservas.find(function(x){return x.id===id;});
   if(!r)return;
+  if(st==='confirmada'&&r.estado!=='confirmada'){
+    var fsC=faltaStockReserva(r);
+    if(fsC.length&&!confirm('🚨 Esta reserva no tiene stock suficiente:\n\n'+fsC.map(textoFaltaStock).join('\n')+'\n\n¿Confirmarla igualmente?'))return;
+  }
   r.estado=st;
   if(extra) Object.assign(r,extra);
   // FIX: liberar bicis en CUALQUIER estado que libera stock (recogida, cancelada, anulada, finalizada)
@@ -2999,6 +3046,7 @@ function togglePreparar(resId){
         +'<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+esc(cliente)+'</div>'
         +'<div style="color:#6b7280">📅 '+ini+' &nbsp;·&nbsp; 🚲 '+esc(modelo)+'</div>'
       +'</div>'
+      +htmlAvisoFaltaStock(faltaStockReserva(r))
       +'<div style="display:flex;gap:8px;justify-content:flex-end">'
         +'<button onclick="document.getElementById(\'m-confirm-prep\').remove()" style="padding:9px 18px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:#f9fafb;font-weight:600">Cancelar</button>'
         +'<button id="btn-confirm-prep" style="padding:9px 18px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✅ Confirmar</button>'
