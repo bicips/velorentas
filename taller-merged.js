@@ -228,7 +228,7 @@ function renderBL(){
 // Check if bike has pending/active reservations — reads shared DB cache
 function getReservasActivasBike(bikeId, numBici, talla, tipo){
   // FIX: usa la global reservas (cargada por initApp) en lugar de _sharedReservas
-  var today=new Date().toISOString().slice(0,10);
+  var today=(typeof todayS==='function')?todayS():new Date().toISOString().slice(0,10); // fecha local
   return reservas.filter(function(r){
     if(r.estado==='cancelada'||r.estado==='finalizada')return false;
     // Check by bikeId or bikesAsig or tipo+talla match

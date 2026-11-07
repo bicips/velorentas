@@ -28,10 +28,10 @@ function sC(){DB.saveConfig('cfg',cfg).catch(function(e){console.error('sC',e);}
 function sBikes(){DB.saveBicis(bikes).catch(function(e){console.error('sBikes',e);});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function toD(s){return new Date(s+'T00:00:00');}
-function isoD(d){return d.toISOString().slice(0,10);}
+function isoD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');} // fecha LOCAL (antes usaba UTC y en España daba un día menos)
 function addD(d,n){var r=toD(d);r.setDate(r.getDate()+n);return isoD(r);}
 function diffD(a,b){return Math.round((toD(b)-toD(a))/86400000);}
-function todayS(){return new Date().toISOString().slice(0,10);}
+function todayS(){return isoD(new Date());}
 function fmtD(d){if(!d)return '-';return toD(d).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtDs(d){if(!d)return '-';return toD(d).toLocaleDateString('es-ES',{day:'numeric',month:'short'});}
 function inRange(d,a,b){return d>=a&&d<=b;}
@@ -590,7 +590,7 @@ function exportarModelosCSV(){
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url;
-  a.download='modelos_velorentas_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.download='modelos_velorentas_'+todayS()+'.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1186,7 +1186,7 @@ function renderRes(){
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
     if(resF!=='all'){
-      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=isoD(_manana);
       if(resF==='proxima_entrega'){
         if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
@@ -1291,7 +1291,7 @@ function selAll(){
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
     if(resF!=='all'){
-      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=isoD(_manana);
       if(resF==='proxima_entrega'){
         if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
@@ -1963,7 +1963,7 @@ function renderInformes(){
   var sg=document.getElementById('inf-stats');if(sg)sg.innerHTML=[{c:'c-teal',i:'📊',v:resTotales,l:'Reservas totales'},{c:'c-green',i:'🔄',v:resActivas,l:'Activas hoy'},{c:'c-blue',i:'💶',v:ingMes.toFixed(0)+cfg.currency,l:'Ingresos mes'},{c:'c-purple',i:'💰',v:ingTotal.toFixed(0)+cfg.currency,l:'Ingresos totales'}].map(function(s){return '<div class="scard '+s.c+'"><div class="sico">'+s.i+'</div><div class="sval">'+s.v+'</div><div class="slbl">'+s.l+'</div></div>';}).join('');
   var ocuHtml='';Object.keys(tipos).forEach(function(k){var t=tipos[k],total=bikes.filter(function(b){return b.tipo===k&&b.estado==='disponible';}).length;if(!total)return;var dias=reservas.filter(function(r){return r.tipo===k&&r.estado!=='cancelada';}).reduce(function(s,r){return s+r.dias;},0),pct=Math.min(100,Math.round(dias/(total*30)*100));ocuHtml+='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px"><span style="font-weight:600">'+t.icon+' '+t.label+'</span><span style="color:var(--g500)">'+pct+'% - '+total+' bicis</span></div><div style="background:var(--g100);border-radius:999px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:8px;background:'+t.color+';border-radius:999px;transition:width .4s"></div></div></div>';});
   var oi=document.getElementById('inf-ocu');if(oi)oi.innerHTML=ocuHtml||emptyHTML('📊','Sin datos');
-  var months=[],now=new Date();for(var i=5;i>=0;i--){var d=new Date(now);d.setMonth(d.getMonth()-i);months.push(d.toISOString().slice(0,7));}
+  var months=[],now=new Date();for(var i=5;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(isoD(d).slice(0,7));}
   var maxIng=1;months.forEach(function(m){var ing=reservas.filter(function(r){return r.ini.slice(0,7)===m&&r.estado!=='cancelada';}).reduce(function(s,r){return s+(r.total||0);},0);if(ing>maxIng)maxIng=ing;});
   var ingHtml='<div style="display:flex;gap:8px;align-items:flex-end;height:120px;padding-bottom:4px">';months.forEach(function(m){var ing=reservas.filter(function(r){return r.ini.slice(0,7)===m&&r.estado!=='cancelada';}).reduce(function(s,r){return s+(r.total||0);},0),pct=Math.round((ing/maxIng)*100),label=new Date(m+'-15').toLocaleDateString('es-ES',{month:'short'});ingHtml+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:10px;color:var(--g500);font-weight:600">'+ing.toFixed(0)+cfg.currency+'</div><div style="width:100%;background:'+(m===mes?'var(--te600)':'var(--b500)')+';border-radius:4px 4px 0 0;height:'+Math.max(4,pct)+'%;min-height:4px;transition:height .4s"></div><div style="font-size:10px;color:var(--g400)">'+label+'</div></div>';});ingHtml+='</div>';
   var ii=document.getElementById('inf-ing');if(ii)ii.innerHTML=ingHtml;
@@ -2550,7 +2550,7 @@ function getTableRows(){
   var rows=[];
   reservas.forEach(function(r){
     if(resF!=='all'){
-      var _m2=new Date();_m2.setDate(_m2.getDate()+1);var _ms2=_m2.toISOString().slice(0,10);
+      var _m2=new Date();_m2.setDate(_m2.getDate()+1);var _ms2=isoD(_m2);
       if(resF==='proxima_entrega'){if(r.ini<_ms2||['cancelada','anulada','recogida','alquiler','entregada','pendiente_recoger'].indexOf(r.estado)>=0)return;}
       else if(resF==='transito'){if(['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return;}
       else{if(r.estado!==resF)return;}
@@ -2670,7 +2670,7 @@ function renderTablaRes(){
   tbody.innerHTML=html;
 
   var fc=document.getElementById('res-table-count');
-  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return (resF==='all'||(resF==='proxima_entrega'?(r.estado==='confirmada'&&r.ini>=new Date(new Date().setDate(new Date().getDate()+1)).toISOString().slice(0,10)):(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF)));}).length+' reservas';
+  if(fc)fc.textContent=rows.length+' fila'+(rows.length!==1?'s':'')+' · '+reservas.filter(function(r){return (resF==='all'||(resF==='proxima_entrega'?(r.estado==='confirmada'&&r.ini>=isoD(new Date(new Date().setDate(new Date().getDate()+1)))):(resF==='transito'?['transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0:r.estado===resF)));}).length+' reservas';
 }
 
 function exportTablaCSV(){
@@ -2973,7 +2973,7 @@ function imprimirReservas(){
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
     if(resF!=='all'){
-      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=isoD(_manana);
       if(resF==='proxima_entrega'){
         if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
@@ -3168,7 +3168,7 @@ function ejecutarImpresion(){
   var fechaF=getFechaFilter();
   var list=reservas.filter(function(r){
     if(resF!=='all'){
-      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=_manana.toISOString().slice(0,10);
+      var _manana=new Date();_manana.setDate(_manana.getDate()+1);var _ms=isoD(_manana);
       if(resF==='proxima_entrega'){
         if(r.estado!=='confirmada'||r.ini<_ms)return false;
       } else if(resF==='transito'){
@@ -3320,8 +3320,8 @@ function generarDemoData(){
     var dur=Math.floor(Math.random()*18)+3; // 3-20 days
     var iniD=new Date(y,0,startDay);
     var finD=new Date(y,0,startDay+dur);
-    var ini=iniD.toISOString().slice(0,10);
-    var fin=finD.toISOString().slice(0,10);
+    var ini=isoD(iniD);
+    var fin=isoD(finD);
     // Pick a random available bike
     var availBikes=bikes.filter(function(b){return bikeOperativa(b);});
     if(!availBikes.length)continue;
