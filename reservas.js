@@ -1048,6 +1048,16 @@ function iniciarEscanerQR(){
   }
 }
 
+// Reserva activa (no recogida/cancelada/anulada/finalizada) que ya tiene asignada esta bici.
+// Misma regla que la lista manual: ocupada hasta que esa reserva termine.
+function _reservaQueTieneBici(bikeId,excludeId){
+  return reservas.find(function(r){
+    if(ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)>=0)return false;
+    if(excludeId&&r.id===excludeId)return false;
+    if(r.lineas&&r.lineas.some(function(l){return l.bikeAsig&&l.bikeAsig.id===bikeId;}))return true;
+    return !!(r.bikesAsig&&r.bikesAsig.some(function(a){return a.id===bikeId;}));
+  })||null;
+}
 // Desde "Asignar" de una bici concreta: abrir la cámara para esa línea
 function openQRAsignLinea(){
   var li=_lineaAsigIdx;
@@ -1203,6 +1213,13 @@ function processQRAsign(data){
 
   if(bike.estado==='averiada'){
     if(resEl)resEl.innerHTML+='<div class="avr ko" style="display:block">⚠️ '+esc(bike.numBici)+' está <b>averiada</b> y no se puede asignar.</div>';
+    return;
+  }
+  var _eidQ=document.getElementById('r-eid').value,_eidNQ=_eidQ?parseInt(_eidQ):null;
+  var otraRes=_reservaQueTieneBici(bike.id,_eidNQ);
+  if(otraRes){
+    var sc=SCFG[otraRes.estado]||{lbl:otraRes.estado};
+    if(resEl)resEl.innerHTML+='<div class="avr ko" style="display:block">⚠️ '+esc(bike.numBici)+' ya está asignada a <b>otra reserva</b>: '+esc(otraRes.cliente||'')+' ('+fmtD(otraRes.ini)+' – '+fmtD(otraRes.fin)+', '+esc(sc.lbl)+').<br><small>Quítala de esa reserva primero, o escanea otra bici.</small></div>';
     return;
   }
   var yaEn=lineas.findIndex(function(l,ix){return l.bikeAsig&&l.bikeAsig.id===bike.id&&ix!==_lineaAsigIdx;});
