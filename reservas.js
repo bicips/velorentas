@@ -1,6 +1,9 @@
 // DATA
 var TIPOS_DEF={urbana:{label:'MTB',icon:'🚲',color:'#3b82f6',sizes:['XS','S','M','L','XL']},montana:{label:'Powerfly',icon:'🚵',color:'#22c55e',sizes:['S','M','L','XL']},electrica:{label:'Checkpoint',icon:'⚡',color:'#f59e0b',sizes:['S','M','L']},cargo:{label:'Cargo',icon:'📦',color:'#8b5cf6',sizes:['Único','L','XL']},infantil:{label:'Infantil',icon:'🛴',color:'#ec4899',sizes:['12"','16"','20"','24"']},gravel:{label:'Gravel',icon:'🏔️',color:'#06b6d4',sizes:['XS','S','M','L','XL']}};
 var BIKES_DEF=[{id:1,numBici:'B-001',tipo:'urbana',talla:'M',modelo:'Trek Marlin 7',estado:'disponible'},{id:2,numBici:'B-002',tipo:'urbana',talla:'L',modelo:'Trek Marlin 7',estado:'disponible'},{id:3,numBici:'B-003',tipo:'montana',talla:'M',modelo:'Powerfly 5',estado:'disponible'},{id:4,numBici:'B-004',tipo:'electrica',talla:'M',modelo:'Checkpoint SL',estado:'disponible'},{id:5,numBici:'B-005',tipo:'infantil',talla:'20"',modelo:'Trek Precaliber',estado:'disponible'}];
+// Tipos de pedal (el primero es el de serie y el valor por defecto)
+var PEDALES_DEF=['Planos','Automáticos SPD','Crankbrothers','Mixtos','Con calapiés','Del cliente'];
+function pedalesTipos(){return (cfg&&cfg.pedales&&cfg.pedales.length)?cfg.pedales:PEDALES_DEF;}
 var CFG_DEF={minDays:3,gapDays:6,currency:'€',bizName:'VeloRentas',cif:'',addr:'',phone:'',iva:21,fprefix:'F-2024-'};
 // ── Compatibilidad localStorage (usado para prep/print prefs) ──
 function ld(k,d){try{var s=localStorage.getItem(k);return s?JSON.parse(s):d;}catch(e){return d;}}
@@ -304,9 +307,32 @@ function renderLineas(){
       html+='<button data-asig-li="'+i+'" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:700;flex-shrink:0;white-space:nowrap">🔗 Asignar</button>';
     }
     html+='<button data-rm="'+i+'" style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700;flex-shrink:0;line-height:1">✕</button>';
+    // Pedales: uno por cada bici de la línea (por defecto, los de serie)
+    var nUds=l.uds||1, pTipos=pedalesTipos();
+    if(!Array.isArray(l.pedales))l.pedales=[];
+    while(l.pedales.length<nUds)l.pedales.push(pTipos[0]);
+    if(l.pedales.length>nUds)l.pedales.length=nUds;
+    html+='<div style="flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:42px">';
+    html+='<span style="font-size:11px;color:#6b7280;font-weight:700">Pedales</span>';
+    for(var u=0;u<nUds;u++){
+      var pOpts=pTipos.map(function(pt){return '<option'+(l.pedales[u]===pt?' selected':'')+'>'+esc(pt)+'</option>';}).join('');
+      if(pTipos.indexOf(l.pedales[u])<0)pOpts+='<option selected>'+esc(l.pedales[u])+'</option>';
+      html+=(nUds>1?'<span style="font-size:11px;color:#9ca3af">Bici '+(u+1)+'</span>':'')
+        +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:'+(l.pedales[u]===pTipos[0]?'#fff':'#fef3c7')+';color:#111">'+pOpts+'</select>';
+    }
+    html+='</div>';
     html+='</div>';
   });
   el.innerHTML=html;
+  el.querySelectorAll('select[data-ped]').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var li=parseInt(this.getAttribute('data-ped')),pu=parseInt(this.getAttribute('data-pu'));
+      if(!lineas[li])return;
+      if(!Array.isArray(lineas[li].pedales))lineas[li].pedales=[];
+      lineas[li].pedales[pu]=this.value;
+      this.style.background=(this.value===pedalesTipos()[0]?'#fff':'#fef3c7');
+    });
+  });
 
   // Attach events via delegation on the container
   el.querySelectorAll('select[data-li],input[data-li]').forEach(function(inp){
@@ -447,7 +473,7 @@ function openEditRes(id){
   document.getElementById('r-lugar-fin').value=r.lugarFin||'Santiago de Compostela';
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
   // Cargar líneas primero para poder emparejar _lineaIdx
-  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){return Object.assign({},l);}):
+  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();return c;}):
     [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
   // Usar lineas[i].bikeAsig directamente si ya viene de Supabase
   // Solo reconstruir desde bikesAsig para reservas antiguas sin bikeAsig en líneas
@@ -2069,6 +2095,7 @@ function _generarHojasBici(listaFiltrada) {
   var paginas = [];
   lista.forEach(function(r){
     var lineas = r.lineas&&r.lineas.length ? r.lineas : [{tipo:r.tipo,talla:r.talla,uds:r.uds||1,extras:r.extras||[]}];
+    var totalBicis = lineas.reduce(function(s,l){return s+(l.uds||1);},0), nBici = 0;
     lineas.forEach(function(l){
       var uds = l.uds||1;
       for(var u=0;u<uds;u++){
@@ -2076,6 +2103,8 @@ function _generarHojasBici(listaFiltrada) {
         // FIX: usar l.bikeAsig directamente (fuente de verdad por línea), no filtrar por tipo+talla
         var bikeNum = l.bikeAsig ? l.bikeAsig.num : "-";
         var extrasLinea = l.extras&&l.extras.length ? l.extras.slice() : [];
+        nBici++;
+        var pedal = (Array.isArray(l.pedales)&&l.pedales[u]) ? l.pedales[u] : PEDALES_DEF[0];
         var fechaIni = r.ini ? new Date(r.ini+"T00:00:00") : null;
         var fechaEntrega = fechaIni ? new Date(fechaIni.getFullYear(), fechaIni.getMonth(), fechaIni.getDate()-1) : null; // siempre el día antes del inicio (por calendario, no restando 24 h)
         paginas.push({resId:r.id,cliente:r.cliente||"",tel:r.tel||"",
@@ -2084,11 +2113,11 @@ function _generarHojasBici(listaFiltrada) {
           fechaIni:fechaIni?fechaIni.toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           fechaFin:r.fin?new Date(r.fin+"T00:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           dias:r.dias||"",modelo:t.label,icon:t.icon||"",talla:l.talla||r.talla||"",
-          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||""});
+          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||"",pedal:pedal,nBici:nBici,totalBicis:totalBicis});
       }
     });
   });
-  var css="*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;color:#111}.hoja{width:190mm;margin:10mm auto;border:2px solid #111;border-radius:4px;overflow:hidden;page-break-after:always}.hoja:last-child{page-break-after:auto}.cab{display:flex;justify-content:space-between;align-items:center;padding:6mm 8mm;border-bottom:2px solid #111}.cab img{height:20mm;width:auto;max-width:80mm;object-fit:contain}.cab-qr{display:flex;flex-direction:column;align-items:center;gap:2px}.qr-lbl{font-size:9px;font-weight:700;color:#374151;text-align:center}.body{padding:4mm 8mm 2mm}.campo{border:1.5px solid #374151;border-radius:4px;margin-bottom:4px;overflow:hidden}.lbl{background:#1f2937;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px}.val{padding:5px 10px;font-size:14px;font-weight:800;min-height:22px}.val.grande{font-size:18px;font-weight:900}.val.alerta{font-size:15px;font-weight:900;color:#b45309;background:#fffbeb}.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px}.g2 .campo,.g3 .campo{margin-bottom:0}.ext-val{padding:5px 10px;display:flex;flex-wrap:wrap;gap:4px;min-height:22px}.tag{background:#fef3c7;border:1px solid #fcd34d;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700;color:#92400e}.obs-val{padding:5px 10px;min-height:18mm;font-size:13px}.pie{border-top:2px solid #111;padding:4mm 8mm;display:flex;justify-content:space-between;align-items:flex-end;background:#f9fafb}.pie-txt{font-size:10px;color:#6b7280}.firma{border-top:1px solid #374151;width:65mm;text-align:center;padding-top:3px;font-size:10px;color:#6b7280;font-weight:700}@media print{@page{margin:8mm;size:A4 portrait}body{margin:0}.hoja{margin:0 auto;border-radius:0}}";
+  var css=".ped{display:flex;align-items:stretch;border:3px solid #111;border-radius:4px;margin-top:6px;overflow:hidden}.ped-l{background:#111;color:#fff;font-weight:900;font-size:14px;letter-spacing:2px;padding:10px 14px;display:flex;align-items:center}.ped-v{flex:1;font-size:28px;font-weight:900;padding:8px 14px;display:flex;align-items:center}.ped-c{font-size:30px;padding:4px 14px;display:flex;align-items:center}.bxn{border:2px solid #111;border-radius:4px;padding:4px 12px;text-align:center;margin-left:auto;margin-right:12px}.bxn-l{font-size:10px;font-weight:700}.bxn-v{font-size:24px;font-weight:900;line-height:1.1}*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;color:#111}.hoja{width:190mm;margin:10mm auto;border:2px solid #111;border-radius:4px;overflow:hidden;page-break-after:always}.hoja:last-child{page-break-after:auto}.cab{display:flex;justify-content:space-between;align-items:center;padding:6mm 8mm;border-bottom:2px solid #111}.cab img{height:20mm;width:auto;max-width:80mm;object-fit:contain}.cab-qr{display:flex;flex-direction:column;align-items:center;gap:2px}.qr-lbl{font-size:9px;font-weight:700;color:#374151;text-align:center}.body{padding:4mm 8mm 2mm}.campo{border:1.5px solid #374151;border-radius:4px;margin-bottom:4px;overflow:hidden}.lbl{background:#1f2937;color:#fff;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px}.val{padding:5px 10px;font-size:14px;font-weight:800;min-height:22px}.val.grande{font-size:18px;font-weight:900}.val.alerta{font-size:15px;font-weight:900;color:#b45309;background:#fffbeb}.g2{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px}.g2 .campo,.g3 .campo{margin-bottom:0}.ext-val{padding:5px 10px;display:flex;flex-wrap:wrap;gap:4px;min-height:22px}.tag{background:#fef3c7;border:1px solid #fcd34d;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700;color:#92400e}.obs-val{padding:5px 10px;min-height:18mm;font-size:13px}.pie{border-top:2px solid #111;padding:4mm 8mm;display:flex;justify-content:space-between;align-items:flex-end;background:#f9fafb}.pie-txt{font-size:10px;color:#6b7280}.firma{border-top:1px solid #374151;width:65mm;text-align:center;padding-top:3px;font-size:10px;color:#6b7280;font-weight:700}@media print{@page{margin:8mm;size:A4 portrait}body{margin:0}.hoja{margin:0 auto;border-radius:0}}";
   function xe(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
   var hojas="";
   paginas.forEach(function(p,i){
@@ -2099,6 +2128,7 @@ function _generarHojasBici(listaFiltrada) {
     hojas+="<div class=\"hoja\">"
       // Cabecera: logo izq, QR der
       +"<div class=\"cab\"><img src=\""+LOGO+"\" alt=\"Bicips\"/>"
+      +"<div class=\"bxn\"><div class=\"bxn-l\">BICI</div><div class=\"bxn-v\">"+p.nBici+" de "+p.totalBicis+"</div></div>"
       +"<div class=\"cab-qr\"><div id=\"qr"+i+"\"></div><div class=\"qr-lbl\">Reserva #"+p.resId+"</div></div></div>"
       +"<div class=\"body\">"
       // Fila 1: Lugar inicio (izq) + Entregar antes de (der, doble alto)
@@ -2124,6 +2154,7 @@ function _generarHojasBici(listaFiltrada) {
       +"<div class=\"campo\"><div class=\"lbl\">Extras y accesorios</div><div class=\"ext-val\">"+extHtml+"</div></div>"
       // Fila 7: Observaciones
       +"<div class=\"campo\"><div class=\"lbl\">Observaciones</div><div class=\"obs-val\">"+xe(p.notas)+"</div></div>"
+      +"<div class=\"ped\"><div class=\"ped-l\">PEDALES</div><div class=\"ped-v\">"+xe(String(p.pedal||"").toUpperCase())+"</div><div class=\"ped-c\">&#9744;</div></div>"
       +"</div><div class=\"pie\"><div class=\"pie-txt\">Impreso: "+hoyStr+"</div><div class=\"firma\">Firma transportista</div></div>"
       +"</div>";
   });
