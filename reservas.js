@@ -248,6 +248,13 @@ var currentResId=null; // ID of reservation being edited (for direct save)
 // Una línea = una bici. Las líneas antiguas con varias unidades se separan al abrirlas:
 // cada bici con sus pedales; los extras y la bici asignada se quedan en la primera
 // (así los importes y la asignación no cambian).
+var _extrasAbierto=null; // línea con el desplegable de extras abierto (para no cerrarlo al marcar)
+document.addEventListener('click',function(e){
+  if(_extrasAbierto===null)return;
+  if(e.target.closest&&e.target.closest('details[data-xdet]'))return;
+  _extrasAbierto=null;
+  document.querySelectorAll('#r-lineas details[data-xdet]').forEach(function(d){d.open=false;});
+});
 function _unaLineaPorBici(arr){
   var out=[];
   (arr||[]).forEach(function(l){
@@ -341,26 +348,50 @@ function renderLineas(){
       html+=(nUds>1?'<span style="font-size:11px;color:#9ca3af">Bici '+(u+1)+'</span>':'')
         +'<select data-ped="'+i+'" data-pu="'+u+'" style="padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;background:'+(l.pedales[u]===pTipos[0]?'#fff':'#fef3c7')+';color:#111">'+pOpts+'</select>';
     }
-    // Extras de esta bici, al lado de los pedales (pulsar para poner/quitar)
-    html+='<span style="font-size:11px;color:#6b7280;font-weight:700;margin-left:8px">Extras</span>';
+    // Extras de esta bici, al lado de los pedales: desplegable con casillas + etiquetas de los elegidos
     var exL=l.extras||[];
+    html+='<details data-xdet="'+i+'"'+(_extrasAbierto===i?' open':'')+' style="position:relative;margin-left:8px">';
+    html+='<summary style="list-style:none;cursor:pointer;padding:5px 10px;font-size:12px;font-weight:700;border:1px solid #e5e7eb;border-radius:6px;background:#fff;color:#374151;user-select:none">Extras'+(exL.length?' ('+exL.length+')':'')+' ▾</summary>';
+    html+='<div style="position:absolute;z-index:50;top:calc(100% + 4px);left:0;min-width:230px;max-height:260px;overflow:auto;background:#fff;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);padding:6px">';
     catalogoExtras.forEach(function(ce){
-      var ya=exL.find(function(x){return x.id===ce.id;});
-      html+='<button type="button" data-xli="'+i+'" data-xid="'+ce.id+'" title="'+esc(ce.nombre)+(ce.precio?' (+'+ce.precio+cfg.currency+')':'')+'" style="display:inline-flex;align-items:center;gap:3px;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid '+(ya?'#0d9488':'#e5e7eb')+';background:'+(ya?'#ccfbf1':'#fff')+';color:'+(ya?'#0f766e':'#6b7280')+'">'+(ce.icono||'')+' '+esc(ce.nombre)+(ya&&(ya.qty||1)>1?' ×'+ya.qty:'')+'</button>';
+      var ya=exL.some(function(x){return x.id===ce.id;});
+      html+='<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;background:'+(ya?'#f0fdfa':'transparent')+'">'
+        +'<input type="checkbox" data-xli="'+i+'" data-xid="'+ce.id+'"'+(ya?' checked':'')+' style="width:16px;height:16px"/>'
+        +'<span>'+(ce.icono||'')+'</span><span style="flex:1">'+esc(ce.nombre)+'</span>'
+        +(ce.precio?'<span style="color:#9ca3af;font-size:12px">+'+ce.precio+cfg.currency+'</span>':'')+'</label>';
     });
+    html+='</div></details>';
+    if(exL.length){
+      exL.forEach(function(e){
+        html+='<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#ccfbf1;color:#0f766e;border:1px solid #5eead4">'+(e.icono||'')+' '+esc(e.nombre)+((e.qty||1)>1?' ×'+e.qty:'')
+          +'<button type="button" data-xrm="'+i+'" data-xid="'+e.id+'" title="Quitar" style="border:none;background:transparent;color:#0f766e;cursor:pointer;font-size:13px;font-weight:900;padding:0 4px">✕</button></span>';
+      });
+    } else {
+      html+='<span style="font-size:12px;color:#9ca3af;font-style:italic">Sin extras</span>';
+    }
     html+='</div>';
     html+='</div>';
   });
   el.innerHTML=html;
-  el.querySelectorAll('button[data-xli]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var li=parseInt(this.getAttribute('data-xli')),xid=parseInt(this.getAttribute('data-xid'));
-      if(!lineas[li])return;
-      if(!lineas[li].extras)lineas[li].extras=[];
-      var k=lineas[li].extras.findIndex(function(x){return x.id===xid;});
-      if(k>=0)lineas[li].extras.splice(k,1);
-      else{var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1});}
-      renderLineas();if(typeof recalcTotal==='function')recalcTotal();
+  function _toggleExtra(li,xid,poner){
+    if(!lineas[li])return;
+    if(!lineas[li].extras)lineas[li].extras=[];
+    var k=lineas[li].extras.findIndex(function(x){return x.id===xid;});
+    if(!poner&&k>=0)lineas[li].extras.splice(k,1);
+    else if(poner&&k<0){var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1});}
+    renderLineas();if(typeof recalcTotal==='function')recalcTotal();
+  }
+  el.querySelectorAll('input[data-xli]').forEach(function(cb){
+    cb.addEventListener('change',function(){_extrasAbierto=parseInt(this.getAttribute('data-xli'));_toggleExtra(_extrasAbierto,parseInt(this.getAttribute('data-xid')),this.checked);});
+  });
+  el.querySelectorAll('button[data-xrm]').forEach(function(btn){
+    btn.addEventListener('click',function(){_toggleExtra(parseInt(this.getAttribute('data-xrm')),parseInt(this.getAttribute('data-xid')),false);});
+  });
+  el.querySelectorAll('details[data-xdet]').forEach(function(d){
+    d.addEventListener('toggle',function(){
+      var li=parseInt(this.getAttribute('data-xdet'));
+      if(this.open){_extrasAbierto=li;el.querySelectorAll('details[data-xdet]').forEach(function(o){if(o!==d)o.open=false;});}
+      else if(_extrasAbierto===li)_extrasAbierto=null;
     });
   });
   el.querySelectorAll('button[data-dup]').forEach(function(btn){
