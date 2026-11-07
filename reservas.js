@@ -598,9 +598,11 @@ function saveTipos(){
   DB.saveConfig('tipos', tipos).catch(function(e){ console.error('saveTipos', e); });
 }
 
-function openModelos(){
-  renderModelosList();
-  openM('mmodelos');
+// Tipos y modelos: una sola ventana (la del taller, V21) con datos del modelo y sus bicis
+function openModelos(k){
+  if(typeof renderET!=='function')return;
+  if(k)etc=k;
+  openM('met');renderET();
 }
 
 function renderModelosList(){
@@ -665,10 +667,11 @@ function saveModelo(){
   if(!sizes.length){toast('Añade al menos una talla');return;}
   if(!keyOrig && tipos[key]){toast('Ya existe un modelo con esa clave');return;}
 
-  tipos[key]={label:label,icon:icon,color:color,sizes:sizes};
+  tipos[key]=Object.assign({},tipos[key]||{},{label:label,icon:icon,color:color,sizes:sizes});
   saveTipos();
   closeM('mmodelo-edit');
   renderModelosList();
+  if(document.getElementById('met')&&document.getElementById('met').classList.contains('on')&&typeof renderET==='function'){etc=key;renderET();}
   initFlotaSelects();
   toast('✅ Modelo guardado');
 }
@@ -3706,12 +3709,12 @@ var PAG_NUM=[
   ['mres','V01','Nueva / editar reserva'],['mdetail','V02','Detalle de reserva'],['mmanasign','V03','Asignar bicicleta (lista)'],['mqrasign','V04','Escanear QR (reserva)'],
   ['m-transito','V05','Seleccionar transporte'],['mday','V06','Reservas del día'],['mfact','V07','Factura'],['msend','V08','Enviar confirmación'],
   ['mcli','V09','Historial del cliente'],['m-extras-cat','V10','Catálogo de extras'],['m-print-sel','V11','Imprimir lista'],['m-import-res','V12','Importar reservas'],
-  ['mbloqueo','V13','Bloquear bicicletas'],['mmodelos','V14','Gestión de tipos y modelos'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
+  ['mbloqueo','V13','Bloquear bicicletas'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
   ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (preparar)'],
-  ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos (taller)'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
+  ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
   ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
-var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12','nav-recogida':'V18','nav-bicis-tipo':'V21','nav-modelos':'V14','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
+var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12','nav-recogida':'V18','nav-modelos':'V21','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
 function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}
 function aplicarNumerosPagina(){
   if(!document.getElementById('pagnum-css')){
@@ -3761,7 +3764,8 @@ function aplicarGruposMenu(){
   if(!document.getElementById('menu-grp-css')){
     var st=document.createElement('style');st.id='menu-grp-css';
     st.textContent='.sb-sec-btn{display:flex;width:100%;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left}'
-      +'.sb-sec-btn:hover{opacity:.85}.sb-chev{font-size:10px;transition:transform .15s}'
+      +'.sb-nav .sb-sec-btn{font-size:12.5px;font-weight:800;color:#e2e8f0;letter-spacing:.7px;padding:14px 10px 6px;margin-top:6px}'
+      +'.sb-nav .sb-sec-btn:hover{color:#fff}.sb-chev{font-size:13px;color:#94a3b8;transition:transform .15s}'
       +'.sb-grp.plegado .sb-chev{transform:rotate(-90deg)}.sb-grp.plegado .sb-grp-items{display:none}'
       +'.sb-grp-cfg{margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:4px}';
     document.head.appendChild(st);
