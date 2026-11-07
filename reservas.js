@@ -3711,7 +3711,7 @@ var PAG_NUM=[
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos (taller)'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
   ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
-var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12'};
+var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12','nav-recogida':'V18','nav-bicis-tipo':'V21','nav-modelos':'V14','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
 function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}
 function aplicarNumerosPagina(){
   if(!document.getElementById('pagnum-css')){
@@ -3749,3 +3749,40 @@ function aplicarNumerosPagina(){
 }
 function togglePagNum(){try{localStorage.setItem('vr_num_pag',_numOn()?'0':'1');}catch(e){}aplicarNumerosPagina();}
 setTimeout(aplicarNumerosPagina,0);
+
+// ══════════════════════════════════════════════════════════════
+//  MENÚ LATERAL: grupos plegables (se recuerda en el navegador)
+//  Por defecto todo abierto menos Configuración. El grupo de la página activa se abre solo.
+// ══════════════════════════════════════════════════════════════
+function _menuEstado(){try{return JSON.parse(localStorage.getItem('vr_menu_grupos')||'{}');}catch(e){return {};}}
+function _menuGuardar(o){try{localStorage.setItem('vr_menu_grupos',JSON.stringify(o));}catch(e){}}
+function _grupoAbierto(g){var o=_menuEstado();return (g in o)?!!o[g]:(g!=='config');}
+function aplicarGruposMenu(){
+  if(!document.getElementById('menu-grp-css')){
+    var st=document.createElement('style');st.id='menu-grp-css';
+    st.textContent='.sb-sec-btn{display:flex;width:100%;align-items:center;justify-content:space-between;background:none;border:none;cursor:pointer;font-family:inherit;text-align:left}'
+      +'.sb-sec-btn:hover{opacity:.85}.sb-chev{font-size:10px;transition:transform .15s}'
+      +'.sb-grp.plegado .sb-chev{transform:rotate(-90deg)}.sb-grp.plegado .sb-grp-items{display:none}'
+      +'.sb-grp-cfg{margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:4px}';
+    document.head.appendChild(st);
+  }
+  document.querySelectorAll('.sb-grp').forEach(function(g){
+    var k=g.getAttribute('data-grp'),activo=!!g.querySelector('.ni.on');
+    g.classList.toggle('plegado',!_grupoAbierto(k)&&!activo);
+  });
+}
+function toggleGrupoMenu(k){
+  var o=_menuEstado(),g=document.querySelector('.sb-grp[data-grp="'+k+'"]');
+  var abierto=g?!g.classList.contains('plegado'):_grupoAbierto(k);
+  o[k]=!abierto;_menuGuardar(o);
+  if(g)g.classList.toggle('plegado',abierto);
+}
+setTimeout(function(){
+  aplicarGruposMenu();
+  // al cambiar de página, si su grupo está plegado se abre para que se vea dónde estás
+  ['goV','switchSection'].forEach(function(fn){
+    var orig=window[fn];if(typeof orig!=='function'||orig._conMenu)return;
+    var w=function(){var r=orig.apply(this,arguments);try{aplicarGruposMenu();}catch(e){}return r;};
+    w._conMenu=true;window[fn]=w;
+  });
+},0);
