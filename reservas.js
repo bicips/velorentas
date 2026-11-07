@@ -3789,7 +3789,7 @@ function toggleGrupoMenu(k){
   o[k]=!abierto;_menuGuardar(o);
   if(g)g.classList.toggle('plegado',abierto);
 }
-setTimeout(function(){
+function _instalarGruposMenu(){
   aplicarGruposMenu();
   // al cambiar de página, si su grupo está plegado se abre para que se vea dónde estás
   ['goV','switchSection'].forEach(function(fn){
@@ -3797,4 +3797,64 @@ setTimeout(function(){
     var w=function(){var r=orig.apply(this,arguments);try{aplicarGruposMenu();}catch(e){}return r;};
     w._conMenu=true;window[fn]=w;
   });
-},0);
+}
+// FIX: esperar a que cargue todo el HTML (antes switchSection se redefinía después y se perdía el envoltorio)
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_instalarGruposMenu);else _instalarGruposMenu();
+
+
+// ── BOTÓN "← ATRÁS": historial de páginas visitadas ───────
+// Guarda la página en la que estabas cada vez que cambias de página
+// (goV, switchSection, showView) y "Atrás" vuelve a ella.
+var _navHist=[],_navDepth=0,_navSil=0;
+function _pagActual(){
+  var ts=document.getElementById('taller-section');
+  if(ts&&ts.classList.contains('active')){
+    var pv=document.getElementById('preparar-view');
+    if(pv&&!pv.classList.contains('hidden'))return 't:preparar';
+    var vt=document.getElementById('vt');if(vt&&vt.classList.contains('active'))return 't:taller';
+    var vb=document.getElementById('vb');if(vb&&vb.classList.contains('active'))return 't:bikes';
+    return 't:dashboard';
+  }
+  return 'r:'+(typeof CV!=='undefined'?CV:'dash');
+}
+function _navBotones(){
+  var b=document.getElementById('btn-atras-r');
+  if(b)b.style.display=_navHist.length?'':'none';
+}
+function _irPag(p){
+  var s=p.slice(0,1),v=p.slice(2);
+  _navSil++;
+  try{
+    if(s==='r'){switchSection('reservas');goV(v);}
+    else if(v==='taller'){switchSection('taller','bikes');if(typeof aB!=='undefined'&&aB)showView('taller');}
+    else switchSection('taller',v);
+  }finally{_navSil--;}
+  _navBotones();
+}
+function irAtras(){
+  var cur=_pagActual();
+  while(_navHist.length){
+    var p=_navHist.pop();
+    if(p===cur)continue;
+    if(p==='t:taller'&&!(typeof aB!=='undefined'&&aB))continue; // ficha de bici ya cerrada
+    _irPag(p);return;
+  }
+  _irPag('r:dash');
+}
+// se instala cuando ya está cargado TODO el HTML (switchSection está en un <script> al final del index)
+function _instalarAtras(){
+  ['goV','switchSection','showView'].forEach(function(fn){
+    var orig=window[fn];if(typeof orig!=='function'||orig._conAtras)return;
+    var w=function(){
+      var ext=_navDepth===0&&!_navSil,antes=ext?_pagActual():null;
+      _navDepth++;
+      try{return orig.apply(this,arguments);}
+      finally{
+        _navDepth--;
+        if(ext){var desp=_pagActual();if(desp!==antes){_navHist.push(antes);if(_navHist.length>30)_navHist.shift();}_navBotones();}
+      }
+    };
+    w._conAtras=true;window[fn]=w;
+  });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_instalarAtras);else _instalarAtras();
