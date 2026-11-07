@@ -792,7 +792,7 @@
     <div class="topbar-right">
       <button class="btn btn-secondary btn-sm" onclick="switchSection('reservas')" style="gap:4px">← Reservas</button>
       <button class="btn btn-secondary btn-sm" onclick="openM('madd');if(typeof abReset==='function'){abReset();abSizes();}">+ Nueva bici</button>
-      <button class="qr-btn" onclick="openM('mqr')">
+      <button class="qr-btn" onclick="window._qrModoAlta=false;openM('mqr')">
         <span>📷</span> Escanear QR
       </button>
     </div>
@@ -1026,7 +1026,7 @@
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Escanear código QR</div>
-      <button class="modal-close" onclick="closeM('mqr');stopQR()">✕</button>
+      <button class="modal-close" onclick="cerrarCamaraEtiqueta()">✕</button>
     </div>
     <div class="modal-body">
       <div id="qr-status" style="display:none;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px"></div>
@@ -1095,7 +1095,7 @@
         <label class="form-label">Etiqueta QR <span style="font-weight:400;text-transform:none;letter-spacing:0">(escanea la pegatina BCP de la bici)</span></label>
         <div style="display:flex;gap:6px">
           <input class="form-input" id="ab-qr" placeholder="BCP-0001" style="flex:1"/>
-          <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('ab-qrscan').click()" title="Escanear etiqueta">📷 Escanear</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="abrirCamaraEtiqueta()" title="Abrir la cámara y leer la etiqueta">📷 Escanear</button>
         </div>
         <input type="file" id="ab-qrscan" accept="image/*" capture="environment" style="display:none" onchange="scanEtiquetaBici(event)"/>
       </div>

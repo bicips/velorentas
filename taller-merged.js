@@ -735,6 +735,7 @@ function tryJsQRTaller(img,event){
 }
 
 function processQR(data){
+  if(window._qrModoAlta){_etiquetaLeida(data);return;}
   var raw=data.trim();
   var q=raw.toUpperCase();
   var found=bikes.find(function(b){
@@ -750,6 +751,7 @@ function processQR(data){
 }
 
 function doQS(){
+  if(window._qrModoAlta){_etiquetaLeida(document.getElementById('qr-inp').value);return;}
   var q=document.getElementById('qr-inp').value.trim().toUpperCase();
   if(!q){toast('Introduce un código');return;}
   var found=bikes.find(function(b){
@@ -1326,4 +1328,31 @@ function scanEtiquetaBici(ev){
     if(dup){toast('⚠️ '+c+' ya está en la bici '+dup.numBici);return;}
     document.getElementById('ab-qr').value=c;toast('✅ Etiqueta '+c+' leída');
   },function(err){toast('⚠️ '+(err||'No se pudo leer el QR'));});
+}
+
+// ── Escanear la etiqueta BCP desde la ficha de la bici (cámara en vivo) ──
+function abrirCamaraEtiqueta(){
+  window._qrModoAlta=true;
+  var tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='Escanear etiqueta de la bici';
+  qrStatus('','');
+  var inp=document.getElementById('qr-inp');if(inp){inp.value='';inp.placeholder='BCP-0001';}
+  var mq=document.getElementById('mqr');if(mq)mq.style.zIndex='100000'; // por encima de la ficha de la bici
+  openM('mqr');
+  openQRCamera(); // abre la cámara directamente (o la de fotos si el navegador no deja vídeo)
+}
+function cerrarCamaraEtiqueta(){
+  stopQR();closeM('mqr');window._qrModoAlta=false;
+  var mq=document.getElementById('mqr');if(mq)mq.style.zIndex='';
+  var tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='Escanear código QR';
+}
+function _etiquetaLeida(txt){
+  var c=String(txt||'').trim().toUpperCase();
+  var m=c.match(/BCP-\d{4}/);if(m)c=m[0];
+  if(!bcpValido(c)){qrStatus('Leído "'+c+'": no es una etiqueta de bici (BCP-0001 a BCP-1000). Prueba otra vez.','err');setTimeout(function(){if(window._qrModoAlta&&!qron)openQRCamera();},1500);return;}
+  var eid=document.getElementById('ab-eid').value;
+  var dup=bikes.find(function(b){return String(b.id)!==String(eid)&&String(b.qr||'').toUpperCase()===c;});
+  if(dup){qrStatus('⚠️ '+c+' ya está en la bici '+dup.numBici+'. Usa otra etiqueta.','err');return;}
+  document.getElementById('ab-qr').value=c;
+  cerrarCamaraEtiqueta();
+  toast('✅ Etiqueta '+c+' asignada');
 }
