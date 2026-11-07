@@ -47,8 +47,15 @@ function toast(m,ms,tipo){
   t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:700;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.3);white-space:nowrap;display:block';
   setTimeout(function(){t.style.display='none';},ms);
 }
-function openM(id){document.getElementById(id).classList.add('on');}
-function closeM(id){document.getElementById(id).classList.remove('on');}
+// La última ventana que se abre queda siempre delante de las que ya estén abiertas
+function openM(id){
+  var el=document.getElementById(id);if(!el)return;
+  var top=600;
+  document.querySelectorAll('.mover.on, .modal-overlay.on').forEach(function(o){if(o!==el){var z=parseInt(o.style.zIndex||getComputedStyle(o).zIndex)||600;if(z>top)top=z;}});
+  if(!(id==='mqr'&&parseInt(el.style.zIndex)>top))el.style.zIndex=String(top+1);
+  el.classList.add('on');
+}
+function closeM(id){var el=document.getElementById(id);if(!el)return;el.classList.remove('on');if(id!=='mqr')el.style.zIndex='';}
 document.querySelectorAll('.mover').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m){m.classList.remove('on');if(m.id==='mqrasign')stopQRa();}});});
 var SCFG={
   anulada:          {lbl:'Anulada',           cls:'bn-red',    icon:'🚫'},
