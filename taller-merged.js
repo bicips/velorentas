@@ -1017,6 +1017,7 @@ function renderPreparar(){
 
     // ── Bicicletas a preparar ─────────────────────────────────────────────
     html+='<div style="padding:12px 16px">';
+    if(typeof faltaStockReserva==='function')html+=htmlAvisoFaltaStock(faltaStockReserva(r));
     html+='<div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🚲 Bicicletas a preparar</div>';
 
     lineas2.forEach(function(l,li){
@@ -1207,6 +1208,7 @@ function abrirAsignarBici(resId, tipo, talla, lineaIdx) {
   sel += '</select>';
 
   var html = '<div style="padding:16px">'
+    + (typeof faltaStockReserva==='function'&&resActual?htmlAvisoFaltaStock(faltaStockReserva(resActual).filter(function(f){return f.tipo===tipo&&f.talla===talla;}),'No hay stock suficiente de este modelo y talla'):'')
     + '<div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px">Tipo: <strong>'
     + esc((tipos[tipo]||{label:tipo}).label) + ' ' + esc(talla) + '</strong></div>'
     + '<div style="font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Elegir de la lista</div>'
