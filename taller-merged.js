@@ -28,7 +28,7 @@ let cv='dashboard', ft=null, fs=null, fe='all', aB=null, cs={}, pu=[], te='dispo
 
 // ── UTILS ─────────────────────────────────────────────────
 const ns=()=>new Date().toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m){m.classList.remove('on');m.classList.remove('open');if(m.id==='mqr'){try{stopQR();}catch{}}}}));
+// Las ventanas no se cierran al pulsar el fondo (ver reservas.js): solo con ✕ o Cancelar.
 
 // ── SIDEBAR ───────────────────────────────────────────────
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('open');}
