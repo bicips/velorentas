@@ -33,33 +33,56 @@
     <div class="sb-sub">Reservas & Facturación</div>
   </div>
   <nav class="sb-nav">
-    <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()" style="background:rgba(5,150,105,.1);color:#065f46;font-weight:800">📷 Recogida bici</button>
-    <div class="sb-sec">Gestión</div>
-    <button class="ni on" id="nav-dash"     onclick="goV('dash')">    <span class="ic">📊</span> Panel</button>
-    <button class="ni"    id="nav-flota"    onclick="goV('flota')">   <span class="ic">🚲</span> Gestión de flota</button>
-    <button class="ni"    id="nav-cal"      onclick="goV('cal')">     <span class="ic">📅</span> Calendario</button>
-    <button class="ni"    id="nav-timeline" onclick="goV('timeline')"><span class="ic">⏱️</span> Timeline</button>
-    <button class="ni"    id="nav-res"      onclick="goV('res')">     <span class="ic">📋</span> Reservas <span class="nbadge hidden" id="pbadge">0</span></button>
-    <div class="sb-sec">Facturación</div>
-    <button class="ni"    id="nav-fact"     onclick="goV('fact')">    <span class="ic">🧾</span> Facturas</button>
-    <div class="sb-sec">Informes</div>
-    <button class="ni"    id="nav-informes"   onclick="goV('informes')"><span class="ic">📈</span> Informes</button>
-    <button class="ni"    id="nav-tarifas"    onclick="goV('tarifas')"> <span class="ic">💶</span> Tarifas</button>
-    <button class="ni"    id="nav-clientes"   onclick="goV('clientes')"><span class="ic">👤</span> Clientes</button>
-    <div class="sb-sec">Taller</div>
-    <button class="ni" id="nav-taller-dash" onclick="switchSection('taller','dashboard')"><span class="ic">🔧</span> Panel taller</button>
-    <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
-    <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller','bikes')"><span class="ic">🔩</span> Bicicletas taller</button>
-    <button class="ni" onclick="abrirEtiquetasQR()"><span class="ic">🏷️</span> Etiquetas QR</button>
-    <div class="sb-sec">Config. taller</div>
-    <button class="ni" onclick="switchSection('taller');openM('met');renderET()"><span class="ic">✏️</span> Tipos y modelos</button>
-    <button class="ni" onclick="switchSection('taller');openM('mecl');renderECL()"><span class="ic">☑️</span> Checklists</button>
-    <div class="sb-sec">Acceso público</div>
+    <button class="ni on" id="nav-dash" onclick="goV('dash')"><span class="ic">📊</span> Panel</button>
 
+    <div class="sb-grp" data-grp="reservas">
+      <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('reservas')">Reservas <span class="sb-chev">▾</span></button>
+      <div class="sb-grp-items">
+        <button class="ni" id="nav-res" onclick="goV('res')"><span class="ic">📋</span> Reservas <span class="nbadge hidden" id="pbadge">0</span></button>
+        <button class="ni" id="nav-cal" onclick="goV('cal')"><span class="ic">📅</span> Calendario</button>
+        <button class="ni" id="nav-timeline" onclick="goV('timeline')"><span class="ic">⏱️</span> Timeline</button>
+        <button class="ni" id="nav-clientes" onclick="goV('clientes')"><span class="ic">👤</span> Clientes</button>
+      </div>
+    </div>
+
+    <div class="sb-grp" data-grp="operativa">
+      <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('operativa')">Operativa del día <span class="sb-chev">▾</span></button>
+      <div class="sb-grp-items">
+        <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
+        <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()"><span class="ic">📷</span> Recogida bici</button>
+        <button class="ni" id="nav-flota" onclick="goV('flota')"><span class="ic">🚲</span> Gestión de flota</button>
+      </div>
+    </div>
+
+    <div class="sb-grp" data-grp="taller">
+      <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('taller')">Taller <span class="sb-chev">▾</span></button>
+      <div class="sb-grp-items">
+        <button class="ni" id="nav-taller-dash" onclick="switchSection('taller','dashboard')"><span class="ic">🔧</span> Panel taller</button>
+        <button class="ni" id="nav-taller-bikes" onclick="switchSection('taller','bikes')"><span class="ic">🔩</span> Bicicletas</button>
+        <button class="ni" id="nav-bicis-tipo" onclick="switchSection('taller');openM('met');renderET()"><span class="ic">🗂️</span> Bicis por tipo</button>
+      </div>
+    </div>
+
+    <div class="sb-grp" data-grp="facturacion">
+      <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('facturacion')">Facturación <span class="sb-chev">▾</span></button>
+      <div class="sb-grp-items">
+        <button class="ni" id="nav-fact" onclick="goV('fact')"><span class="ic">🧾</span> Facturas</button>
+        <button class="ni" id="nav-informes" onclick="goV('informes')"><span class="ic">📈</span> Informes</button>
+      </div>
+    </div>
+
+    <div class="sb-grp sb-grp-cfg" data-grp="config">
+      <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('config')">Configuración <span class="sb-chev">▾</span></button>
+      <div class="sb-grp-items">
+        <button class="ni" id="nav-tarifas" onclick="goV('tarifas')"><span class="ic">💶</span> Tarifas</button>
+        <button class="ni" id="nav-modelos" onclick="openModelos()"><span class="ic">✏️</span> Tipos y modelos</button>
+        <button class="ni" id="nav-extras" onclick="openGestionExtras()"><span class="ic">🎒</span> Catálogo de extras</button>
+        <button class="ni" id="nav-checklists" onclick="switchSection('taller');openM('mecl');renderECL()"><span class="ic">☑️</span> Checklists</button>
+        <button class="ni" id="nav-etiquetas" onclick="abrirEtiquetasQR()"><span class="ic">🏷️</span> Etiquetas QR</button>
+        <button class="ni" id="nav-cfg" onclick="openM('mcfg');loadCfg()"><span class="ic">⚙️</span> Datos del negocio</button>
+      </div>
+    </div>
   </nav>
-  <div class="sb-ft">
-    <button class="ni bs" onclick="openM('mcfg');loadCfg()" style="color:var(--g500)"><span class="ic">⚙️</span> Configuración</button>
-  </div>
 </aside>
 
 <!-- MAIN -->
