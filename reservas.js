@@ -282,6 +282,9 @@ function addLinea(tipo,talla,uds,ppd){
 }
 function removeLinea(i){lineas.splice(i,1);renderLineas();}
 
+// Total de bicis pedidas en esta reserva para un modelo+talla (suma de todas sus líneas).
+// Con una línea por bici, la comprobación de stock tiene que sumar las líneas, no mirar cada una suelta.
+function _udsPedidas(tipo,talla){return lineas.filter(function(x){return x.tipo===tipo&&x.talla===talla;}).reduce(function(s,x){return s+(x.uds||1);},0);}
 function renderLineas(){
   var el=document.getElementById('r-lineas');if(!el)return;
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
@@ -311,10 +314,10 @@ function renderLineas(){
     // availability
     var availTxt='';
     if(l.tipo&&l.talla&&ini&&fin&&diffD(ini,fin)+1>=cfg.minDays){
-      var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);
-      availTxt=cnt>=l.uds
+      var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN),ped=_udsPedidas(l.tipo,l.talla);
+      availTxt=cnt>=ped
         ?'<span style="font-size:11px;color:#16a34a;font-weight:700;white-space:nowrap">✅ '+cnt+' disp.</span>'
-        :'<span style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">❌ '+cnt+' disp.</span>';
+        :'<span title="Pides '+ped+' de esta talla y solo hay '+cnt+'" style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">❌ '+ped+' pedidas · '+cnt+' disp.</span>';
     }
     html+='<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap;background:'+(i%2===0?'#fff':'#f9fafb')+'">';
     html+='<div style="width:34px;height:34px;background:'+(t.color||'#eee')+'22;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+(t.icon||'🚲')+'</div>';
@@ -514,7 +517,8 @@ function checkAllLineas(){
   if(!ini||!fin||!lineas.length){el.style.display='none';return;}
   if(diffD(ini,fin)+1<cfg.minDays){el.style.display='none';return;}
   var msgs=[],hasError=false;
-  lineas.forEach(function(l){if(!l.tipo||!l.talla)return;var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);var t=tipos[l.tipo]||{label:l.tipo};if(cnt<l.uds){hasError=true;msgs.push('❌ '+t.label+' '+l.talla+': solo '+cnt+' disp., necesitas '+l.uds);}else{msgs.push('✅ '+t.label+' '+l.talla+' ×'+l.uds+': disponible');}});
+  var _vistos={};
+  lineas.forEach(function(l){if(!l.tipo||!l.talla)return;var k=l.tipo+'|'+l.talla;if(_vistos[k])return;_vistos[k]=1;var ped=_udsPedidas(l.tipo,l.talla);var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);var t=tipos[l.tipo]||{label:l.tipo};if(cnt<ped){hasError=true;msgs.push('❌ '+t.label+' '+l.talla+': pides '+ped+', solo hay '+cnt+' disponible'+(cnt!==1?'s':'')+' — faltan '+(ped-cnt));}else{msgs.push('✅ '+t.label+' '+l.talla+' ×'+ped+': disponible');}});
   if(!msgs.length){el.style.display='none';return;}
   el.style.display='block';el.style.background=hasError?'var(--r50)':'var(--gr50)';el.style.color=hasError?'var(--r600)':'var(--gr700)';el.style.border='none';el.innerHTML=msgs.join('<br>');
 }
@@ -787,14 +791,17 @@ function saveRes(){
   if(diffD(ini,fin)+1<cfg.minDays){toast('Mínimo '+cfg.minDays+' días');return;}
   var eid=document.getElementById('r-eid').value,eidN=eid?parseInt(eid):null;
   var errStock=[];
+  var _vistosG={};
   validLineas.forEach(function(l){
+    var _kG=l.tipo+'|'+l.talla;if(_vistosG[_kG])return;_vistosG[_kG]=1; // se comprueba una vez por modelo+talla, sumando todas sus líneas
     // La disponibilidad se calcula SOLO por modelo+talla (conteo real de flota vs reservas
     // solapadas). La asignación de bici concreta es un paso aparte, en Gestión de Flota,
     // y no debe alterar este cálculo.
     var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN);
     var t=tipos[l.tipo]||{label:l.tipo};
-    if(cnt<(l.uds||1)){
-      errStock.push({label:t.label,talla:l.talla,pide:l.uds||1,disp:cnt});
+    var _ped=_udsPedidas(l.tipo,l.talla);
+    if(cnt<_ped){
+      errStock.push({label:t.label,talla:l.talla,pide:_ped,disp:cnt});
     }
   });
   if(errStock.length){
