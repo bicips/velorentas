@@ -37,7 +37,8 @@
   .modal-body { overflow-x: hidden; }
 
   /* Recogida bici: el campo no empuja al botón fuera */
-  #rec-qr-inp { min-width: 0; }
+  #rec-qr-inp, #asig-qr-inp { min-width: 0; }
+  #toast { max-width: calc(100vw - 24px) !important; white-space: normal !important; text-align: center; font-size: 13px !important; padding: 10px 14px !important; }
 
   /* Taller: lista de bicis legible */
   .bike-row { flex-wrap: wrap; }
