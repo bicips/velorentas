@@ -272,7 +272,7 @@ function _unaLineaPorBici(arr){
 }
 function duplicarLinea(i){
   var l=lineas[i];if(!l)return;
-  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:['']});
+  lineas.splice(i+1,0,{tipo:l.tipo,talla:l.talla,uds:1,ppd:l.ppd||0,extras:[],pedales:[''],altura:''});
   renderLineas();renderExtrasBici();
 }
 function addLinea(tipo,talla,uds,ppd){
@@ -341,6 +341,9 @@ function renderLineas(){
     while(l.pedales.length<nUds)l.pedales.push('');
     if(l.pedales.length>nUds)l.pedales.length=nUds;
     html+='<div style="flex-basis:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-left:42px">';
+    html+='<span style="font-size:11px;color:#6b7280;font-weight:700">Altura</span>'
+      +'<input type="number" data-alt="'+i+'" min="80" max="230" step="1" value="'+(l.altura||'')+'" placeholder="—" style="width:62px;padding:5px 6px;font-size:12px;border:1px solid #e5e7eb;border-radius:6px;text-align:center"/>'
+      +'<span style="font-size:11px;color:#9ca3af;margin-right:8px">cm</span>';
     html+='<span style="font-size:11px;color:#6b7280;font-weight:700">Pedales</span>';
     for(var u=0;u<nUds;u++){
       var pOpts='<option value=""'+(l.pedales[u]?'':' selected')+'>— Elegir —</option>'+pTipos.map(function(pt){return '<option'+(l.pedales[u]===pt?' selected':'')+'>'+esc(pt)+'</option>';}).join('');
@@ -396,6 +399,14 @@ function renderLineas(){
   });
   el.querySelectorAll('button[data-dup]').forEach(function(btn){
     btn.addEventListener('click',function(){duplicarLinea(parseInt(this.getAttribute('data-dup')));});
+  });
+  el.querySelectorAll('input[data-alt]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      var li=parseInt(this.getAttribute('data-alt'));if(!lineas[li])return;
+      var v=parseInt(this.value);
+      if(this.value!==''&&(isNaN(v)||v<80||v>230)){toast('Altura no válida: escribe los centímetros (por ejemplo, 175)',3000,'error');this.value=lineas[li].altura||'';return;}
+      lineas[li].altura=this.value===''?'':v;
+    });
   });
   el.querySelectorAll('select[data-ped]').forEach(function(sel){
     sel.addEventListener('change',function(){
@@ -2186,7 +2197,7 @@ function _generarHojasBici(listaFiltrada) {
           fechaIni:fechaIni?fechaIni.toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           fechaFin:r.fin?new Date(r.fin+"T00:00:00").toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"}):"-",
           dias:r.dias||"",modelo:t.label,icon:t.icon||"",talla:l.talla||r.talla||"",
-          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||"",pedal:pedal,nBici:nBici,totalBicis:totalBicis});
+          bikeNum:bikeNum,extras:extrasLinea,notas:r.notas||"",pedal:pedal,nBici:nBici,totalBicis:totalBicis,altura:l.altura||''});
       }
     });
   });
@@ -2220,8 +2231,9 @@ function _generarHojasBici(listaFiltrada) {
       +"<div class=\"g2\"><div class=\"campo\"><div class=\"lbl\">Inicio alquiler</div><div class=\"val\">"+xe(p.fechaIni)+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">Fin alquiler</div><div class=\"val\">"+xe(p.fechaFin)+" ("+p.dias+" dias)</div></div></div>"
       // Fila 5: Modelo + Talla + N.bici
-      +"<div class=\"g3\"><div class=\"campo\"><div class=\"lbl\">Modelo</div><div class=\"val\">"+p.icon+" "+xe(p.modelo)+"</div></div>"
+      +"<div class=\"g3\" style=\"grid-template-columns:1.4fr .8fr 1fr 1fr\"><div class=\"campo\"><div class=\"lbl\">Modelo</div><div class=\"val\">"+p.icon+" "+xe(p.modelo)+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">Talla</div><div class=\"val\">"+xe(p.talla)+"</div></div>"
+      +"<div class=\"campo\"><div class=\"lbl\">Altura ciclista</div><div class=\"val\">"+(p.altura?xe(p.altura)+" cm":"-")+"</div></div>"
       +"<div class=\"campo\"><div class=\"lbl\">N. bici</div><div class=\"val\">"+xe(p.bikeNum)+"</div></div></div>"
       // Fila 6: Extras
       +"<div class=\"campo\"><div class=\"lbl\">Extras y accesorios</div><div class=\"ext-val\">"+extHtml+"</div></div>"
