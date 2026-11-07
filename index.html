@@ -799,7 +799,6 @@
     </div>
     <div class="topbar-right">
       <button class="btn btn-secondary btn-sm" onclick="switchSection('reservas')" style="gap:4px">← Reservas</button>
-      <button class="btn btn-secondary btn-sm" onclick="openM('madd');if(typeof abReset==='function'){abReset();abSizes();}">+ Nueva bici</button>
       <button class="qr-btn" onclick="window._qrModoAlta=false;openM('mqr')">
         <span>📷</span> Escanear QR
       </button>
@@ -823,7 +822,7 @@
           <div class="section-title">Flota por modelo</div>
           <div class="section-desc">Selecciona un modelo para ver sus bicicletas</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openM('madd');if(typeof abReset==='function'){abReset();abSizes();}">+ Añadir bicicleta</button>
+        <button class="btn btn-primary btn-sm" onclick="openModelos()" title="Las bicis se dan de alta y de baja en Tipos y modelos">🗂️ Tipos y modelos</button>
       </div>
       <div class="types-grid" id="dash-types"></div>
 
@@ -852,7 +851,7 @@
       <div id="type-selector-view">
         <div class="section-header">
           <div class="section-title">Selecciona un modelo</div>
-          <button class="btn btn-primary btn-sm" onclick="openM('madd');if(typeof abReset==='function'){abReset();abSizes();}">+ Nueva bicicleta</button>
+          <button class="btn btn-primary btn-sm" onclick="openModelos()" title="Las bicis se dan de alta y de baja en Tipos y modelos">🗂️ Tipos y modelos</button>
         </div>
         <div class="types-grid" id="type-selector-grid"></div>
       </div>
@@ -867,7 +866,7 @@
               <div class="section-desc" id="bike-list-sub"></div>
             </div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openM('madd');if(typeof abReset==='function'){abReset();abSizes();}">+ Nueva</button>
+          <button class="btn btn-primary btn-sm" onclick="openModelos()" title="Las bicis se dan de alta y de baja en Tipos y modelos">🗂️ Tipos y modelos</button>
         </div>
 
         <div class="list-card">
