@@ -57,7 +57,7 @@
     <div class="sb-grp" data-grp="operativa">
       <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('operativa')">Operativa del día <span class="sb-chev">▾</span></button>
       <div class="sb-grp-items">
-        <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Preparar <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
+        <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Revisar bici <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
         <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()"><span class="ic">📷</span> Recogida bici</button>
         <button class="ni" id="nav-flota" onclick="goV('flota')"><span class="ic">🚲</span> Gestión de flota</button>
       </div>
@@ -853,8 +853,8 @@
       <div id="preparar-view" class="hidden">
         <div class="section-header" style="padding:16px 18px 0">
           <div>
-            <div class="section-title">🔧 Preparar bicicletas</div>
-            <div class="section-desc">Reservas marcadas para preparar desde el gestor</div>
+            <div class="section-title">🔧 Revisar bici</div>
+            <div class="section-desc">Reservas marcadas para revisar desde el gestor</div>
           </div>
           <button class="btn btn-secondary btn-sm" onclick="refreshPreparar()">↻ Actualizar</button> <span id="prep-count-lbl" style="font-size:13px;font-weight:700;color:#7c3aed"></span>
         </div>
