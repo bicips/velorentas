@@ -1135,7 +1135,7 @@ function renderManList(){
     var ocupadaPor = null;
     reservas.forEach(function(r){
       if(ESTADOS_LIBRE.indexOf(r.estado) >= 0) return;
-      if(eidN && r.id === eidN) return; // excluir reserva actual
+      if(eidN && String(r.id) === String(eidN)) return; // excluir reserva actual (id puede venir como texto)
       // Comprobar en lineas[].bikeAsig (fuente de verdad) y en bikesAsig (compatibilidad)
       var tieneEstaBici = false;
       if(r.lineas && r.lineas.length){
