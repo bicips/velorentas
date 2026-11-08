@@ -101,6 +101,9 @@ function rDB(){
     {c:'amber', i:'📋', v:todayR, l:'Revisiones hoy'},
   ].map(s=>`<div class="stat-card ${s.c}"><div class="stat-icon">${s.i}</div><div class="stat-value">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join('');
 
+  const du=document.getElementById('dash-ubic');
+  if(du)du.innerHTML=`<button onclick="abrirLlegadaMondonedo()" style="flex:1 1 100%;border:none;background:#0d9488;color:#fff;border-radius:10px;padding:12px;font-size:15px;font-weight:800;cursor:pointer">📥 Llegada a Mondoñedo · escanear bicis al descargar</button>`+Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
+    return `<button onclick="abrirUbicaciones('${k}')" style="flex:1;min-width:110px;border:1px solid var(--gray-200);background:${u.bg};color:${u.txt};border-radius:10px;padding:10px;cursor:pointer;text-align:left"><div style="font-size:20px;font-weight:800">${n}</div><div style="font-size:12px;font-weight:700">${u.icon} ${u.lbl}</div></button>`;}).join('');
   document.getElementById('dash-types').innerHTML=Object.entries(tipos).map(([k,t])=>{
     const cnt=bikes.filter(b=>b.tipo===k).length;
     const disp=bikes.filter(b=>b.tipo===k&&b.estado==='disponible').length;
@@ -210,6 +213,7 @@ function renderBL(){
           <span class="bike-name">${esc(b.numBici)}</span>
           <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${be.bg};color:${be.txt}">${be.icon} ${be.lbl}</span>
           <span class="badge badge-gray">${esc(b.talla)}</span>
+          ${ubicBadge(b)}
           ${hp}
         </div>
         <div class="bike-details">
@@ -585,7 +589,7 @@ function clearBikePic(){document.getElementById('ab-ico').value='';document.getE
 function setBikePicPreview(src){if(src&&src.startsWith('data:')){document.getElementById('ab-ico').value=src;document.getElementById('ab-pic-img').src=src;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');}else{clearBikePic();}}
 function _abQrError(m){var e=document.getElementById('ab-qr-err');if(e){e.textContent=m||'';e.style.display=m?'block':'none';}var i=document.getElementById('ab-qr');if(i)i.style.borderColor=m?'#dc2626':'';}
 function abReset(){_abQrError('');window._ebIcono='';window._ebDesdeET=false;document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
-function openEB(id){_abQrError('');const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');openM('madd');}
+function openEB(id){_abQrError('');const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');document.getElementById('ab-ubic').value=ubicDe(b);document.getElementById('ab-ubic-txt').value=b.ubicacionTxt||'';abUbicCambio();openM('madd');}
 function saveBikeM(){
   const num=document.getElementById('ab-num').value.trim();
   if(!num){toast('⚠️ El número de bicicleta es obligatorio');return;}
@@ -607,9 +611,10 @@ function saveBikeM(){
   if(!tipo||!talla){toast('⚠️ Elige tipo y talla de la bicicleta');return;}
   const estado=document.getElementById('ab-est').value||'disponible';
   const eid=document.getElementById('ab-eid').value;
+  const ubic=document.getElementById('ab-ubic').value||'mondonedo',ubicTxt=document.getElementById('ab-ubic-txt').value.trim();
   function doSave(){
-    if(eid){const idx=bikes.findIndex(b=>String(b.id)===String(eid));if(idx>=0)bikes[idx]={...bikes[idx],numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};toast('✅ Bicicleta actualizada');}
-    else{bikes.push({id:Date.now(),numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado});toast('✅ Bicicleta añadida');}
+    if(eid){const idx=bikes.findIndex(b=>String(b.id)===String(eid));if(idx>=0){bikes[idx]={...bikes[idx],numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(bikes[idx],ubic,ubicTxt,'Editar bici',false);}toast('✅ Bicicleta actualizada');}
+    else{const nb={id:Date.now(),numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(nb,ubic,ubicTxt,'Alta',false);bikes.push(nb);toast('✅ Bicicleta añadida');}
     sb();closeM('madd');rDB();if(cv==='bikes')rBV();
     if(window._ebDesdeET){window._ebDesdeET=false;openM('met');renderET();}
   }
@@ -823,6 +828,7 @@ function borrarModeloET(){
 }
 function nuevaBiciDeModelo(){
   const k=etc;closeM('met');abReset();
+  const _u=document.getElementById('ab-ubic');if(_u){_u.value='mondonedo';document.getElementById('ab-ubic-txt').value='';abUbicCambio();}
   const ts=document.getElementById('ab-tipo');if(ts){ts.value=k;abSizes();}
   window._ebDesdeET=true;openM('madd');
 }
@@ -1415,6 +1421,7 @@ function abrirCamaraEtiqueta(){
   openQRCamera(); // abre la cámara directamente (o la de fotos si el navegador no deja vídeo)
 }
 function cerrarCamaraEtiqueta(){
+  if(typeof _cerrarLlegada==='function')_cerrarLlegada();
   stopQR();closeM('mqr');window._qrModoAlta=false;window._qrDestino=null;
   var mq=document.getElementById('mqr');if(mq)mq.style.zIndex='';
   var tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='Escanear código QR';
@@ -1505,4 +1512,114 @@ function saveCE(apta){
       toast(b.numBici+' → ⚠️ Averiada');
     });
   }
+}
+
+
+// ── UBICACIÓN DE LA BICI (solo informativa: NO cambia stock ni disponibilidad) ──
+// Dónde está físicamente la bici. Se actualiza sola al entregarla (Con cliente) y al
+// recogerla (Santiago); se cambia a mano en Editar bici o en "Dónde están las bicis".
+const UBICACIONES={
+  mondonedo:{lbl:'Mondoñedo',   icon:'🏠',bg:'#dcfce7',txt:'#166534'},
+  santiago: {lbl:'Santiago',    icon:'⛪',bg:'#ede9fe',txt:'#5b21b6'},
+  cliente:  {lbl:'Con cliente', icon:'🚴',bg:'#dbeafe',txt:'#1e40af'},
+  otro:     {lbl:'Otro lugar',  icon:'📍',bg:'#fef3c7',txt:'#92400e'}
+};
+function ubicDe(b){return (b&&UBICACIONES[b.ubicacion])?b.ubicacion:'mondonedo';}
+function ubicTexto(b){const u=UBICACIONES[ubicDe(b)];return u.lbl+(b.ubicacionTxt?' · '+b.ubicacionTxt:'');}
+function ubicBadge(b){const u=UBICACIONES[ubicDe(b)];
+  return `<span title="Ubicación${b.ubicacionFecha?' desde '+esc(b.ubicacionFecha):''}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${u.bg};color:${u.txt}">${u.icon} ${esc(ubicTexto(b))}</span>`;}
+// Cambia la ubicación y la apunta en el historial de la bici. guardar=false si quien llama ya guarda.
+function setUbicacion(b,u,txt,nota,guardar){
+  if(!b||!UBICACIONES[u])return;
+  const antes=ubicDe(b)+'|'+(b.ubicacionTxt||'');
+  b.ubicacion=u;b.ubicacionTxt=(u==='cliente'||u==='otro')?(txt||''):'';
+  if(antes===u+'|'+b.ubicacionTxt)return;
+  b.ubicacionFecha=new Date().toLocaleString('es-ES');
+  if(!b.ubicHist)b.ubicHist=[];
+  b.ubicHist.push({u:u,txt:b.ubicacionTxt,fecha:b.ubicacionFecha,ts:new Date().toISOString(),nota:nota||''});
+  if(b.ubicHist.length>40)b.ubicHist=b.ubicHist.slice(-40);
+  if(guardar!==false&&typeof DB!=='undefined'&&DB.saveBici)DB.saveBici(b).catch(e=>console.error('ubicacion',e));
+}
+function abUbicCambio(){const v=document.getElementById('ab-ubic').value;const w=document.getElementById('ab-ubic-txt');w.style.display=(v==='otro'||v==='cliente')?'':'none';}
+
+// Ventana "Dónde están las bicis" (V29)
+let _ubicFiltro='santiago';
+function abrirUbicaciones(u){_ubicFiltro=u||_ubicFiltro||'santiago';openM('mubic');renderUbicaciones();}
+function renderUbicaciones(){
+  const tabs=document.getElementById('ubic-tabs');
+  tabs.innerHTML=Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
+    return `<button class="type-tab ${_ubicFiltro===k?'active':''}" onclick="_ubicFiltro='${k}';renderUbicaciones()">${u.icon} ${u.lbl} <b>${n}</b></button>`;}).join('');
+  const lista=bikes.filter(b=>ubicDe(b)===_ubicFiltro).sort((a,b)=>String(a.numBici).localeCompare(String(b.numBici),'es',{numeric:true}));
+  const el=document.getElementById('ubic-lista');
+  el.innerHTML=lista.length?lista.map(b=>{const t=tipos[b.tipo]||{icon:'🚲',label:b.tipo};const be=BIKE_ESTADOS[b.estado]||{icon:'',lbl:b.estado};
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--gray-100);cursor:pointer">
+      <input type="checkbox" class="ubic-chk" value="${b.id}" style="width:18px;height:18px"/>
+      <span style="font-size:18px">${t.icon}</span>
+      <span style="flex:1"><b>${esc(b.numBici)}</b> · ${esc(t.label)} ${esc(b.talla||'')} <span style="color:var(--gray-400);font-size:12px">· ${be.icon} ${esc(be.lbl)}${b.ubicacionTxt?' · '+esc(b.ubicacionTxt):''}${b.ubicacionFecha?' · desde '+esc(b.ubicacionFecha.split(',')[0]):''}</span></span>
+    </label>`;}).join(''):'<div class="empty-state" style="padding:24px"><div class="empty-state-text">No hay bicis aquí</div></div>';
+  document.getElementById('ubic-mover').innerHTML=Object.entries(UBICACIONES).filter(([k])=>k!==_ubicFiltro).map(([k,u])=>`<option value="${k}">${u.icon} ${u.lbl}</option>`).join('');
+  document.getElementById('ubic-todas').checked=false;
+}
+function ubicMarcarTodas(v){document.querySelectorAll('#ubic-lista .ubic-chk').forEach(c=>c.checked=v);}
+function moverUbicaciones(){
+  const ids=[...document.querySelectorAll('#ubic-lista .ubic-chk:checked')].map(c=>c.value);
+  if(!ids.length){toast('⚠️ Marca las bicis que quieres mover');return;}
+  const dest=document.getElementById('ubic-mover').value;
+  let txt='';if(dest==='otro'||dest==='cliente'){txt=prompt('¿Dónde / con quién están?')||'';}
+  ids.forEach(id=>{const b=bikes.find(x=>String(x.id)===String(id));if(b)setUbicacion(b,dest,txt,'Cambio manual',false);});
+  sb();renderUbicaciones();renderBL();rDB();
+  toast('📍 '+ids.length+' bici'+(ids.length>1?'s':'')+' → '+UBICACIONES[dest].lbl);
+}
+
+
+// Fin de la reserva: la bici queda donde termina la reserva (lugar de finalización).
+function ubicarEnFinDeReserva(b,r,nota){
+  const fin=String((r&&r.lugarFin)||'Santiago de Compostela').trim();
+  if(/santiago/i.test(fin))setUbicacion(b,'santiago','',nota,false);
+  else setUbicacion(b,'otro',fin,nota,false);
+}
+
+// ── LLEGADA A MONDOÑEDO: escanear el QR de cada bici al descargarla ──
+// Escaneo seguido: cada bici leída queda en Mondoñedo y la cámara se vuelve a abrir sola.
+let _llegadas=[];
+function abrirLlegadaMondonedo(){
+  _llegadas=[];
+  window._qrModoAlta=false;
+  window._qrDestino=_llegadaLeida;
+  const tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='📥 Llegada a Mondoñedo';
+  const inp=document.getElementById('qr-inp');if(inp){inp.value='';inp.placeholder='BCP-0001 o nº de bici';}
+  const mq=document.getElementById('mqr');if(mq)mq.style.zIndex='100000';
+  openM('mqr');openQRCamera();
+  _llegadaInfo('📷 Escanea las bicis una a una según las descargas','ok');
+}
+// Recuadro fijo con el resultado y el contador (no lo borra la cámara al reabrirse)
+function _llegadaInfo(msg,tipo){
+  let el=document.getElementById('llegada-info');
+  if(!el){el=document.createElement('div');el.id='llegada-info';const st=document.getElementById('qr-status');st.parentNode.insertBefore(el,st);}
+  const c={ok:['#f0fdf4','#166534','#86efac'],warn:['#fffbeb','#92400e','#fcd34d'],err:['#fef2f2','#991b1b','#fca5a5']}[tipo]||['#f0fdf4','#166534','#86efac'];
+  el.style.cssText='display:block;background:'+c[0]+';color:'+c[1]+';border:2px solid '+c[2]+';border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14px';
+  el.innerHTML=esc(msg)+'<div style="font-size:22px;font-weight:900;margin-top:4px">'+_llegadas.length+' <span style="font-size:13px;font-weight:700">bici'+(_llegadas.length!==1?'s':'')+' descargada'+(_llegadas.length!==1?'s':'')+'</span></div>';
+}
+function _llegadaLeida(txt){
+  let c=(typeof bcpNormalizar==='function')?bcpNormalizar(txt):String(txt||'').trim().toUpperCase();
+  const m=c.match(/BCP-\d{4}/);if(m&&!bikes.some(b=>String(b.qr||'').toUpperCase()===c))c=m[0];
+  const b=bikes.find(x=>String(x.qr||'').toUpperCase()===c)||bikes.find(x=>String(x.numBici).toUpperCase()===c);
+  const seguir=()=>{const mq=document.getElementById('mqr');if(mq&&mq.classList.contains('on')&&window._qrDestino===_llegadaLeida)setTimeout(()=>{openQRCamera();},1200);};
+  const inp=document.getElementById('qr-inp');if(inp)inp.value='';
+  if(!b){_llegadaInfo('❌ «'+c+'»: no es ninguna bici. Escanea la siguiente.','err');seguir();return;}
+  if(_llegadas.indexOf(b.id)>=0){_llegadaInfo('ℹ️ '+b.numBici+' ya estaba escaneada','warn');seguir();return;}
+  const eraTxt=ubicTexto(b);
+  setUbicacion(b,'mondonedo','','Llegada a Mondoñedo (QR)');
+  _llegadas.push(b.id);
+  if(navigator.vibrate)try{navigator.vibrate(80);}catch(e){}
+  _llegadaInfo('✅ '+b.numBici+' en Mondoñedo (estaba: '+eraTxt+')','ok');
+  seguir();
+}
+function _cerrarLlegada(){
+  const li=document.getElementById('llegada-info');if(li)li.style.display='none';
+  if(window._qrDestino!==_llegadaLeida)return;
+  const n=_llegadas.length;
+  if(n)toast('📥 '+n+' bici'+(n>1?'s':'')+' de vuelta en Mondoñedo',3500,'success');
+  if(typeof renderBL==='function')renderBL();if(typeof rDB==='function')rDB();
+  const mu=document.getElementById('mubic');if(mu&&mu.classList.contains('on'))renderUbicaciones();
 }

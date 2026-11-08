@@ -838,6 +838,10 @@
         <button class="btn btn-primary btn-sm" onclick="openModelos()" title="Las bicis se dan de alta y de baja en Tipos y modelos">🗂️ Tipos y modelos</button>
       </div>
       <div class="types-grid" id="dash-types"></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin:20px 0 10px">
+        <div><div class="section-title">📍 Dónde están las bicis</div><div class="section-desc">Solo informativo: no cambia el stock. Toca un lugar para ver sus bicis y moverlas.</div></div>
+      </div>
+      <div id="dash-ubic" style="display:flex;gap:8px;flex-wrap:wrap"></div>
 
       <div class="section-header" style="margin-top:8px">
         <div class="section-title">Últimas revisiones</div>
@@ -1135,6 +1139,15 @@
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">📍 Dónde está <span style="font-weight:400;text-transform:none;letter-spacing:0">(solo informativo, no cambia el stock)</span></label>
+        <div style="display:flex;gap:6px">
+          <select class="form-input" id="ab-ubic" onchange="abUbicCambio()" style="flex:1">
+            <option value="mondonedo">🏠 Mondoñedo</option><option value="santiago">⛪ Santiago</option><option value="cliente">🚴 Con cliente</option><option value="otro">📍 Otro lugar</option>
+          </select>
+          <input class="form-input" id="ab-ubic-txt" placeholder="Dónde / con quién" style="flex:1;display:none"/>
+        </div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Estado inicial</label>
         <div style="display:flex;flex-wrap:wrap;gap:6px" id="ab-estado-btns"></div>
       </div>
@@ -1218,6 +1231,26 @@
 </div>
 
 <!-- Edit checklist -->
+<div class="modal-overlay" id="mubic">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">📍 Dónde están las bicis</div>
+      <button class="modal-close" onclick="closeM('mubic')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="type-tabs" id="ubic-tabs" style="margin-bottom:8px"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin:4px 6px"><input type="checkbox" id="ubic-todas" onchange="ubicMarcarTodas(this.checked)" style="width:18px;height:18px"/> Marcar todas</label>
+      <div id="ubic-lista" style="max-height:50vh;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white"></div>
+    </div>
+    <div class="modal-footer" style="flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700">Mover las marcadas a:</span>
+      <select class="form-input" id="ubic-mover" style="width:auto;flex:0 0 auto"></select>
+      <button class="btn btn-primary" onclick="moverUbicaciones()">📍 Mover</button>
+      <button class="btn btn-success" style="margin-left:auto" onclick="closeM('mubic');abrirLlegadaMondonedo()">📥 Escanear llegada a Mondoñedo</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="mce">
   <div class="modal wide">
     <div class="modal-header">

@@ -1757,6 +1757,16 @@ function changeStatus(id,st,extra){
   }
   r.estado=st;
   if(extra) Object.assign(r,extra);
+  // Ubicación (solo informativa): al salir hacia el cliente, sus bicis asignadas pasan a "Con cliente"
+  if(typeof setUbicacion==='function'&&['transito_furgo','transito_carlos','transito_seur','entregada','alquiler'].indexOf(st)>=0){
+    var _ids={};(r.bikesAsig||[]).forEach(function(a){_ids[a.id]=1;});(r.lineas||[]).forEach(function(l){if(l.bikeAsig&&l.bikeAsig.id)_ids[l.bikeAsig.id]=1;});
+    Object.keys(_ids).forEach(function(id){var b=bikes.find(function(x){return String(x.id)===String(id);});if(b&&ubicDe(b)!=='cliente')setUbicacion(b,'cliente',r.cliente,'Reserva '+((SCFG[st]||{}).lbl||st));});
+  }
+  // Ubicación: al terminar la reserva, sus bicis quedan donde termina (lugar de finalización)
+  if(typeof ubicarEnFinDeReserva==='function'&&(st==='recogida'||st==='finalizada')){
+    var _idsF={};(r.bikesAsig||[]).forEach(function(a){_idsF[a.id]=1;});(r.lineas||[]).forEach(function(l){if(l.bikeAsig&&l.bikeAsig.id)_idsF[l.bikeAsig.id]=1;});
+    Object.keys(_idsF).forEach(function(id){var b=bikes.find(function(x){return String(x.id)===String(id);});if(b&&ubicDe(b)==='cliente'){ubicarEnFinDeReserva(b,r,'Reserva '+((SCFG[st]||{}).lbl||st));DB.saveBici(b).catch(function(e){console.error(e);});}});
+  }
   // FIX: liberar bicis en CUALQUIER estado que libera stock (recogida, cancelada, anulada, finalizada)
   if(ESTADOS_LIBRE_GLOBAL.indexOf(st)>=0&&r.bikesAsig&&r.bikesAsig.length){
     r.bikesAsig.forEach(function(a){
@@ -2710,6 +2720,7 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
+    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return r.id===resId;}):null, 'Recogida'); // queda donde termina la reserva (informativo)
     if(!bici.estadosHist) bici.estadosHist=[];
     bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
@@ -3952,7 +3963,7 @@ var PAG_NUM=[
   ['m-transito','V05','Seleccionar transporte'],['mday','V06','Reservas del día'],['mfact','V07','Factura'],['msend','V08','Enviar confirmación'],
   ['mcli','V09','Historial del cliente'],['m-extras-cat','V10','Catálogo de extras'],['m-print-sel','V11','Imprimir lista'],['m-import-res','V12','Importar reservas'],
   ['mbloqueo','V13','Bloquear bicicletas'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
-  ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (revisar bici)'],
+  ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['mubic','V29','Dónde están las bicis'],['masignar','V19','Asignar bicicleta (revisar bici)'],
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
   ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Checklist antes de entrega'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
