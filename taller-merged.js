@@ -600,7 +600,7 @@ function clearBikePic(){document.getElementById('ab-ico').value='';document.getE
 function setBikePicPreview(src){if(src&&src.startsWith('data:')){document.getElementById('ab-ico').value=src;document.getElementById('ab-pic-img').src=src;document.getElementById('ab-pic-img').style.display='block';document.getElementById('ab-pic-ph').style.display='none';document.getElementById('ab-pic-del').classList.remove('hidden');}else{clearBikePic();}}
 function _abQrError(m){var e=document.getElementById('ab-qr-err');if(e){e.textContent=m||'';e.style.display=m?'block':'none';}var i=document.getElementById('ab-qr');if(i)i.style.borderColor=m?'#dc2626':'';}
 function abReset(){_abQrError('');window._ebIcono='';window._ebDesdeET=false;document.getElementById('madd-title').textContent='Nueva bicicleta';document.getElementById('ab-savebtn').textContent='Añadir bicicleta';document.getElementById('ab-eid').value='';['ab-num','ab-ser','ab-qr','ab-mod'].forEach(id=>document.getElementById(id).value='');clearBikePic();var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();setABE('disponible');}
-function openEB(id){_abQrError('');const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');document.getElementById('ab-ubic').value=ubicDe(b);document.getElementById('ab-ubic-txt').value=b.ubicacionTxt||'';abUbicCambio();openM('madd');}
+function openEB(id){_abQrError('');const b=bikes.find(x=>x.id===id);if(!b)return;document.getElementById('madd-title').textContent='Editar bicicleta';document.getElementById('ab-savebtn').textContent='Guardar cambios';document.getElementById('ab-eid').value=id;document.getElementById('ab-num').value=b.numBici;document.getElementById('ab-ser').value=b.numSerie||'';document.getElementById('ab-qr').value=b.qr||'';document.getElementById('ab-mod').value=b.modelo||'';setBikePicPreview(b.icono||'');var ts=document.getElementById('ab-tipo');ts.removeAttribute('data-loaded');abSizes();ts.value=b.tipo;if(b.tipo&&ts.value!==b.tipo){var ot=document.createElement('option');ot.value=b.tipo;ot.textContent=b.tipo+' (no está en la lista)';ts.appendChild(ot);ts.value=b.tipo;}abSizes();var tl=document.getElementById('ab-tal');tl.value=b.talla;if(b.talla&&tl.value!==b.talla){var ol=document.createElement('option');ol.value=b.talla;ol.textContent=b.talla+' (talla actual, no está en el modelo)';tl.appendChild(ol);tl.value=b.talla;}window._ebIcono=b.icono||'';setABE(b.estado||'disponible');document.getElementById('ab-ubic').value=ubicDe(b);document.getElementById('ab-ubic-txt').value=b.ubicacionTxt||'';document.getElementById('ab-ubic-dir').value=b.ubicacionDir||'';abUbicCambio();openM('madd');}
 function saveBikeM(){
   const num=document.getElementById('ab-num').value.trim();
   if(!num){toast('⚠️ El número de bicicleta es obligatorio');return;}
@@ -622,10 +622,10 @@ function saveBikeM(){
   if(!tipo||!talla){toast('⚠️ Elige tipo y talla de la bicicleta');return;}
   const estado=document.getElementById('ab-est').value||'disponible';
   const eid=document.getElementById('ab-eid').value;
-  const ubic=document.getElementById('ab-ubic').value||'mondonedo',ubicTxt=document.getElementById('ab-ubic-txt').value.trim();
+  const ubic=document.getElementById('ab-ubic').value||'mondonedo',ubicTxt=document.getElementById('ab-ubic-txt').value.trim(),ubicDir=document.getElementById('ab-ubic-dir').value.trim();
   function doSave(){
-    if(eid){const idx=bikes.findIndex(b=>String(b.id)===String(eid));if(idx>=0){bikes[idx]={...bikes[idx],numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(bikes[idx],ubic,ubicTxt,'Editar bici',false);}toast('✅ Bicicleta actualizada');}
-    else{const nb={id:Date.now(),numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(nb,ubic,ubicTxt,'Alta',false);bikes.push(nb);toast('✅ Bicicleta añadida');}
+    if(eid){const idx=bikes.findIndex(b=>String(b.id)===String(eid));if(idx>=0){bikes[idx]={...bikes[idx],numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(bikes[idx],ubic,ubicTxt,'Editar bici',false,ubicDir);}toast('✅ Bicicleta actualizada');}
+    else{const nb={id:Date.now(),numBici:num,numSerie:ser,qr,modelo,icono,tipo,talla,estado};setUbicacion(nb,ubic,ubicTxt,'Alta',false,ubicDir);bikes.push(nb);toast('✅ Bicicleta añadida');}
     sb();closeM('madd');rDB();if(cv==='bikes')rBV();
     if(window._ebDesdeET){window._ebDesdeET=false;openM('met');renderET();}
   }
@@ -839,7 +839,7 @@ function borrarModeloET(){
 }
 function nuevaBiciDeModelo(){
   const k=etc;closeM('met');abReset();
-  const _u=document.getElementById('ab-ubic');if(_u){_u.value='mondonedo';document.getElementById('ab-ubic-txt').value='';abUbicCambio();}
+  const _u=document.getElementById('ab-ubic');if(_u){_u.value='mondonedo';document.getElementById('ab-ubic-txt').value='';document.getElementById('ab-ubic-dir').value='';abUbicCambio();}
   const ts=document.getElementById('ab-tipo');if(ts){ts.value=k;abSizes();}
   window._ebDesdeET=true;openM('madd');
 }
@@ -1586,20 +1586,23 @@ const UBICACIONES={
 function ubicDe(b){return (b&&UBICACIONES[b.ubicacion])?b.ubicacion:'mondonedo';}
 function ubicTexto(b){const u=UBICACIONES[ubicDe(b)];return u.lbl+(b.ubicacionTxt?' · '+b.ubicacionTxt:'');}
 function ubicBadge(b){const u=UBICACIONES[ubicDe(b)];
-  return `<span title="Ubicación${b.ubicacionFecha?' desde '+esc(b.ubicacionFecha):''}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${u.bg};color:${u.txt}">${u.icon} ${esc(ubicTexto(b))}</span>`;}
+  return `<span title="Ubicación${b.ubicacionDir?' · '+esc(b.ubicacionDir):''}${b.ubicacionFecha?' desde '+esc(b.ubicacionFecha):''}" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${u.bg};color:${u.txt}">${u.icon} ${esc(ubicTexto(b))}</span>`;}
 // Cambia la ubicación y la apunta en el historial de la bici. guardar=false si quien llama ya guarda.
-function setUbicacion(b,u,txt,nota,guardar){
+function setUbicacion(b,u,txt,nota,guardar,dir){
   if(!b||!UBICACIONES[u])return;
-  const antes=ubicDe(b)+'|'+(b.ubicacionTxt||'');
+  const antes=ubicDe(b)+'|'+(b.ubicacionTxt||'')+'|'+(b.ubicacionDir||'');
+  const mismoSitio=ubicDe(b)===u&&(b.ubicacionTxt||'')===((u==='cliente'||u==='otro')?(txt||''):'');
   b.ubicacion=u;b.ubicacionTxt=(u==='cliente'||u==='otro')?(txt||''):'';
-  if(antes===u+'|'+b.ubicacionTxt)return;
+  // Dirección opcional (solo en "Otro lugar"); si no se indica y es el mismo sitio, se conserva
+  b.ubicacionDir=(u==='otro'||u==='santiago')?(dir!==undefined?String(dir||'').trim():(mismoSitio?(b.ubicacionDir||''):'')):'';
+  if(antes===u+'|'+b.ubicacionTxt+'|'+b.ubicacionDir)return;
   b.ubicacionFecha=new Date().toLocaleString('es-ES');
   if(!b.ubicHist)b.ubicHist=[];
-  b.ubicHist.push({u:u,txt:b.ubicacionTxt,fecha:b.ubicacionFecha,ts:new Date().toISOString(),nota:nota||''});
+  b.ubicHist.push({u:u,txt:b.ubicacionTxt,dir:b.ubicacionDir||'',fecha:b.ubicacionFecha,ts:new Date().toISOString(),nota:nota||''});
   if(b.ubicHist.length>40)b.ubicHist=b.ubicHist.slice(-40);
   if(guardar!==false&&typeof DB!=='undefined'&&DB.saveBici)DB.saveBici(b).catch(e=>console.error('ubicacion',e));
 }
-function abUbicCambio(){const v=document.getElementById('ab-ubic').value;const w=document.getElementById('ab-ubic-txt');w.style.display=(v==='otro'||v==='cliente')?'':'none';}
+function abUbicCambio(){const v=document.getElementById('ab-ubic').value;const w=document.getElementById('ab-ubic-txt');w.style.display=(v==='otro'||v==='cliente')?'':'none';const d=document.getElementById('ab-ubic-dir');if(d)d.style.display=(v==='otro'||v==='santiago')?'':'none';}
 
 // Ventana "Dónde están las bicis" (V29)
 // Grupos para contar retornos: Mondoñedo, Santiago, Con cliente y CADA otro lugar por su
@@ -1632,7 +1635,7 @@ function renderUbicaciones(){
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--gray-100);cursor:pointer">
       <input type="checkbox" class="ubic-chk" value="${b.id}" style="width:18px;height:18px"/>
       <span style="font-size:18px">${t.icon}</span>
-      <span style="flex:1"><b>${esc(b.numBici)}</b> · ${esc(t.label)} ${esc(b.talla||'')} <span style="color:var(--gray-400);font-size:12px">· ${be.icon} ${esc(be.lbl)}${ubicDe(b)==='cliente'&&b.ubicacionTxt?' · '+esc(b.ubicacionTxt):''}${b.ubicacionFecha?' · desde '+esc(b.ubicacionFecha.split(',')[0]):''}</span></span>
+      <span style="flex:1"><b>${esc(b.numBici)}</b> · ${esc(t.label)} ${esc(b.talla||'')} <span style="color:var(--gray-400);font-size:12px">· ${be.icon} ${esc(be.lbl)}${ubicDe(b)==='cliente'&&b.ubicacionTxt?' · '+esc(b.ubicacionTxt):''}${b.ubicacionFecha?' · desde '+esc(b.ubicacionFecha.split(',')[0]):''}</span>${b.ubicacionDir?`<div style="font-size:12px;color:#92400e;margin-top:2px">📍 ${esc(b.ubicacionDir)} · <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.ubicacionDir+', '+(b.ubicacionTxt||''))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">ver mapa</a></div>`:''}</span>
     </label>`;}).join(''):'<div class="empty-state" style="padding:24px"><div class="empty-state-text">No hay bicis aquí</div></div>';
   document.getElementById('ubic-mover').innerHTML=Object.entries(UBICACIONES).filter(([k])=>k!==_ubicFiltro||k==='otro').map(([k,u])=>`<option value="${k}">${u.icon} ${u.lbl}</option>`).join('');
   document.getElementById('ubic-todas').checked=false;
@@ -1642,8 +1645,9 @@ function moverUbicaciones(){
   const ids=[...document.querySelectorAll('#ubic-lista .ubic-chk:checked')].map(c=>c.value);
   if(!ids.length){toast('⚠️ Marca las bicis que quieres mover');return;}
   const dest=document.getElementById('ubic-mover').value;
-  let txt='';if(dest==='otro'||dest==='cliente'){txt=prompt('¿Dónde / con quién están?')||'';}
-  ids.forEach(id=>{const b=bikes.find(x=>String(x.id)===String(id));if(b)setUbicacion(b,dest,txt,'Cambio manual',false);});
+  let txt='',dir;if(dest==='otro'||dest==='cliente'){txt=prompt(dest==='otro'?'¿En qué lugar están? (p. ej. León)':'¿Con quién están?')||'';if(txt===null)return;}
+  if(dest==='otro'||dest==='santiago'){dir=prompt('Dirección (opcional): calle, hotel, empresa… Déjalo en blanco si no hace falta.')||'';}
+  ids.forEach(id=>{const b=bikes.find(x=>String(x.id)===String(id));if(b)setUbicacion(b,dest,txt,'Cambio manual',false,dir);});
   if(_ubicFiltro.indexOf('otro:')===0&&!bikes.some(b=>grupoUbic(b)===_ubicFiltro))_ubicFiltro=dest;
   sb();renderUbicaciones();renderBL();rDB();
   toast('📍 '+ids.length+' bici'+(ids.length>1?'s':'')+' → '+UBICACIONES[dest].lbl);
@@ -1651,10 +1655,10 @@ function moverUbicaciones(){
 
 
 // Fin de la reserva: la bici queda donde termina la reserva (lugar de finalización).
-function ubicarEnFinDeReserva(b,r,nota,lugar){
+function ubicarEnFinDeReserva(b,r,nota,lugar,dir){
   const fin=String(lugar||(r&&r.lugarFin)||'Santiago de Compostela').trim();
-  if(/santiago/i.test(fin))setUbicacion(b,'santiago','',nota,false);
-  else setUbicacion(b,'otro',fin,nota,false);
+  if(/santiago/i.test(fin))setUbicacion(b,'santiago','',nota,false,dir||''); // con dirección concreta si se indica
+  else setUbicacion(b,'otro',fin,nota,false,dir||'');
 }
 
 // ── LLEGADA A MONDOÑEDO: escanear el QR de cada bici al descargarla ──
