@@ -439,7 +439,7 @@ function renderBikeAlquileresHist() {
     return '<div style="padding:12px 14px;background:'+bg+';border:1px solid #e5e7eb;border-radius:8px">'
       + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'
       + '<div style="font-weight:800;font-size:14px">'+esc(r.cliente||'-')+'</div>'
-      + '<div style="font-size:12px;font-weight:700;color:#6b7280">'+esc(r.estado||'')+'</div>'
+      + '<div style="font-size:12px;font-weight:700;color:#6b7280">'+esc((typeof SCFG!=='undefined'&&SCFG[r.estado]?SCFG[r.estado].lbl:r.estado)||'')+'</div>'
       + '</div>'
       + '<div style="font-size:12px;color:#374151">📅 '+esc(r.ini||'-')+' → '+esc(r.fin||'-')+'  ·  '+esc(String(r.dias||''))+ ' días</div>'
       + '<div style="font-size:12px;color:#374151;margin-top:2px">📍 '+esc(r.lugarIni||'-')+' → '+esc(r.lugarFin||'Santiago de Compostela')+'</div>'
