@@ -705,6 +705,8 @@
         <div class="fg"><label class="fl">Mínimo días alquiler</label><input class="fi" id="c-min" type="number" min="1" value="3"/></div>
         <div class="fg"><label class="fl">Días preparación entre alquileres</label><input class="fi" id="c-gap" type="number" min="0" value="6"/></div>
       </div>
+      <div class="fg"><label class="fl">Horas que un presupuesto bloquea stock</label><input class="fi" id="c-presup" type="number" min="0" step="1" value="72"/>
+        <div style="font-size:11.5px;color:#6b7280;margin-top:3px">Pasado este tiempo el presupuesto deja de ocupar bicis y sale como "Presupuesto caducado" (no se anula solo). 0 = los presupuestos no bloquean.</div></div>
       <div class="fr2">
         <div class="fg"><label class="fl">Moneda</label><select class="fi" id="c-cur"><option value="€">€ Euro</option><option value="$">$ Dólar</option><option value="£">£ Libra</option></select></div>
         <div class="fg"><label class="fl">IVA por defecto (%)</label><input class="fi" id="c-iva" type="number" min="0" value="21"/></div>

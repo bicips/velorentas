@@ -86,7 +86,7 @@ var ESTADOS_LIBRE_GLOBAL=['cancelada','anulada','recogida','finalizada'];
 // Desde que la reserva entra en Presupuesto (estado interno 'pendiente') ocupa stock
 // durante cfg.presupHoras (72 h). Después deja de contar para la disponibilidad y se marca
 // "Presupuesto caducado". NUNCA se anula ni se cambia sola: lo decides tú.
-function _presupHoras(){return (cfg&&cfg.presupHoras)||72;}
+function _presupHoras(){var h=cfg&&cfg.presupHoras;return (h===0||h)?Number(h):72;} // se cambia en ⚙️ Configuración; 0 = los presupuestos no bloquean
 function _presupDesde(r){
   if(r.presupDesde)return r.presupDesde;
   if(typeof r.id==='number'&&r.id>1.5e12&&r.id<4e12)return r.id; // reservas creadas aquí: id = momento de creación
@@ -139,8 +139,8 @@ function toggleSB(){document.getElementById('sidebar').classList.toggle('open');
 function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sbov').classList.remove('on');}
 
 // CONFIG
-function loadCfg(){['biz','cif','addr','phone'].forEach(function(k){document.getElementById('c-'+k).value=cfg[k==='biz'?'bizName':k]||'';});document.getElementById('c-min').value=cfg.minDays||3;document.getElementById('c-gap').value=cfg.gapDays||6;document.getElementById('c-cur').value=cfg.currency||'€';document.getElementById('c-iva').value=cfg.iva||21;document.getElementById('c-fprefix').value=cfg.fprefix||'F-2024-';}
-function saveCfg(){cfg.bizName=document.getElementById('c-biz').value.trim()||'VeloRentas';cfg.cif=document.getElementById('c-cif').value.trim();cfg.addr=document.getElementById('c-addr').value.trim();cfg.phone=document.getElementById('c-phone').value.trim();cfg.minDays=parseInt(document.getElementById('c-min').value)||3;cfg.gapDays=parseInt(document.getElementById('c-gap').value)||6;cfg.currency=document.getElementById('c-cur').value;cfg.iva=parseFloat(document.getElementById('c-iva').value)||21;cfg.fprefix=document.getElementById('c-fprefix').value||'F-2024-';sC();closeM('mcfg');toast('Configuración guardada');}
+function loadCfg(){['biz','cif','addr','phone'].forEach(function(k){document.getElementById('c-'+k).value=cfg[k==='biz'?'bizName':k]||'';});document.getElementById('c-min').value=cfg.minDays||3;document.getElementById('c-gap').value=cfg.gapDays||6;document.getElementById('c-presup').value=_presupHoras();document.getElementById('c-cur').value=cfg.currency||'€';document.getElementById('c-iva').value=cfg.iva||21;document.getElementById('c-fprefix').value=cfg.fprefix||'F-2024-';}
+function saveCfg(){cfg.bizName=document.getElementById('c-biz').value.trim()||'VeloRentas';cfg.cif=document.getElementById('c-cif').value.trim();cfg.addr=document.getElementById('c-addr').value.trim();cfg.phone=document.getElementById('c-phone').value.trim();cfg.minDays=parseInt(document.getElementById('c-min').value)||3;cfg.gapDays=parseInt(document.getElementById('c-gap').value)||6;var _ph=parseInt(document.getElementById('c-presup').value,10);cfg.presupHoras=(isNaN(_ph)||_ph<0)?72:_ph;cfg.currency=document.getElementById('c-cur').value;cfg.iva=parseFloat(document.getElementById('c-iva').value)||21;cfg.fprefix=document.getElementById('c-fprefix').value||'F-2024-';sC();closeM('mcfg');toast('Configuración guardada');try{renderRes();renderDash();if(CV==='cal')renderCal();if(CV==='timeline')renderTL();}catch(e){}}
 
 // AVAILABILITY ENGINE
 // 'stock' y 'disponible' cuentan como disponibles para reservas
