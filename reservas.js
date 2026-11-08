@@ -82,6 +82,36 @@ var SCFG={
 };
 // Estados que LIBERAN stock — única fuente de verdad, usada en toda la app
 var ESTADOS_LIBRE_GLOBAL=['cancelada','anulada','recogida','finalizada'];
+// ── PRESUPUESTOS: bloquean stock solo 72 h (aprobado por Diego el 08/11/2026) ──
+// Desde que la reserva entra en Presupuesto (estado interno 'pendiente') ocupa stock
+// durante cfg.presupHoras (72 h). Después deja de contar para la disponibilidad y se marca
+// "Presupuesto caducado". NUNCA se anula ni se cambia sola: lo decides tú.
+function _presupHoras(){return (cfg&&cfg.presupHoras)||72;}
+function _presupDesde(r){
+  if(r.presupDesde)return r.presupDesde;
+  if(typeof r.id==='number'&&r.id>1.5e12&&r.id<4e12)return r.id; // reservas creadas aquí: id = momento de creación
+  return null;
+}
+function presupCaduca(r){var t=_presupDesde(r);return t?t+_presupHoras()*3600e3:null;}
+function presupCaducado(r){if(!r||r.estado!=='pendiente')return false;var c=presupCaduca(r);return !!(c&&Date.now()>c);}
+// ¿Esta reserva cuenta para el stock? (para CONTAR disponibilidad; la asignación manual va aparte)
+function ocupaStock(r){return ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)<0&&!presupCaducado(r);}
+function fmtFH(ms){var d=new Date(ms);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+// Presupuestos VIGENTES que ocupan tipo+talla en esas fechas (para avisar al hacer otra reserva)
+function presupuestosQueBloquean(tipo,talla,ini,fin,excludeId){
+  return reservas.filter(function(r){
+    if(r.estado!=='pendiente'||presupCaducado(r))return false;
+    if(excludeId&&r.id===excludeId)return false;
+    var g=(r.prepDias!=null?r.prepDias:cfg.gapDays);
+    if(fin<r.ini||ini>addD(r.fin,g))return false;
+    return _udsDeReserva(r,tipo,talla)>0;
+  });
+}
+function htmlPresupBloquean(tipo,talla,ini,fin,excludeId){
+  var ps=presupuestosQueBloquean(tipo,talla,ini,fin,excludeId);if(!ps.length)return '';
+  return '<div style="margin-top:4px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:5px 8px;font-size:11.5px;color:#92400e">🔒 Bloqueadas temporalmente por presupuesto:'
+    +ps.map(function(r){var u=_udsDeReserva(r,tipo,talla),c=presupCaduca(r);return '<div>• <b>'+esc(r.cliente)+'</b> · '+u+' bici'+(u>1?'s':'')+' · '+fmtD(r.ini)+' → '+fmtD(r.fin)+(c?' · se libera el '+fmtFH(c):'')+'</div>';}).join('')+'</div>';
+}
 var RCOLS=[['#dbeafe','#1d4ed8'],['#dcfce7','#15803d'],['#fef3c7','#b45309'],['#fae8ff','#7e22ce'],['#cffafe','#0e7490'],['#fee2e2','#991b1b'],['#f0fdf4','#166534'],['#eff6ff','#1e40af']];
 function rcol(id){return RCOLS[Math.abs(id)%RCOLS.length];}
 
@@ -132,7 +162,7 @@ function getAvailCount(tipo,talla,ini,fin,excludeId){
   var ESTADOS_LIBRE=ESTADOS_LIBRE_GLOBAL;
   var udsOcupadas=0;
   reservas.forEach(function(r){
-    if(ESTADOS_LIBRE.indexOf(r.estado)>=0)return;
+    if(!ocupaStock(r))return; // libres + presupuestos caducados (72 h)
     if(excludeId&&r.id===excludeId)return;
     // FIX: el margen de preparación (r.prepDias, editable con el botón 🔧 del timeline, o por
     // defecto cfg.gapDays) se aplica SOLO hacia adelante, después de r.fin. Una reserva nueva
@@ -161,14 +191,14 @@ function _udsDeReserva(r,tipo,talla){
   return (r.tipo===tipo&&r.talla===talla)?(r.uds||1):0;
 }
 function faltaStockReserva(r){
-  if(!r||!r.ini||!r.fin||ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)>=0)return [];
+  if(!r||!r.ini||!r.fin||!ocupaStock(r))return [];
   var pares={};
   (r.lineas&&r.lineas.length?r.lineas:[{tipo:r.tipo,talla:r.talla}]).forEach(function(l){if(l.tipo&&l.talla)pares[l.tipo+'|'+l.talla]={tipo:l.tipo,talla:l.talla};});
   var out=[];
   Object.keys(pares).forEach(function(k){
     var tipo=pares[k].tipo,talla=pares[k].talla;
     var total=bikes.filter(function(b){return b.tipo===tipo&&b.talla===talla&&bikeOperativa(b);}).length;
-    var activas=reservas.filter(function(x){return ESTADOS_LIBRE_GLOBAL.indexOf(x.estado)<0&&x.ini&&x.fin&&_udsDeReserva(x,tipo,talla)>0;});
+    var activas=reservas.filter(function(x){return ocupaStock(x)&&x.ini&&x.fin&&_udsDeReserva(x,tipo,talla)>0;});
     var tramo=null;
     for(var d=r.ini;d<=r.fin;d=addD(d,1)){
       var ocup=0;
@@ -217,14 +247,17 @@ function explicarStock(tipo,talla,ini,fin,excludeId){
   var total=deTalla.filter(bikeOperativa).length;
   // 3) reservas que ocupan esas fechas
   var ocup=0,filasR=[];
+  var caducados=[];
   reservas.forEach(function(r){
     if(ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)>=0)return;
     if(excludeId&&r.id===excludeId)return;
     var g=(r.prepDias!=null?r.prepDias:cfg.gapDays),rFinG=addD(r.fin,g);
     if(fin<r.ini||ini>rFinG)return;
     var u=_udsDeReserva(r,tipo,talla);if(!u)return;
+    if(presupCaducado(r)){caducados.push('<div>• '+esc(r.cliente)+': '+u+' bici'+(u>1?'s':'')+' · '+fmtD(r.ini)+' → '+fmtD(r.fin)+' · ⌛ presupuesto caducado: ya no bloquea</div>');return;}
     ocup+=u;
     var sc=SCFG[r.estado]||{lbl:r.estado,icon:''};
+    if(r.estado==='pendiente'&&presupCaduca(r))sc={icon:'🔒',lbl:'Presupuesto: bloquea hasta el '+fmtFH(presupCaduca(r))};
     filasR.push('<div>• <b>'+esc(r.cliente)+'</b>: '+u+' bici'+(u>1?'s':'')+' · '+fmtD(r.ini)+' → '+fmtD(r.fin)+' <span style="color:#6b7280">(+'+g+' días de preparación hasta '+fmtD(rFinG)+')</span> · '+sc.icon+' '+esc(sc.lbl)+' <a href="#" onclick="closeM(\'mexpl\');showResDetail('+r.id+');return false">ver</a></div>');
   });
   // 4) bloqueos
@@ -237,6 +270,7 @@ function explicarStock(tipo,talla,ini,fin,excludeId){
       +'<b>'+total+'</b> en flota (sin averiadas) − <b>'+blq+'</b> bloqueadas − <b>'+ocup+'</b> en reservas = <b style="font-size:17px">'+disp+' disponible'+(disp!==1?'s':'')+'</b></div>'
     +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:6px 0">Bicis de esta talla</div>'+filasB
     +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Reservas que las ocupan en esas fechas</div>'+(filasR.join('')||'<div style="color:#6b7280">Ninguna.</div>')
+    +(caducados.length?'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Presupuestos caducados (no cuentan)</div>'+caducados.join(''):'')
     +(filasBl.length?'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Bloqueos</div>'+filasBl.join(''):'')
     +'<div style="font-weight:800;font-size:12px;text-transform:uppercase;color:#6b7280;margin:12px 0 6px">Todo el modelo '+esc(t.label)+' por talla</div>'
     +(filasT?'<table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="color:#6b7280;font-size:11.5px"><th style="text-align:left">Talla</th><th>Total</th><th>Operativas</th><th>Averiadas/baja</th><th></th></tr>'+filasT+'</table>':'<div style="color:#6b7280">No hay bicis de este modelo.</div>')
@@ -425,7 +459,7 @@ function renderLineas(){
       var cnt=getAvailCount(l.tipo,l.talla,ini,fin,eidN),ped=_udsPedidas(l.tipo,l.talla);
       availTxt=cnt>=ped
         ?'<span style="font-size:11px;color:#16a34a;font-weight:700;white-space:nowrap">✅ '+cnt+' disp.</span>'
-        :'<span title="Pides '+ped+' de esta talla y solo hay '+cnt+'" style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">❌ '+ped+' pedidas · '+cnt+' disp.</span>';
+        :'<span title="Pides '+ped+' de esta talla y solo hay '+cnt+'" style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">❌ '+ped+' pedidas · '+cnt+' disp.</span>'+htmlPresupBloquean(l.tipo,l.talla,ini,fin,eidN);
       availTxt+=' <a href="#" title="Ver de dónde sale este número" style="font-size:11px;white-space:nowrap" onclick="explicarStock(\''+l.tipo+'\',\''+String(l.talla).replace(/'/g,"\\'")+'\',\''+ini+'\',\''+fin+'\','+(eidN||'null')+');return false">🔍 ¿por qué?</a>';
     }
     html+='<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap;background:'+(i%2===0?'#fff':'#f9fafb')+'">';
@@ -913,12 +947,13 @@ function saveRes(forzarSinStock){
     var t=tipos[l.tipo]||{label:l.tipo};
     var _ped=_udsPedidas(l.tipo,l.talla);
     if(cnt<_ped){
-      errStock.push({label:t.label,talla:l.talla,pide:_ped,disp:cnt});
+      errStock.push({label:t.label,talla:l.talla,pide:_ped,disp:cnt,presup:presupuestosQueBloquean(l.tipo,l.talla,ini,fin,eidN).map(function(r){var c=presupCaduca(r);return r.cliente+' ('+_udsDeReserva(r,l.tipo,l.talla)+', '+fmtD(r.ini)+'→'+fmtD(r.fin)+(c?', se libera el '+fmtFH(c):'')+')';})});
     }
   });
   if(errStock.length&&!forzarSinStock){
     var msg=errStock.map(function(e){
-      return '• '+e.label+' talla '+e.talla+': pides '+e.pide+', solo hay '+e.disp+' disponible'+(e.disp!==1?'s':'');
+      return '• '+e.label+' talla '+e.talla+': pides '+e.pide+', solo hay '+e.disp+' disponible'+(e.disp!==1?'s':'')
+        +(e.presup&&e.presup.length?'\n  🔒 Bloqueadas temporalmente por presupuesto: '+e.presup.join('; '):'');
     }).join('\n');
     var modal=document.createElement('div');
     modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -947,6 +982,9 @@ function saveRes(forzarSinStock){
   var totalUds=validLineas.reduce(function(s,l){return s+(l.uds||1);},0);
   var _sinStock=errStock.length?{fecha:new Date().toISOString(),detalle:errStock.map(function(e){return e.label+' '+e.talla+': pide '+e.pide+', hay '+e.disp;}).join(' · ')}:null;
   var res={sinStock:_sinStock,id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
+  // Presupuesto: guarda desde cuándo bloquea stock (72 h). Al editar se conserva; si pasa a Presupuesto, empieza ahora.
+  var _ant=eidN?reservas.find(function(r){return r.id===eidN;}):null;
+  if(res.estado==='pendiente')res.presupDesde=(_ant&&_ant.estado==='pendiente'&&_presupDesde(_ant))||Date.now();
   if(eidN){var ix=reservas.findIndex(function(r){return r.id===eidN;});if(ix>=0)reservas[ix]=res;else reservas.push(res);}else reservas.push(res);
   sR();closeM('mres');toast('Reserva guardada');updBadge();
   if(CV==='dash')renderDash();if(CV==='cal')renderCal();if(CV==='timeline')renderTL();if(CV==='res')renderRes();if(CV==='flota')renderFlota();
@@ -1540,6 +1578,7 @@ function renderRes(){
       +'<div class="trow-info">'
         +'<div class="trow-main">'
           +esc(r.cliente)
+          +(r.estado==='pendiente'?(presupCaducado(r)?' <span title="Han pasado '+_presupHoras()+' h: ya no bloquea stock. Confírmala o anúlala." style="font-size:10px;background:#f3f4f6;color:#6b7280;padding:1px 6px;border-radius:4px;font-weight:700">⌛ PRESUPUESTO CADUCADO</span>':(presupCaduca(r)?' <span title="Bloquea stock hasta esa hora" style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:700">🔒 hasta '+fmtFH(presupCaduca(r))+'</span>':'')):'')
           +(function(){var fs=faltaStockReserva(r);return fs.length?' <span title="'+esc(fs.map(textoFaltaStock).join(' · '))+'" style="font-size:10px;background:#fee2e2;color:#b91c1c;padding:1px 6px;border-radius:4px;font-weight:700">SIN STOCK</span>':'';})()
           +(r.origen==='publico'?' <span style="font-size:10px;background:rgba(20,184,166,.1);color:var(--te600);padding:1px 6px;border-radius:4px">Web</span>':'')
           +(isHoy?' <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;font-weight:700">ENTRADA HOY</span>':'')
@@ -1694,6 +1733,7 @@ function anularReserva(id){
 function changeStatus(id,st,extra){
   var r=reservas.find(function(x){return x.id===id;});
   if(!r)return;
+  if(st==='pendiente'&&r.estado!=='pendiente')r.presupDesde=Date.now(); // vuelve a Presupuesto: 72 h desde ahora
   if(st==='confirmada'&&r.estado!=='confirmada'){
     var fsC=faltaStockReserva(r);
     if(fsC.length&&!confirm('🚨 Esta reserva no tiene stock suficiente:\n\n'+fsC.map(textoFaltaStock).join('\n')+'\n\n¿Confirmarla igualmente?'))return;
@@ -2077,9 +2117,8 @@ function renderTL(){
   if(!bList.length){el.innerHTML=emptyHTML('🚲','Sin bicicletas para este filtro');return;}
 
   // Reservas activas del mismo modelo+talla
-  var ESTADOS_LIBRES=ESTADOS_LIBRE_GLOBAL;
   var resActivas=reservas.filter(function(r){
-    if(ESTADOS_LIBRES.indexOf(r.estado)>=0)return false;
+    if(!ocupaStock(r))return false;
     if(!r.lineas||!r.lineas.length)return (r.tipo===tipo)&&(!talla||r.talla===talla);
     return r.lineas.some(function(l){
       return (!tipo||l.tipo===tipo)&&(!talla||l.talla===talla);
@@ -3779,6 +3818,8 @@ async function initApp() {
     // Aplicar datos reservas
     if (dbBikes.length)       bikes          = dbBikes;
     if (dbReservas.length)    reservas       = dbReservas;
+    // Presupuestos antiguos sin fecha de inicio: sus 72 h empiezan a contar ahora
+    reservas.forEach(function(r){if(r.estado==='pendiente'&&!_presupDesde(r)){r.presupDesde=Date.now();if(DB.saveReserva)DB.saveReserva(r).catch(function(e){console.error('presupDesde',e);});}});
     if (dbBloqueos.length)    bloqueos       = dbBloqueos;
     if (dbFacturas.length)    facturas       = dbFacturas;
     if (Object.keys(dbTarifas).length) tarifas = dbTarifas;
