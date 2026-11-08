@@ -113,8 +113,8 @@ function rDB(){
   ].map(s=>`<div class="stat-card ${s.c}"><div class="stat-icon">${s.i}</div><div class="stat-value">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join('');
 
   const du=document.getElementById('dash-ubic');
-  if(du)du.innerHTML=`<button onclick="abrirLlegadaMondonedo()" style="flex:1 1 100%;border:none;background:#0d9488;color:#fff;border-radius:10px;padding:12px;font-size:15px;font-weight:800;cursor:pointer">📥 Llegada a Mondoñedo · escanear bicis al descargar</button>`+Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
-    return `<button onclick="abrirUbicaciones('${k}')" style="flex:1;min-width:110px;border:1px solid var(--gray-200);background:${u.bg};color:${u.txt};border-radius:10px;padding:10px;cursor:pointer;text-align:left"><div style="font-size:20px;font-weight:800">${n}</div><div style="font-size:12px;font-weight:700">${u.icon} ${u.lbl}</div></button>`;}).join('');
+  if(du){const g=gruposUbic();du.innerHTML=`<button onclick="abrirLlegadaMondonedo()" style="flex:1 1 100%;border:none;background:#0d9488;color:#fff;border-radius:10px;padding:12px;font-size:15px;font-weight:800;cursor:pointer">📥 Llegada a Mondoñedo · escanear bicis al descargar</button>`+Object.keys(g).map(k=>{const u=infoGrupo(k);
+    return `<button onclick="abrirUbicaciones('${k.replace(/'/g,"\\'")}')" style="flex:1;min-width:110px;border:1px solid var(--gray-200);background:${u.bg};color:${u.txt};border-radius:10px;padding:10px;cursor:pointer;text-align:left"><div style="font-size:20px;font-weight:800">${g[k]}</div><div style="font-size:12px;font-weight:700">${u.icon} ${esc(u.lbl)}</div></button>`;}).join('');}
   document.getElementById('dash-types').innerHTML=Object.entries(tipos).map(([k,t])=>{
     const cnt=bikes.filter(b=>b.tipo===k).length;
     const disp=bikes.filter(b=>b.tipo===k&&b.estado==='disponible').length;
@@ -1602,21 +1602,39 @@ function setUbicacion(b,u,txt,nota,guardar){
 function abUbicCambio(){const v=document.getElementById('ab-ubic').value;const w=document.getElementById('ab-ubic-txt');w.style.display=(v==='otro'||v==='cliente')?'':'none';}
 
 // Ventana "Dónde están las bicis" (V29)
+// Grupos para contar retornos: Mondoñedo, Santiago, Con cliente y CADA otro lugar por su
+// nombre (León, Fisterra…), para que no se mezclen con las de Santiago.
+function _normLugar(t){return String(t||'').trim().replace(/\s+/g,' ').replace(/^./,c=>c.toUpperCase());}
+// "León", "leon" y "LEÓN" son el mismo sitio: se agrupan sin tildes ni mayúsculas
+function _claveLugar(t){return String(t||'Sin indicar').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');}
+const _lblLugar={};
+function grupoUbic(b){const u=ubicDe(b);if(u!=='otro')return u;const t=b.ubicacionTxt||'Sin indicar',k=_claveLugar(t);
+  if(!_lblLugar[k]||/[áéíóúñ]/i.test(t))_lblLugar[k]=_normLugar(t);return 'otro:'+k;}
+function gruposUbic(){
+  const g={mondonedo:0,santiago:0,cliente:0};
+  bikes.forEach(b=>{const k=grupoUbic(b);g[k]=(g[k]||0)+1;});
+  return g;
+}
+function infoGrupo(k){
+  if(k.indexOf('otro:')===0){const u=UBICACIONES.otro;return {icon:'📍',lbl:_lblLugar[k.slice(5)]||_normLugar(k.slice(5)),bg:u.bg,txt:u.txt};}
+  return UBICACIONES[k]||UBICACIONES.otro;
+}
 let _ubicFiltro='santiago';
 function abrirUbicaciones(u){_ubicFiltro=u||_ubicFiltro||'santiago';openM('mubic');renderUbicaciones();}
 function renderUbicaciones(){
   const tabs=document.getElementById('ubic-tabs');
-  tabs.innerHTML=Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
-    return `<button class="type-tab ${_ubicFiltro===k?'active':''}" onclick="_ubicFiltro='${k}';renderUbicaciones()">${u.icon} ${u.lbl} <b>${n}</b></button>`;}).join('');
-  const lista=bikes.filter(b=>ubicDe(b)===_ubicFiltro).sort((a,b)=>String(a.numBici).localeCompare(String(b.numBici),'es',{numeric:true}));
+  const g=gruposUbic();
+  tabs.innerHTML=Object.keys(g).map(k=>{const u=infoGrupo(k);
+    return `<button class="type-tab ${_ubicFiltro===k?'active':''}" onclick="_ubicFiltro='${k.replace(/'/g,"\\'")}';renderUbicaciones()">${u.icon} ${esc(u.lbl)} <b>${g[k]}</b></button>`;}).join('');
+  const lista=bikes.filter(b=>grupoUbic(b)===_ubicFiltro).sort((a,b)=>String(a.numBici).localeCompare(String(b.numBici),'es',{numeric:true}));
   const el=document.getElementById('ubic-lista');
   el.innerHTML=lista.length?lista.map(b=>{const t=tipos[b.tipo]||{icon:'🚲',label:b.tipo};const be=BIKE_ESTADOS[b.estado]||{icon:'',lbl:b.estado};
     return `<label style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--gray-100);cursor:pointer">
       <input type="checkbox" class="ubic-chk" value="${b.id}" style="width:18px;height:18px"/>
       <span style="font-size:18px">${t.icon}</span>
-      <span style="flex:1"><b>${esc(b.numBici)}</b> · ${esc(t.label)} ${esc(b.talla||'')} <span style="color:var(--gray-400);font-size:12px">· ${be.icon} ${esc(be.lbl)}${b.ubicacionTxt?' · '+esc(b.ubicacionTxt):''}${b.ubicacionFecha?' · desde '+esc(b.ubicacionFecha.split(',')[0]):''}</span></span>
+      <span style="flex:1"><b>${esc(b.numBici)}</b> · ${esc(t.label)} ${esc(b.talla||'')} <span style="color:var(--gray-400);font-size:12px">· ${be.icon} ${esc(be.lbl)}${ubicDe(b)==='cliente'&&b.ubicacionTxt?' · '+esc(b.ubicacionTxt):''}${b.ubicacionFecha?' · desde '+esc(b.ubicacionFecha.split(',')[0]):''}</span></span>
     </label>`;}).join(''):'<div class="empty-state" style="padding:24px"><div class="empty-state-text">No hay bicis aquí</div></div>';
-  document.getElementById('ubic-mover').innerHTML=Object.entries(UBICACIONES).filter(([k])=>k!==_ubicFiltro).map(([k,u])=>`<option value="${k}">${u.icon} ${u.lbl}</option>`).join('');
+  document.getElementById('ubic-mover').innerHTML=Object.entries(UBICACIONES).filter(([k])=>k!==_ubicFiltro||k==='otro').map(([k,u])=>`<option value="${k}">${u.icon} ${u.lbl}</option>`).join('');
   document.getElementById('ubic-todas').checked=false;
 }
 function ubicMarcarTodas(v){document.querySelectorAll('#ubic-lista .ubic-chk').forEach(c=>c.checked=v);}
@@ -1626,14 +1644,15 @@ function moverUbicaciones(){
   const dest=document.getElementById('ubic-mover').value;
   let txt='';if(dest==='otro'||dest==='cliente'){txt=prompt('¿Dónde / con quién están?')||'';}
   ids.forEach(id=>{const b=bikes.find(x=>String(x.id)===String(id));if(b)setUbicacion(b,dest,txt,'Cambio manual',false);});
+  if(_ubicFiltro.indexOf('otro:')===0&&!bikes.some(b=>grupoUbic(b)===_ubicFiltro))_ubicFiltro=dest;
   sb();renderUbicaciones();renderBL();rDB();
   toast('📍 '+ids.length+' bici'+(ids.length>1?'s':'')+' → '+UBICACIONES[dest].lbl);
 }
 
 
 // Fin de la reserva: la bici queda donde termina la reserva (lugar de finalización).
-function ubicarEnFinDeReserva(b,r,nota){
-  const fin=String((r&&r.lugarFin)||'Santiago de Compostela').trim();
+function ubicarEnFinDeReserva(b,r,nota,lugar){
+  const fin=String(lugar||(r&&r.lugarFin)||'Santiago de Compostela').trim();
   if(/santiago/i.test(fin))setUbicacion(b,'santiago','',nota,false);
   else setUbicacion(b,'otro',fin,nota,false);
 }

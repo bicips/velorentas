@@ -987,6 +987,11 @@ function saveRes(forzarSinStock){
   // Presupuesto: guarda desde cuándo bloquea stock (72 h). Al editar se conserva; si pasa a Presupuesto, empieza ahora.
   var _ant=eidN?reservas.find(function(r){return r.id===eidN;}):null;
   if(res.estado==='pendiente')res.presupDesde=(_ant&&_ant.estado==='pendiente'&&_presupDesde(_ant))||Date.now();
+  // Si en Editar se pasa a Recogida/Finalizada, sus bicis quedan donde termina la reserva (informativo)
+  if(_ant&&_ant.estado!==res.estado&&(res.estado==='recogida'||res.estado==='finalizada')&&typeof ubicarEnFinDeReserva==='function'){
+    var _idsE={};(res.bikesAsig||[]).forEach(function(a){if(a)_idsE[a.id]=1;});(res.lineas||[]).forEach(function(l){if(l&&l.bikeAsig)_idsE[l.bikeAsig.id]=1;});
+    Object.keys(_idsE).forEach(function(id){var b=bikes.find(function(x){return String(x.id)===String(id);});if(b&&ubicDe(b)!=='mondonedo'){ubicarEnFinDeReserva(b,res,'Reserva '+((SCFG[res.estado]||{}).lbl||res.estado));DB.saveBici(b).catch(function(e){console.error(e);});}});
+  }
   if(eidN){var ix=reservas.findIndex(function(r){return r.id===eidN;});if(ix>=0)reservas[ix]=res;else reservas.push(res);}else reservas.push(res);
   sR();closeM('mres');toast('Reserva guardada');updBadge();
   if(CV==='dash')renderDash();if(CV==='cal')renderCal();if(CV==='timeline')renderTL();if(CV==='res')renderRes();if(CV==='flota')renderFlota();
@@ -2680,6 +2685,14 @@ function _procesarRecogida(codigo) {
     return (r.bikesAsig && r.bikesAsig.some(function(a){return a&&String(a.id)===String(bici.id);}))
       || (r.lineas && r.lineas.some(function(l){return l&&l.bikeAsig&&String(l.bikeAsig.id)===String(bici.id);}));
   });
+  // Dónde queda la bici: el lugar de finalización de su reserva (o de la última que la llevó)
+  var _tieneBici=function(r){return (r.bikesAsig||[]).some(function(a){return a&&String(a.id)===String(bici.id);})||(r.lineas||[]).some(function(l){return l&&l.bikeAsig&&String(l.bikeAsig.id)===String(bici.id);});};
+  var resLugar=res||reservas.filter(_tieneBici).sort(function(a,b){return String(b.fin||'').localeCompare(String(a.fin||''));})[0];
+  var lugarFin=(resLugar&&resLugar.lugarFin)||'Santiago de Compostela';
+  var lugarHtml='<div style="margin-top:12px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:10px 12px">'
+    +'<label style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase">📍 La bici queda en</label>'
+    +'<input id="rec-lugar" class="fi" value="'+esc(lugarFin)+'" style="width:100%;margin-top:4px;font-weight:700"/>'
+    +'<div style="font-size:11.5px;color:#6b7280;margin-top:3px">'+(resLugar?'Lugar de finalización de la reserva de '+esc(resLugar.cliente)+'.':'No hay reserva: escribe dónde se recoge.')+' Si se recoge en otro sitio, cámbialo.</div></div>';
   // Checklist de lo que se envió con esta bici (lo marcado en Preparar bici) para comprobar que vuelve todo
   var devHtml='';window._recDev=null;
   if(res && typeof _lineasRes==='function'){
@@ -2725,6 +2738,7 @@ function _procesarRecogida(codigo) {
     + '<div style="font-size:12px;color:#6b7280">Estado actual: '+estBici.icon+' '+estBici.lbl+'</div>'
     + resHtml
     + '</div>'
+    + lugarHtml
     + devHtml
     + '<div style="margin-top:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px">'
     + '<div style="font-weight:700;font-size:13px;margin-bottom:8px">✅ Confirmar recogida</div>'
@@ -2784,7 +2798,8 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
-    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return String(r.id)===String(resId);}):null, 'Recogida'); // queda donde termina la reserva (informativo)
+    var _lug=document.getElementById('rec-lugar');
+    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return String(r.id)===String(resId);}):null, 'Recogida', _lug&&_lug.value.trim()); // queda donde se recoge (informativo)
     if(!bici.estadosHist) bici.estadosHist=[];
     bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
