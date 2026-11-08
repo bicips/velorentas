@@ -1603,7 +1603,7 @@ function renderRes(){
         +'<button class="btn bs bxs" onclick="showResDetail('+r.id+')">Ver</button>'
         +'<button class="btn bs bxs" onclick="openEditRes('+r.id+')">✏️</button>'
         +'<button class="btn bd bxs" onclick="delRes('+r.id+')">🗑️</button>'
-        +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Prep.':'Preparar')+'</button>'
+        +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Rev.':'Revisar bici')+'</button>'
         +'<button type="button" onclick="_imprimirHojaUna('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid #fcd34d;background:#fef3c7;color:#b45309;font-size:11px;font-weight:700">🖨️ Hoja</button>'
       +'</div>'
     +'</div>';
@@ -3175,7 +3175,7 @@ function togglePreparar(resId){
     modal.innerHTML='<div style="background:#fff;border-radius:12px;width:420px;max-width:92vw;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
       +'<div style="font-size:28px;text-align:center;margin-bottom:12px">🔧</div>'
       +'<div style="font-size:16px;font-weight:800;text-align:center;margin-bottom:6px">Activar para taller</div>'
-      +'<div style="font-size:13px;color:#6b7280;text-align:center;margin-bottom:16px">Esta reserva aparecerá en la sección de preparación del taller</div>'
+      +'<div style="font-size:13px;color:#6b7280;text-align:center;margin-bottom:16px">Esta reserva aparecerá en «Revisar bici» del taller</div>'
       +'<div style="background:#f3f4f6;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px">'
         +'<div style="font-weight:700;font-size:14px;margin-bottom:4px">'+esc(cliente)+'</div>'
         +'<div style="color:#6b7280">📅 '+ini+' &nbsp;·&nbsp; 🚲 '+esc(modelo)+'</div>'
@@ -3635,7 +3635,7 @@ function ejecutarImpresion(){
     if(key==='total')    return r.total?(r.total+cfg.currency):'—';
     if(key==='estado')   return SLBL[r.estado]||r.estado;
     if(key==='notas')    return esc(r.notas||'');
-    if(key==='preparar') return prepararIds.some(function(x){return x==r.id;})?'🔧 Preparar':'';
+    if(key==='preparar') return prepararIds.some(function(x){return x==r.id;})?'🔧 Revisar bici':'';
     return '';
   }
 
@@ -3947,12 +3947,12 @@ function imprimirEtiquetasQR(){
 var PAG_NUM=[
   ['v-dash','P01','Panel'],['v-flota','P02','Gestión de flota'],['v-cal','P03','Calendario'],['v-timeline','P04','Timeline'],
   ['v-res','P05','Reservas'],['v-fact','P06','Facturas'],['v-informes','P07','Informes'],['v-tarifas','P08','Tarifas'],['v-clientes','P09','Clientes'],
-  ['vd','P10','Panel taller'],['preparar-view','P11','Preparar'],['vb','P12','Bicicletas taller'],['vt','P13','Ficha de taller de una bici'],
+  ['vd','P10','Panel taller'],['preparar-view','P11','Revisar bici'],['vb','P12','Bicicletas taller'],['vt','P13','Ficha de taller de una bici'],
   ['mres','V01','Nueva / editar reserva'],['mdetail','V02','Detalle de reserva'],['mmanasign','V03','Asignar bicicleta (lista)'],['mqrasign','V04','Escanear QR (reserva)'],
   ['m-transito','V05','Seleccionar transporte'],['mday','V06','Reservas del día'],['mfact','V07','Factura'],['msend','V08','Enviar confirmación'],
   ['mcli','V09','Historial del cliente'],['m-extras-cat','V10','Catálogo de extras'],['m-print-sel','V11','Imprimir lista'],['m-import-res','V12','Importar reservas'],
   ['mbloqueo','V13','Bloquear bicicletas'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
-  ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (preparar)'],
+  ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['masignar','V19','Asignar bicicleta (revisar bici)'],
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
   ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Checklist antes de entrega'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];

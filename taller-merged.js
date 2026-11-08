@@ -77,7 +77,7 @@ function showView(v){
   var uniNav=document.getElementById('nav-taller-'+v);
   if(uniNav) uniNav.classList.add('on');
 
-  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Preparar bicicletas'};
+  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Revisar bici'};
   var titleEl=document.getElementById('topbar-title');
   if(titleEl) titleEl.textContent=titles[v]||'';
   cv=v;
@@ -974,12 +974,12 @@ function renderPreparar(){
   if(!list.length){
     var diagHtml='<div style="padding:40px 20px;text-align:center">'
       +'<div style="font-size:48px;margin-bottom:12px">🔧</div>'
-      +'<div style="font-size:16px;font-weight:700;color:#374151;margin-bottom:8px">Sin bicicletas para preparar</div>'
-      +'<div style="font-size:13px;color:#6b7280;margin-bottom:16px">Marca "Preparar" en el gestor de reservas y pulsa Actualizar</div>'
+      +'<div style="font-size:16px;font-weight:700;color:#374151;margin-bottom:8px">Sin bicicletas para revisar</div>'
+      +'<div style="font-size:13px;color:#6b7280;margin-bottom:16px">Marca "Revisar bici" en el gestor de reservas y pulsa Actualizar</div>'
       +'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;font-size:12px;text-align:left;max-width:300px;margin:0 auto">'
       +'<div style="font-weight:700;color:#374151;margin-bottom:8px">📊 Estado del sistema:</div>'
       +'<div style="color:'+(diagRes>0?'#15803d':'#dc2626')+';margin-bottom:4px">'+(diagRes>0?'✅':'❌')+' Reservas en memoria: <strong>'+diagRes+'</strong></div>'
-      +'<div style="color:'+(diagIds.length>0?'#15803d':'#dc2626')+';margin-bottom:4px">'+(diagIds.length>0?'✅':'❌')+' IDs para preparar: <strong>'+diagIds.length+'</strong></div>'
+      +'<div style="color:'+(diagIds.length>0?'#15803d':'#dc2626')+';margin-bottom:4px">'+(diagIds.length>0?'✅':'❌')+' IDs para revisar: <strong>'+diagIds.length+'</strong></div>'
       +'<div style="color:#6b7280;margin-top:8px;font-size:11px">ℹ️ Si acabas de marcar reservas en otro dispositivo, pulsa Actualizar</div>'
       +'</div>'
       +'<button onclick="refreshPreparar()" style="margin-top:16px;padding:10px 20px;background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">↻ Actualizar ahora</button>'
@@ -1018,7 +1018,7 @@ function renderPreparar(){
     // ── Bicicletas a preparar ─────────────────────────────────────────────
     html+='<div style="padding:12px 16px">';
     if(typeof faltaStockReserva==='function')html+=htmlAvisoFaltaStock(faltaStockReserva(r));
-    html+='<div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🚲 Bicicletas a preparar</div>';
+    html+='<div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🚲 Bicicletas a revisar</div>';
 
     lineas2.forEach(function(l,li){
       var t2=tipos2[l.tipo]||{icon:'🚲',label:l.tipo||r.tipo||'',color:'#999'};
@@ -1067,7 +1067,7 @@ function renderPreparar(){
       html+='<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">';
       html+='<button data-prepkey="'+prepKey+'" data-lista="'+(lista2?'1':'0')+'" class="prep-toggle-btn" '
         +'style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">'
-        +(lista2?'✅ Lista':'🔧 Preparar')+'</button>';
+        +(lista2?'✅ Lista':'🔧 Revisar')+'</button>';
       html+='<button onclick="abrirAsignarBici('+r.id+',\''+l.tipo+'\',\''+l.talla+'\','+li+')" '
         +'style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;'
         +(asig.length?'background:#dcfce7;color:#15803d;':'background:#fef3c7;color:#92400e;')+'">'
@@ -1388,7 +1388,7 @@ async function refreshPreparar(){
   var lbl=document.getElementById('prep-count-lbl');
   if(lbl)lbl.textContent=n?n+' reserva'+(n>1?'s':'')+' pendiente'+(n>1?'s':''):'';
   updPrepBadge();
-  toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para preparar':'Sin reservas pendientes');
+  toast(n?'🔧 '+n+' reserva'+(n>1?'s':'')+' para revisar':'Sin reservas pendientes');
 }
 // Escanear la etiqueta BCP al dar de alta / editar una bici (foto con la cámara)
 function scanEtiquetaBici(ev){
