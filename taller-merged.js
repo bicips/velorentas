@@ -1441,6 +1441,7 @@ async function refreshPreparar(){
     prepararIds = await DB.getConfig('preparar', []);
     window._sharedReservas = reservas;
     window._sharedPreparar = prepararIds;
+    if (DB.snapshot) DB.snapshot('reservas', reservas);
   } catch(e) { console.error('refreshPreparar', e); }
   var n=getPrepararData().length;
   renderPreparar();

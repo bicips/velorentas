@@ -3970,6 +3970,9 @@ async function initApp() {
     // Caché compartida preparar
     window._sharedReservas = reservas;
     window._sharedPreparar = prepararIds;
+    // Punto de partida para guardar solo lo que cambie y para traer cambios de otros equipos
+    if (DB.snapshot) { DB.snapshot('reservas', reservas); DB.snapshot('bicis', bikes); }
+    if (typeof iniciarSincronizacion === 'function') iniciarSincronizacion();
 
     // Si la BD está vacía, generar demo
     if (!bikes.length && !reservas.length) {
@@ -4207,3 +4210,100 @@ function _instalarAtras(){
   });
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_instalarAtras);else _instalarAtras();
+
+
+// ═══ GUARDADO VISIBLE Y SINCRONIZACIÓN ENTRE EQUIPOS ═══════════════════════════
+// 1) Indicador abajo a la izquierda: "Guardando…", "✓ Guardado" o "⚠️ No guardado · Reintentar".
+// 2) Cada 8 s se piden a Supabase SOLO las reservas, bicis y ajustes que han cambiado en otro
+//    equipo y se actualiza la pantalla. Si aquí hay un cambio sin guardar de esa misma reserva,
+//    se avisa y no se pisa.
+(function(){
+  function pintar(estado){
+    var el=document.getElementById('estado-guardado');
+    if(!el){el=document.createElement('div');el.id='estado-guardado';
+      el.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99998;padding:6px 12px;border-radius:999px;font-size:12.5px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.15);transition:opacity .4s;font-family:inherit';
+      document.body.appendChild(el);}
+    clearTimeout(el._t);el.style.opacity='1';el.style.cursor='default';el.onclick=null;
+    if(estado==='guardando'){el.style.background='#eff6ff';el.style.color='#1d4ed8';el.textContent='⏳ Guardando…';}
+    else if(estado==='error'){var n=DB.estado().fallidos.length;el.style.background='#fee2e2';el.style.color='#991b1b';el.style.cursor='pointer';
+      el.textContent='⚠️ '+n+' cambio'+(n>1?'s':'')+' sin guardar · Reintentar';el.title='No se ha podido guardar en el servidor. Se reintenta solo cada 20 s; pulsa para reintentar ahora.';
+      el.onclick=function(){DB.reintentar();};}
+    else{el.style.background='#dcfce7';el.style.color='#15803d';el.textContent='✓ Guardado';el._t=setTimeout(function(){el.style.opacity='0';},2500);}
+  }
+  function arrancar(){if(arrancar.hecho)return;arrancar.hecho=true;if(typeof DB!=='undefined'&&DB.onEstado)DB.onEstado(pintar);}
+  if(document.body)arrancar();else document.addEventListener('DOMContentLoaded',arrancar);
+})();
+
+var _syncDesde=null,_syncTimer=null,_syncAvisados={};
+function iniciarSincronizacion(){
+  if(_syncTimer||!DB.cambiosDesde)return;
+  _syncDesde=new Date(Date.now()-60000).toISOString();
+  _syncTimer=setInterval(function(){if(document.visibilityState!=='hidden')sincronizarAhora();},8000);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')sincronizarAhora();});
+}
+function _reemplazar(obj,nuevo){Object.keys(obj).forEach(function(k){delete obj[k];});Object.assign(obj,nuevo);}
+var _syncEnCurso=false;
+async function sincronizarAhora(){
+  if(_syncEnCurso||!_syncDesde)return;_syncEnCurso=true;
+  // margen de 2 min por si los relojes de los equipos no coinciden (lo repetido se descarta)
+  var desde=new Date(new Date(_syncDesde).getTime()-120000).toISOString();
+  var cambios=0,maxTs=_syncDesde;
+  try{
+    var res=await Promise.all([DB.cambiosDesde('reservas',desde),DB.cambiosDesde('bicis',desde),DB.cambiosDesde('config',desde)]);
+    // reservas y bicis
+    [['reservas',res[0]],['bicis',res[1]]].forEach(function(par){
+      var tabla=par[0],filas=par[1]||[],lista=tabla==='reservas'?reservas:bikes;
+      filas.forEach(function(f){
+        if(f.updated_at>maxTs)maxTs=f.updated_at;
+        if(!f.data)return;
+        var loc=lista.find(function(x){return String(x.id)===String(f.id);});
+        var js=JSON.stringify(f.data);
+        if(loc&&JSON.stringify(loc)===js){DB.marcar(tabla,loc,js);return;} // ya lo tenemos (o es nuestro)
+        if(loc&&DB.sinGuardar(tabla,loc)){ // cambiado aquí y allí a la vez: no se pisa
+          var k=tabla+f.id+f.updated_at;if(!_syncAvisados[k]){_syncAvisados[k]=1;toast('⚠️ '+(tabla==='reservas'?'La reserva de '+(loc.cliente||''):'La bici '+(loc.numBici||''))+' se ha cambiado también en otro equipo. Se mantiene lo de este equipo al guardar.',7000,'error');}
+          return;}
+        if(loc)_reemplazar(loc,f.data);else lista.push(f.data);
+        DB.marcar(tabla,loc||f.data,js);cambios++;
+        if(tabla==='reservas'&&typeof currentResId!=='undefined'&&String(currentResId)===String(f.id)){var m=document.getElementById('mres');if(m&&m.classList.contains('on'))toast('ℹ️ Esta reserva se acaba de modificar en otro equipo',5000);}
+      });
+    });
+    // ajustes compartidos
+    (res[2]||[]).forEach(function(f){
+      if(f.updated_at>maxTs)maxTs=f.updated_at;
+      var d=f.data;if(d==null)return;
+      switch(f.key){
+        case 'preparar': if(JSON.stringify(prepararIds)!==JSON.stringify(d)){prepararIds=d;window._sharedPreparar=d;cambios++;} break;
+        case 'cfg': if(JSON.stringify(cfg)!==JSON.stringify(d)){_reemplazar(cfg,d);cambios++;} break;
+        case 'extras_cat': if(JSON.stringify(catalogoExtras)!==JSON.stringify(d)){catalogoExtras=d;cambios++;} break;
+        case 'bloqueos': if(JSON.stringify(bloqueos)!==JSON.stringify(d)){bloqueos=d;cambios++;} break;
+        case 'tipos': if(JSON.stringify(tipos)!==JSON.stringify(d)){tipos=d;cambios++;} break;
+        case 'historial': if(typeof hist!=='undefined'&&JSON.stringify(hist)!==JSON.stringify(d)){hist=d;cambios++;} break;
+        case 'clistas': if(typeof CLS!=='undefined'&&JSON.stringify(CLS)!==JSON.stringify(d)){CLS=d;cambios++;} break;
+        case 'clistasEntrega': if(typeof CLE!=='undefined'&&JSON.stringify(CLE)!==JSON.stringify(d)){CLE=d;cambios++;} break;
+        case 'clistasPrep': if(typeof CLP!=='undefined'&&JSON.stringify(CLP)!==JSON.stringify(d)){CLP=d;cambios++;} break;
+        case 'facturas': if(JSON.stringify(facturas)!==JSON.stringify(d)){facturas=d;cambios++;} break;
+      }
+    });
+    _syncDesde=maxTs;
+    if(cambios)_refrescarPantalla();
+  }catch(e){console.warn('sincronizar',e);}
+  finally{_syncEnCurso=false;}
+}
+// Repinta la página que se está viendo (sin cerrar ventanas abiertas)
+function _refrescarPantalla(){
+  try{
+    var ts=document.getElementById('taller-section');
+    if(ts&&ts.classList.contains('active')){
+      var pg=_pagActual();
+      if(pg==='t:dashboard'&&typeof rDB==='function')rDB();
+      else if(pg==='t:bikes'&&typeof renderBL==='function')renderBL();
+      else if(pg==='t:preparar'&&typeof renderPreparar==='function')renderPreparar();
+      else if(pg==='t:prepbici'&&typeof renderPrepBici==='function')renderPrepBici();
+      else if(pg==='t:listas'&&typeof renderListasSalir==='function')renderListasSalir();
+      if(typeof updPrepBadge==='function')updPrepBadge();if(typeof updFlujoBadges==='function')updFlujoBadges();
+    }else{
+      var mapa={dash:'renderDash',res:'renderRes',cal:'renderCal',timeline:'renderTL',flota:'renderFlota',clientes:'renderClientes',fact:'renderFact',informes:'renderInformes'};
+      var fn=window[mapa[CV]];if(typeof fn==='function')fn();
+    }
+  }catch(e){console.warn('refrescar',e);}
+}
