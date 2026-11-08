@@ -1056,7 +1056,7 @@ function renderPreparar(){
   var html='<div style="display:flex;flex-direction:column;gap:14px">';
 
   list.forEach(function(r){
-    var lineas2=r.lineas&&r.lineas.length?r.lineas:[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,extras:r.extras||[]}];
+    var lineas2=(typeof _lineasRes==='function')?_lineasRes(r):(r.lineas&&r.lineas.length?r.lineas:[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,extras:r.extras||[]}]);
 
     html+='<div style="background:#fff;border:2px solid #dbeafe;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(37,99,235,.1)">';
 
@@ -1235,17 +1235,14 @@ function abrirAsignarBici(resId, tipo, talla, lineaIdx) {
   var bicisOcupadas = {}; // bikeId -> cliente
   reservas.forEach(function(r){
     if(ESTADOS_LIBRE.indexOf(r.estado) >= 0) return;
-    if(r.id === resId) return; // excluir la reserva actual
-    if(r.lineas && r.lineas.length){
-      r.lineas.forEach(function(l){
-        if(l.bikeAsig) bicisOcupadas[l.bikeAsig.id] = r.cliente;
-      });
-    } else if(r.bikesAsig && r.bikesAsig.length){
-      r.bikesAsig.forEach(function(a){ bicisOcupadas[a.id] = r.cliente; });
-    }
+    if(String(r.id) === String(resId)) return; // excluir la reserva actual (id puede venir como texto)
+    var quien = r.cliente + ' ' + (typeof fmtD==='function'?fmtD(r.ini)+'→'+fmtD(r.fin):'');
+    (r.lineas||[]).forEach(function(l){ if(l&&l.bikeAsig) bicisOcupadas[l.bikeAsig.id] = quien; });
+    (r.bikesAsig||[]).forEach(function(a){ if(a&&a.id) bicisOcupadas[a.id] = quien; });
   });
   // También marcar bicis ya asignadas a otras líneas de esta misma reserva
-  var resActual = reservas.find(function(r){ return r.id === resId; });
+  var resActual = reservas.find(function(r){ return String(r.id) === String(resId); });
+  if(resActual&&typeof _lineasRes==='function')_lineasRes(resActual); // vincula bicis asignadas desde Editar reserva
   if(resActual && resActual.lineas){
     resActual.lineas.forEach(function(l, idx){
       if(idx !== lineaIdx && l.bikeAsig) bicisOcupadas[l.bikeAsig.id] = 'otra línea';
@@ -1335,7 +1332,7 @@ function _hacerAsignacion(bikeId) {
   var ocupadaEn = null;
   reservas.forEach(function(r){
     if(ESTADOS_LIBRE.indexOf(r.estado) >= 0) return;
-    if(r.id === ctx.resId) return; // excluir reserva actual
+    if(String(r.id) === String(ctx.resId)) return; // excluir reserva actual
     var tieneEstaBici = false;
     if(r.lineas && r.lineas.length){
       tieneEstaBici = r.lineas.some(function(l){ return l.bikeAsig && l.bikeAsig.id === bici.id; });
@@ -1695,7 +1692,25 @@ function _cerrarLlegada(){
 function _lineasRes(r){
   if(Array.isArray(r.lineas))r.lineas=r.lineas.filter(Boolean);
   if(!Array.isArray(r.lineas)||!r.lineas.length)r.lineas=[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,bikeAsig:(r.bikesAsig&&r.bikesAsig[0])||null}];
+  _vincularAsignaciones(r);
   return r.lineas;
+}
+// Bicis asignadas desde "Editar reserva" se guardaban solo en r.bikesAsig y las bicis de la
+// reserva salían "Sin asignar" aunque la bici ya estaba ocupada por esa reserva. Aquí se
+// enlaza cada una a su línea (mismo modelo y talla, sin bici). No asigna nada nuevo: solo
+// coloca en su línea la bici que ya se asignó a mano en esa reserva.
+function _vincularAsignaciones(r){
+  if(!Array.isArray(r.bikesAsig)||!r.bikesAsig.length)return;
+  let cambio=false;
+  r.bikesAsig.forEach(a=>{
+    if(!a||!a.id)return;
+    if(r.lineas.some(l=>l.bikeAsig&&String(l.bikeAsig.id)===String(a.id)))return;
+    const b=bikes.find(x=>String(x.id)===String(a.id));
+    const tipo=(b&&b.tipo)||a.tipo,talla=(b&&b.talla)||a.talla;
+    const l=r.lineas.find(x=>!x.bikeAsig&&x.tipo===tipo&&x.talla===talla);
+    if(l){l.bikeAsig={id:a.id,num:(b&&b.numBici)||a.num};cambio=true;}
+  });
+  if(cambio&&typeof DB!=='undefined'&&DB.saveReserva)DB.saveReserva(r).catch(e=>console.error('vincular',e));
 }
 function lineaRevisada(l){return !!(l&&l.tallerOk&&l.bikeAsig&&String(l.tallerOk.bikeId)===String(l.bikeAsig.id));}
 // Extras de una bici de la reserva: los de la línea y, en reservas antiguas, los de la
