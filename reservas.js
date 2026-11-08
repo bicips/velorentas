@@ -2676,9 +2676,34 @@ function _procesarRecogida(codigo) {
 
   // Find active reservation for this bike
   var res = reservas.find(function(r){
-    return (['alquiler','entregada','pendiente_recoger','transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)>=0)
-      && r.bikesAsig && r.bikesAsig.some(function(a){return a.id===bici.id;});
+    if(['alquiler','entregada','pendiente_recoger','transito_furgo','transito_carlos','transito_seur'].indexOf(r.estado)<0)return false;
+    return (r.bikesAsig && r.bikesAsig.some(function(a){return a&&String(a.id)===String(bici.id);}))
+      || (r.lineas && r.lineas.some(function(l){return l&&l.bikeAsig&&String(l.bikeAsig.id)===String(bici.id);}));
   });
+  // Checklist de lo que se envió con esta bici (lo marcado en Preparar bici) para comprobar que vuelve todo
+  var devHtml='';window._recDev=null;
+  if(res && typeof _lineasRes==='function'){
+    var lsR=_lineasRes(res);
+    var liR=lsR.findIndex(function(l){return l.bikeAsig&&String(l.bikeAsig.id)===String(bici.id);});
+    if(liR>=0){
+      var lR=lsR[liR];
+      var pts=puntosPrepLinea(lR,res,liR);
+      var enviados=lR.prepChk?pts.filter(function(p){return lR.prepChk[p.k];}):pts;
+      var sinPrep=!lR.prepChk||!enviados.length;
+      if(sinPrep)enviados=pts;
+      window._recDev={resId:res.id,li:liR,items:enviados.map(function(p){return {k:p.k,txt:p.txt,ico:p.ico,grupo:p.grupo};}),chk:{}};
+      var recog=lsR.filter(function(l){return l.devolucion;}).length;
+      devHtml='<div style="margin-top:12px;background:#fff;border:2px solid #fcd34d;border-radius:8px;padding:12px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">'
+        +'<div style="font-weight:800;font-size:14px">🎒 ¿Devuelve todo lo que se envió?</div>'
+        +'<button type="button" onclick="recDevTodo()" style="border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer">Marcar todo</button></div>'
+        +'<div style="font-size:12px;color:#6b7280;margin-bottom:8px">'+(sinPrep?'⚠️ No consta el checklist de Preparar bici: se muestra todo lo que debería llevar.':'Lo que se marcó en Preparar bici'+(lR.prepOk&&lR.prepOk.por?' ('+esc(lR.prepOk.por)+', '+esc(String(lR.prepOk.fecha||'').split(',')[0])+')':'')+'.')
+        +' · Bici '+(liR+1)+' de '+lsR.length+(recog?' · ya recogidas '+recog:'')+'</div>'
+        +'<div id="rec-dev-items"></div>'
+        +'<div id="rec-dev-prog" style="font-size:12.5px;font-weight:800;margin-top:6px"></div>'
+        +'</div>';
+    }
+  }
 
   var t = tipos[bici.tipo]||{label:bici.tipo||'',icon:'🚲'};
   var estBici = BIKE_ESTADOS ? (BIKE_ESTADOS[bici.estado]||{icon:'',lbl:bici.estado}) : {icon:'',lbl:bici.estado};
@@ -2697,6 +2722,7 @@ function _procesarRecogida(codigo) {
     + '<div style="font-size:12px;color:#6b7280">Estado actual: '+estBici.icon+' '+estBici.lbl+'</div>'
     + resHtml
     + '</div>'
+    + devHtml
     + '<div style="margin-top:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px">'
     + '<div style="font-weight:700;font-size:13px;margin-bottom:8px">✅ Confirmar recogida</div>'
     + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px;cursor:pointer">'
@@ -2705,11 +2731,46 @@ function _procesarRecogida(codigo) {
     + '<input type="checkbox" id="rec-chk-res" '+(res?'checked':'disabled')+'> '+(res?'Marcar reserva como <strong>Recogida</strong>':'Sin reserva activa')+'</label>'
     + '<label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;cursor:pointer">'
     + '<input type="checkbox" id="rec-chk-taller"> Enviar a <strong>Taller</strong> para revisión</label>'
-    + '<button onclick="_confirmarRecogida('+bici.id+','+(res?res.id:'null')+')" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer">🏁 Confirmar recogida</button>'
+    + '<button onclick="_confirmarRecogida('+bici.id+','+(res?'\''+res.id+'\'':'null')+')" style="width:100%;padding:11px;background:#0d9488;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:800;cursor:pointer">🏁 Confirmar recogida</button>'
     + '</div>';
+  recDevRender();
 }
+function recDevRender(){
+  var d=window._recDev,el=document.getElementById('rec-dev-items');if(!d||!el)return;
+  var g='',h='';
+  d.items.forEach(function(it,i){
+    if(it.grupo!==g){g=it.grupo;h+='<div style="font-size:10.5px;font-weight:800;color:'+(g==='reserva'?'#b45309':'#4b5563')+';text-transform:uppercase;margin:6px 0 3px">'+(g==='reserva'?'De esta reserva':'Del modelo')+'</div>';}
+    var c=!!d.chk[it.k];
+    h+='<div onclick="recDevTog('+i+')" style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:5px;border-radius:8px;cursor:pointer;border:1px solid '+(c?'#86efac':'#fca5a5')+';background:'+(c?'#dcfce7':'#fff')+'">'
+      +'<span style="width:24px;height:24px;border-radius:6px;border:2px solid '+(c?'#16a34a':'#9ca3af')+';background:'+(c?'#16a34a':'#fff')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0">'+(c?'✓':'')+'</span>'
+      +'<span style="font-size:18px">'+it.ico+'</span><span style="font-size:14px;font-weight:700">'+esc(it.txt)+'</span></div>';
+  });
+  el.innerHTML=h;
+  var n=d.items.filter(function(it){return d.chk[it.k];}).length,f=d.items.length-n;
+  var pr=document.getElementById('rec-dev-prog');
+  if(pr){pr.textContent=f?('❗ Faltan '+f+' de '+d.items.length):'✅ Devuelve todo ('+n+'/'+d.items.length+')';pr.style.color=f?'#b91c1c':'#15803d';}
+}
+function recDevTog(i){var d=window._recDev;if(!d)return;var it=d.items[i];d.chk[it.k]=!d.chk[it.k];recDevRender();}
+function recDevTodo(){var d=window._recDev;if(!d)return;d.items.forEach(function(it){d.chk[it.k]=true;});recDevRender();}
 
 function _confirmarRecogida(bikeId, resId) {
+  // Comprobación de lo devuelto (checklist de Preparar bici)
+  var d=window._recDev, faltan=[];
+  if(d&&resId&&String(d.resId)===String(resId)){
+    faltan=d.items.filter(function(it){return !d.chk[it.k];}).map(function(it){return it.txt;});
+    if(faltan.length&&!confirm('❗ No devuelve '+faltan.length+' artículo'+(faltan.length>1?'s':'')+':\n• '+faltan.join('\n• ')+'\n\n¿Confirmar la recogida igualmente? Quedará apuntado en la reserva.'))return;
+    var rD=reservas.find(function(r){return String(r.id)===String(resId);});
+    if(rD){
+      var lD=_lineasRes(rD)[d.li];
+      lD.devolucion={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),chk:Object.assign({},d.chk),faltan:faltan};
+      if(faltan.length){
+        var nota='Recogida bici '+((lD.bikeAsig&&lD.bikeAsig.num)||'')+' ('+lD.devolucion.fecha.split(',')[0]+'): FALTA '+faltan.join(', ');
+        rD.notas=(rD.notas?rD.notas+'\n':'')+nota;
+      }
+      DB.saveReserva(rD).catch(function(e){console.error('devolucion',e);toast('⚠️ No se ha podido guardar la recogida en el servidor',6000,'error');});
+    }
+  }
+  window._recDev=null;
   var chkBici = document.getElementById('rec-chk-bici');
   var chkRes = document.getElementById('rec-chk-res');
   var chkTaller = document.getElementById('rec-chk-taller');
@@ -2720,7 +2781,7 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
-    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return r.id===resId;}):null, 'Recogida'); // queda donde termina la reserva (informativo)
+    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return String(r.id)===String(resId);}):null, 'Recogida'); // queda donde termina la reserva (informativo)
     if(!bici.estadosHist) bici.estadosHist=[];
     bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
@@ -2728,11 +2789,12 @@ function _confirmarRecogida(bikeId, resId) {
 
   // Update reservation
   if(resId && chkRes && chkRes.checked) {
-    var res = reservas.find(function(r){return r.id===resId;});
+    var res = reservas.find(function(r){return String(r.id)===String(resId);});
     if(res) {
       // FIX: 'recogida' es el estado que libera stock (antes 'finalizada' bloqueaba para siempre)
       res.estado = 'recogida';
       sR();
+      if(faltan.length)toast('❗ Recogida con '+faltan.length+' artículo'+(faltan.length>1?'s':'')+' sin devolver: apuntado en la reserva',6000,'error');
     }
   }
 
