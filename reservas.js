@@ -63,7 +63,7 @@ function closeM(id){var el=document.getElementById(id);if(!el)return;el.classLis
 // en un campo y soltar el ratón fuera) y se perdía lo que se estaba haciendo. Se cierran con ✕ o Cancelar.
 var SCFG={
   anulada:          {lbl:'Anulada',           cls:'bn-red',    icon:'🚫'},
-  pendiente:        {lbl:'Pendiente',          cls:'bn-amber',  icon:'⏳'},
+  pendiente:        {lbl:'Presupuesto',        cls:'bn-amber',  icon:'⏳'}, // valor interno 'pendiente'; se muestra como Presupuesto
   confirmada:       {lbl:'Confirmada',         cls:'bn-blue',   icon:'✅'},
   proxima_entrega:  {lbl:'Próxima entrega',    cls:'bn-purple', icon:'📅'},
   en_preparacion:   {lbl:'En preparación',     cls:'bn-orange', icon:'🔧'},
@@ -287,7 +287,7 @@ function renderDash(){
   var mes=today.slice(0,7);
   var ingr=reservas.filter(function(r){return r.estado!=='cancelada'&&r.estado!=='anulada'&&r.ini.slice(0,7)===mes;}).reduce(function(s,r){return s+(r.total||0);},0);
   var sg=document.getElementById('dstats');
-  if(sg)sg.innerHTML=[{c:'c-teal',i:'🔄',v:activas,l:'Activas hoy'},{c:'c-amber',i:'⏳',v:pend,l:'Pendientes'},{c:'c-blue',i:'📅',v:prox,l:'Entradas 7 días'},{c:'c-green',i:'💶',v:ingr.toFixed(0)+cfg.currency,l:'Facturación mes'}].map(function(s){return '<div class="scard '+s.c+'"><div class="sico">'+s.i+'</div><div class="sval">'+s.v+'</div><div class="slbl">'+s.l+'</div></div>';}).join('');
+  if(sg)sg.innerHTML=[{c:'c-teal',i:'🔄',v:activas,l:'Activas hoy'},{c:'c-amber',i:'⏳',v:pend,l:'Presupuestos'},{c:'c-blue',i:'📅',v:prox,l:'Entradas 7 días'},{c:'c-green',i:'💶',v:ingr.toFixed(0)+cfg.currency,l:'Facturación mes'}].map(function(s){return '<div class="scard '+s.c+'"><div class="sico">'+s.i+'</div><div class="sval">'+s.v+'</div><div class="slbl">'+s.l+'</div></div>';}).join('');
   var arr=reservas.filter(function(r){return r.estado!=='cancelada'&&r.ini>=today&&diffD(today,r.ini)<=7;}).sort(function(a,b){return a.ini.localeCompare(b.ini);});
   var dep=reservas.filter(function(r){return r.estado!=='cancelada'&&r.fin>=today&&diffD(today,r.fin)<=7;}).sort(function(a,b){return a.fin.localeCompare(b.fin);});
   var da=document.getElementById('d-arrivals');if(da)da.innerHTML=arr.length?arr.map(function(r){return miniRow(r,'entrada');}).join(''):emptyHTML('📅','Sin entradas');
@@ -1679,7 +1679,7 @@ function abrirTransito(resId) {
 function volverAPendiente(id){
   var r=reservas.find(function(x){return x.id===id;});if(!r)return;
   var era=(SCFG[r.estado]||{lbl:r.estado}).lbl;
-  if(!confirm('¿Volver la reserva de '+r.cliente+' a PENDIENTE (presupuesto)?\nAhora está: '+era+'.\n\nLas bicis asignadas se mantienen; si no las quieres, quítalas a mano.'))return;
+  if(!confirm('¿Volver la reserva de '+r.cliente+' a PRESUPUESTO?\nAhora está: '+era+'.\n\nLas bicis asignadas se mantienen; si no las quieres, quítalas a mano.'))return;
   changeStatus(id,'pendiente');
   showResDetail(id);
 }
@@ -1735,11 +1735,11 @@ function showResDetail(id){
   if(st==='pendiente_recoger') _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'recogida\')">✔️ Recogida</button>';
   // Marcha atrás: volver a pendiente (presupuesto) antes de salir de la nave, anular o reactivar
   if(['confirmada','proxima_entrega','en_preparacion','preparada'].indexOf(st)>=0)
-    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">↩️ Volver a Pendiente</button>';
+    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">↩️ Volver a Presupuesto</button>';
   if(['pendiente','confirmada','proxima_entrega','en_preparacion','preparada'].indexOf(st)>=0)
     _estadosBtns+='<button class="btn bd bsm" onclick="anularReserva('+r.id+')">🚫 Anular</button>';
   if(st==='anulada'||st==='cancelada')
-    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">♻️ Reactivar (Pendiente)</button>';
+    _estadosBtns+='<button class="btn bs bsm" onclick="volverAPendiente('+r.id+')">♻️ Reactivar (Presupuesto)</button>';
   // Factura always available for relevant states
   if(['confirmada','proxima_entrega','en_preparacion','preparada','transito_furgo','transito_carlos','transito_seur','entregada','alquiler','pendiente_recoger','recogida'].indexOf(st)>=0)
     _estadosBtns+='<button class="btn bi bsm" onclick="closeM(\'mdetail\');genFactFromRes('+r.id+')">🧾 Factura</button>';
@@ -2339,7 +2339,7 @@ function _abrirModalImpresion(candidatas) {
       +"<input type=\"checkbox\" id=\"imp-cb-"+i+"\" checked style=\"width:16px;height:16px;cursor:pointer\">"
       +"<label for=\"imp-cb-"+i+"\" style=\"flex:1;cursor:pointer\">"
       +"<div style=\"font-weight:700;font-size:14px\">"+esc(r.cliente||"-")+"</div>"
-      +"<div style=\"font-size:12px;color:#6b7280\">"+fechaIni+" &nbsp;&middot;&nbsp; "+nBicis+" bici"+(nBicis>1?"s":"")+" &nbsp;&middot;&nbsp; "+esc(r.estado)+"</div>"
+      +"<div style=\"font-size:12px;color:#6b7280\">"+fechaIni+" &nbsp;&middot;&nbsp; "+nBicis+" bici"+(nBicis>1?"s":"")+" &nbsp;&middot;&nbsp; "+esc((SCFG[r.estado]||{lbl:r.estado}).lbl)+"</div>"
       +"</label>"
       +"<button onclick=\"_eliminarDeImpresion("+r.id+")\" title=\"Quitar de la lista\" style=\"background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0\">🗑 Quitar</button>"
       +"</div>";
