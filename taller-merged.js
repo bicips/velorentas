@@ -102,7 +102,7 @@ function rDB(){
   ].map(s=>`<div class="stat-card ${s.c}"><div class="stat-icon">${s.i}</div><div class="stat-value">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join('');
 
   const du=document.getElementById('dash-ubic');
-  if(du)du.innerHTML=Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
+  if(du)du.innerHTML=`<button onclick="abrirLlegadaMondonedo()" style="flex:1 1 100%;border:none;background:#0d9488;color:#fff;border-radius:10px;padding:12px;font-size:15px;font-weight:800;cursor:pointer">📥 Llegada a Mondoñedo · escanear bicis al descargar</button>`+Object.entries(UBICACIONES).map(([k,u])=>{const n=bikes.filter(b=>ubicDe(b)===k).length;
     return `<button onclick="abrirUbicaciones('${k}')" style="flex:1;min-width:110px;border:1px solid var(--gray-200);background:${u.bg};color:${u.txt};border-radius:10px;padding:10px;cursor:pointer;text-align:left"><div style="font-size:20px;font-weight:800">${n}</div><div style="font-size:12px;font-weight:700">${u.icon} ${u.lbl}</div></button>`;}).join('');
   document.getElementById('dash-types').innerHTML=Object.entries(tipos).map(([k,t])=>{
     const cnt=bikes.filter(b=>b.tipo===k).length;
@@ -1421,6 +1421,7 @@ function abrirCamaraEtiqueta(){
   openQRCamera(); // abre la cámara directamente (o la de fotos si el navegador no deja vídeo)
 }
 function cerrarCamaraEtiqueta(){
+  if(typeof _cerrarLlegada==='function')_cerrarLlegada();
   stopQR();closeM('mqr');window._qrModoAlta=false;window._qrDestino=null;
   var mq=document.getElementById('mqr');if(mq)mq.style.zIndex='';
   var tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='Escanear código QR';
@@ -1568,4 +1569,57 @@ function moverUbicaciones(){
   ids.forEach(id=>{const b=bikes.find(x=>String(x.id)===String(id));if(b)setUbicacion(b,dest,txt,'Cambio manual',false);});
   sb();renderUbicaciones();renderBL();rDB();
   toast('📍 '+ids.length+' bici'+(ids.length>1?'s':'')+' → '+UBICACIONES[dest].lbl);
+}
+
+
+// Fin de la reserva: la bici queda donde termina la reserva (lugar de finalización).
+function ubicarEnFinDeReserva(b,r,nota){
+  const fin=String((r&&r.lugarFin)||'Santiago de Compostela').trim();
+  if(/santiago/i.test(fin))setUbicacion(b,'santiago','',nota,false);
+  else setUbicacion(b,'otro',fin,nota,false);
+}
+
+// ── LLEGADA A MONDOÑEDO: escanear el QR de cada bici al descargarla ──
+// Escaneo seguido: cada bici leída queda en Mondoñedo y la cámara se vuelve a abrir sola.
+let _llegadas=[];
+function abrirLlegadaMondonedo(){
+  _llegadas=[];
+  window._qrModoAlta=false;
+  window._qrDestino=_llegadaLeida;
+  const tit=document.querySelector('#mqr .modal-title');if(tit)tit.textContent='📥 Llegada a Mondoñedo';
+  const inp=document.getElementById('qr-inp');if(inp){inp.value='';inp.placeholder='BCP-0001 o nº de bici';}
+  const mq=document.getElementById('mqr');if(mq)mq.style.zIndex='100000';
+  openM('mqr');openQRCamera();
+  _llegadaInfo('📷 Escanea las bicis una a una según las descargas','ok');
+}
+// Recuadro fijo con el resultado y el contador (no lo borra la cámara al reabrirse)
+function _llegadaInfo(msg,tipo){
+  let el=document.getElementById('llegada-info');
+  if(!el){el=document.createElement('div');el.id='llegada-info';const st=document.getElementById('qr-status');st.parentNode.insertBefore(el,st);}
+  const c={ok:['#f0fdf4','#166534','#86efac'],warn:['#fffbeb','#92400e','#fcd34d'],err:['#fef2f2','#991b1b','#fca5a5']}[tipo]||['#f0fdf4','#166534','#86efac'];
+  el.style.cssText='display:block;background:'+c[0]+';color:'+c[1]+';border:2px solid '+c[2]+';border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:700;font-size:14px';
+  el.innerHTML=esc(msg)+'<div style="font-size:22px;font-weight:900;margin-top:4px">'+_llegadas.length+' <span style="font-size:13px;font-weight:700">bici'+(_llegadas.length!==1?'s':'')+' descargada'+(_llegadas.length!==1?'s':'')+'</span></div>';
+}
+function _llegadaLeida(txt){
+  let c=(typeof bcpNormalizar==='function')?bcpNormalizar(txt):String(txt||'').trim().toUpperCase();
+  const m=c.match(/BCP-\d{4}/);if(m&&!bikes.some(b=>String(b.qr||'').toUpperCase()===c))c=m[0];
+  const b=bikes.find(x=>String(x.qr||'').toUpperCase()===c)||bikes.find(x=>String(x.numBici).toUpperCase()===c);
+  const seguir=()=>{const mq=document.getElementById('mqr');if(mq&&mq.classList.contains('on')&&window._qrDestino===_llegadaLeida)setTimeout(()=>{openQRCamera();},1200);};
+  const inp=document.getElementById('qr-inp');if(inp)inp.value='';
+  if(!b){_llegadaInfo('❌ «'+c+'»: no es ninguna bici. Escanea la siguiente.','err');seguir();return;}
+  if(_llegadas.indexOf(b.id)>=0){_llegadaInfo('ℹ️ '+b.numBici+' ya estaba escaneada','warn');seguir();return;}
+  const eraTxt=ubicTexto(b);
+  setUbicacion(b,'mondonedo','','Llegada a Mondoñedo (QR)');
+  _llegadas.push(b.id);
+  if(navigator.vibrate)try{navigator.vibrate(80);}catch(e){}
+  _llegadaInfo('✅ '+b.numBici+' en Mondoñedo (estaba: '+eraTxt+')','ok');
+  seguir();
+}
+function _cerrarLlegada(){
+  const li=document.getElementById('llegada-info');if(li)li.style.display='none';
+  if(window._qrDestino!==_llegadaLeida)return;
+  const n=_llegadas.length;
+  if(n)toast('📥 '+n+' bici'+(n>1?'s':'')+' de vuelta en Mondoñedo',3500,'success');
+  if(typeof renderBL==='function')renderBL();if(typeof rDB==='function')rDB();
+  const mu=document.getElementById('mubic');if(mu&&mu.classList.contains('on'))renderUbicaciones();
 }

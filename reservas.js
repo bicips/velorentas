@@ -1762,6 +1762,11 @@ function changeStatus(id,st,extra){
     var _ids={};(r.bikesAsig||[]).forEach(function(a){_ids[a.id]=1;});(r.lineas||[]).forEach(function(l){if(l.bikeAsig&&l.bikeAsig.id)_ids[l.bikeAsig.id]=1;});
     Object.keys(_ids).forEach(function(id){var b=bikes.find(function(x){return String(x.id)===String(id);});if(b&&ubicDe(b)!=='cliente')setUbicacion(b,'cliente',r.cliente,'Reserva '+((SCFG[st]||{}).lbl||st));});
   }
+  // Ubicación: al terminar la reserva, sus bicis quedan donde termina (lugar de finalización)
+  if(typeof ubicarEnFinDeReserva==='function'&&(st==='recogida'||st==='finalizada')){
+    var _idsF={};(r.bikesAsig||[]).forEach(function(a){_idsF[a.id]=1;});(r.lineas||[]).forEach(function(l){if(l.bikeAsig&&l.bikeAsig.id)_idsF[l.bikeAsig.id]=1;});
+    Object.keys(_idsF).forEach(function(id){var b=bikes.find(function(x){return String(x.id)===String(id);});if(b&&ubicDe(b)==='cliente'){ubicarEnFinDeReserva(b,r,'Reserva '+((SCFG[st]||{}).lbl||st));DB.saveBici(b).catch(function(e){console.error(e);});}});
+  }
   // FIX: liberar bicis en CUALQUIER estado que libera stock (recogida, cancelada, anulada, finalizada)
   if(ESTADOS_LIBRE_GLOBAL.indexOf(st)>=0&&r.bikesAsig&&r.bikesAsig.length){
     r.bikesAsig.forEach(function(a){
@@ -2715,7 +2720,7 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
-    if(typeof setUbicacion==='function') setUbicacion(bici,'santiago','','Recogida',false); // ubicación informativa
+    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return r.id===resId;}):null, 'Recogida'); // queda donde termina la reserva (informativo)
     if(!bici.estadosHist) bici.estadosHist=[];
     bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
