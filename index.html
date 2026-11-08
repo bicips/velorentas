@@ -58,6 +58,8 @@
       <button type="button" class="sb-sec sb-sec-btn" onclick="toggleGrupoMenu('operativa')">Operativa del día <span class="sb-chev">▾</span></button>
       <div class="sb-grp-items">
         <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Revisar bici <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
+        <button class="ni" id="nav-taller-prepbici" onclick="switchSection('taller','prepbici')"><span class="ic">🧰</span> Preparar bici <span id="prepbici-badge-sb" class="nbadge hidden">0</span></button>
+        <button class="ni" id="nav-taller-listas" onclick="switchSection('taller','listas')"><span class="ic">🚚</span> Listas para salir <span id="listas-badge-sb" class="nbadge hidden">0</span></button>
         <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()"><span class="ic">📷</span> Recogida bici</button>
         <button class="ni" id="nav-flota" onclick="goV('flota')"><span class="ic">🚲</span> Gestión de flota</button>
       </div>
@@ -864,6 +866,20 @@
         </div>
         <div id="preparar-content" style="padding:16px 18px"></div>
       </div>
+      <!-- PREPARAR BICI VIEW (P14) -->
+      <div id="prepbici-view" class="hidden">
+        <div class="section-header" style="padding:16px 18px 0">
+          <div><div class="section-title">🧰 Preparar bici</div><div class="section-desc">Pedales, extras, altura de sillín y herramientas/repuestos de cada bici</div></div>
+        </div>
+        <div id="prepbici-content" style="padding:16px 18px"></div>
+      </div>
+      <!-- LISTAS PARA SALIR VIEW (P15) -->
+      <div id="listas-view" class="hidden">
+        <div class="section-header" style="padding:16px 18px 0">
+          <div><div class="section-title">🚚 Listas para salir</div><div class="section-desc">En verde las bicis con taller y preparación hechos</div></div>
+        </div>
+        <div id="listas-content" style="padding:16px 18px"></div>
+      </div>
 
       <div id="type-selector-view">
         <div class="section-header">
@@ -1023,7 +1039,7 @@
     </div>
 
     <!-- ═══ PESTAÑAS HISTORIAL ═══ -->
-    <div style="margin-top:24px">
+    <div id="vb-historial" style="margin-top:24px">
       <div style="display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:16px">
         <button id="tab-estados-btn" onclick="switchBikeTab('estados')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:700;cursor:pointer;border-bottom:3px solid var(--teal-500);color:var(--teal-600);margin-bottom:-2px">📋 Historial de estados</button>
         <button id="tab-alquileres-btn" onclick="switchBikeTab('alquileres')" style="padding:10px 20px;border:none;background:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--gray-400);border-bottom:3px solid transparent;margin-bottom:-2px">🚲 Historial de alquileres</button>

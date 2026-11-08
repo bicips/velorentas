@@ -24,6 +24,10 @@ const DCLE_GEN=['Frenos delantero y trasero ajustados','Presión de neumáticos'
 const sb=()=>DB.saveBicis(bikes).catch(e=>console.error('sb',e));
 const sc=()=>DB.saveConfig('clistas', CLS).catch(e=>console.error('sc',e));
 const sce=()=>DB.saveConfig('clistasEntrega', CLE).catch(e=>console.error('sce',e));
+// Checklist de PREPARAR BICI por modelo: multiherramienta, repuestos específicos… (lo propio del modelo)
+let CLP={};
+const DCLP_GEN=['Multiherramienta','Cámara de repuesto de la medida','Kit de parches / desmontables','Bomba'];
+const scp=()=>DB.saveConfig('clistasPrep', CLP).catch(e=>console.error('scp',e));
 const sh=()=>DB.saveConfig('historial', hist).catch(e=>console.error('sh',e));
 const st=()=>DB.saveConfig('tipos', tipos).catch(e=>console.error('st',e));
 const sp=()=>DB.saveConfig('photos', photos).catch(e=>console.error('sp',e));
@@ -49,17 +53,21 @@ function showView(v){
   });
   var prepView = document.getElementById('preparar-view');
   if(prepView) prepView.classList.add('hidden');
+  ['prepbici-view','listas-view'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('hidden');});
+  var _vh0=document.getElementById('vb-historial');if(_vh0)_vh0.style.display='';
 
   // Show requested view
   var viewId=v==='dashboard'?'vd':v==='bikes'?'vb':v==='taller'?'vt':null;
   if(viewId){
     var viewEl=document.getElementById(viewId);
     if(viewEl) viewEl.classList.add('active');
-  } else if(v==='preparar'){
-    // preparar-view lives inside vb — need vb active too
+  } else if(v==='preparar'||v==='prepbici'||v==='listas'){
+    // estas vistas viven dentro de vb — need vb active too
     var vbEl = document.getElementById('vb');
     if(vbEl) vbEl.classList.add('active');
-    if(prepView) prepView.classList.remove('hidden');
+    var _vid=v==='preparar'?'preparar-view':v+'-view';
+    var _vh=document.getElementById('vb-historial');if(_vh)_vh.style.display='none'; // el historial de bicis no pinta nada aquí
+    var _ve=document.getElementById(_vid);if(_ve)_ve.classList.remove('hidden');
     // Hide the type-selector inside vb
     var tsv = document.getElementById('type-selector-view');
     if(tsv) tsv.style.display = 'none';
@@ -77,13 +85,16 @@ function showView(v){
   var uniNav=document.getElementById('nav-taller-'+v);
   if(uniNav) uniNav.classList.add('on');
 
-  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Revisar bici'};
+  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Revisar bici',prepbici:'Preparar bici',listas:'Listas para salir'};
   var titleEl=document.getElementById('topbar-title');
   if(titleEl) titleEl.textContent=titles[v]||'';
   cv=v;
   if(v==='dashboard') rDB();
   if(v==='bikes') rBV();
   if(v==='preparar'){renderPreparar();updPrepBadge();}
+  if(v==='prepbici')renderPrepBici();
+  if(v==='listas')renderListasSalir();
+  if(typeof updFlujoBadges==='function')updFlujoBadges();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────
@@ -849,11 +860,11 @@ function delBikeFromET(id){const b=bikes.find(x=>x.id===id);if(!b||!confirm(`¿E
 
 // ── EDIT CHECKLIST ────────────────────────────────────────
 let eclModo='taller', eclSugerida=false;
-function _eclFuente(){return eclModo==='entrega'?CLE:CLS;}
+function _eclFuente(){return eclModo==='entrega'?CLE:eclModo==='prep'?CLP:CLS;}
 function _eclCargar(){
   const src=_eclFuente();
-  eclSugerida=eclModo==='entrega'&&!(CLE[ect]&&CLE[ect].length);
-  eci=eclSugerida?[...DCLE_GEN]:[...(src[ect]||[])];
+  eclSugerida=(eclModo==='entrega'||eclModo==='prep')&&!(src[ect]&&src[ect].length);
+  eci=eclSugerida?[...(eclModo==='prep'?DCLP_GEN:DCLE_GEN)]:[...(src[ect]||[])];
 }
 function setECLModo(m){eclModo=m;_eclCargar();renderECL(true);}
 function abrirChecklistEntregaModelo(k){eclModo='entrega';ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
@@ -861,9 +872,9 @@ function renderECL(yaCargado){
   if(!tipos[ect])ect=Object.keys(tipos)[0];
   if(!yaCargado)_eclCargar();
   const mb=document.getElementById('ecl-modo');
-  if(mb)mb.innerHTML=[['taller','🔧 Revisión de taller'],['entrega','🚚 Antes de cada entrega']].map(([k,l])=>`<button class="type-tab ${eclModo===k?'active':''}" onclick="setECLModo('${k}')">${l}</button>`).join('');
+  if(mb)mb.innerHTML=[['taller','🔧 Revisión de taller'],['entrega','🚚 Antes de cada entrega'],['prep','🧰 Preparar bici']].map(([k,l])=>`<button class="type-tab ${eclModo===k?'active':''}" onclick="setECLModo('${k}')">${l}</button>`).join('');
   const nt=document.getElementById('ecl-nota');
-  if(nt){nt.style.display=eclSugerida?'':'none';nt.textContent='Este modelo aún no tiene checklist de entrega. Te propongo una lista genérica: ajústala a este modelo y pulsa Guardar.';}
+  if(nt){nt.style.display=eclSugerida?'':'none';nt.textContent=eclModo==='prep'?'Este modelo aún no tiene lista de Preparar bici (herramientas y repuestos que lleva). Te propongo una genérica: ajústala y pulsa Guardar.':'Este modelo aún no tiene checklist de entrega. Te propongo una lista genérica: ajústala a este modelo y pulsa Guardar.';}
   document.getElementById('ecl-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>`<button class="type-tab ${ect===k?'active':''}" onclick="swCL('${k}')">${t.icon} ${t.label}</button>`).join('');
   renderECI();
 }
@@ -873,8 +884,9 @@ function renderECI(){
 }
 function addCLI(){const v=document.getElementById('ecl-new').value.trim();if(!v)return;eci.push(v);document.getElementById('ecl-new').value='';renderECI();}
 function saveCL(){
-  if(eclModo==='entrega'){CLE[ect]=[...eci];sce();}else{CLS[ect]=[...eci];sc();}
-  closeM('mecl');toast('✅ Checklist '+(eclModo==='entrega'?'de entrega':'de taller')+' guardado para '+(tipos[ect]?.label||ect));
+  if(eclModo==='entrega'){CLE[ect]=[...eci];sce();}else if(eclModo==='prep'){CLP[ect]=[...eci];scp();}else{CLS[ect]=[...eci];sc();}
+  closeM('mecl');toast('✅ Checklist '+(eclModo==='entrega'?'de entrega':eclModo==='prep'?'de Preparar bici':'de taller')+' guardado para '+(tipos[ect]?.label||ect));
+  if(typeof renderPrepBici==='function'&&cv==='prepbici')renderPrepBici();
   if(typeof renderBL==='function')renderBL();
 }
 
@@ -1017,7 +1029,7 @@ function renderPreparar(){
     html+='</div>';
     html+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">';
     html+='<span style="background:#fff;border:1px solid #93c5fd;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#1d4ed8">'+( SLBL[r.estado]||r.estado)+'</span>';
-    html+='<button onclick="marcarListoParaEntregar('+r.id+')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">✅ Listo</button>';
+    html+='<button onclick="switchSection(\'taller\',\'listas\')" style="background:#fff;color:#15803d;border:1px solid #86efac;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">🚚 Ver en Listas para salir</button>';
     html+='</div>';
     html+='</div>';
 
@@ -1029,7 +1041,7 @@ function renderPreparar(){
     lineas2.forEach(function(l,li){
       var t2=tipos2[l.tipo]||{icon:'🚲',label:l.tipo||r.tipo||'',color:'#999'};
       var prepKey='prep_'+r.id+'_'+l.tipo+'_'+l.talla+'_'+li;
-      var lista2=false;try{lista2=!!localStorage.getItem(prepKey);}catch(e){}
+      var lista2=lineaRevisada(l);
 
       // Extras de esta línea — buscar bolsa de manillar y otros extras relevantes
       var extrasLinea=[];
@@ -1071,9 +1083,9 @@ function renderPreparar(){
       html+='</div>';
       // Prep toggle + Asignar buttons
       html+='<div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">';
-      html+='<button data-prepkey="'+prepKey+'" data-lista="'+(lista2?'1':'0')+'" class="prep-toggle-btn" '
-        +'style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">'
-        +(lista2?'✅ Lista':'🔧 Revisar')+'</button>';
+      html+='<button onclick="revisarLinea('+r.id+','+li+')" title="Checklist de taller antes de la entrega" '
+        +'style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;'+(lista2?'background:#dcfce7;color:#15803d':'background:#f3f4f6;color:#374151')+'">'
+        +(lista2?'✅ Revisada':'🔧 Revisar')+'</button>';
       html+='<button onclick="abrirAsignarBici('+r.id+',\''+l.tipo+'\',\''+l.talla+'\','+li+')" '
         +'style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;'
         +(asig.length?'background:#dcfce7;color:#15803d;':'background:#fef3c7;color:#92400e;')+'">'
@@ -1459,6 +1471,7 @@ function _ultEntregaHTML(b){
     :`<span class="bike-detail-item" style="color:#dc2626;font-weight:600">🚚 No apta ${esc(f)} ❌</span>`;
 }
 function openCE(id){
+  window._ceCtx=window._ceCtxNext||null;window._ceCtxNext=null; // contexto solo si viene de Revisar bici
   ceB=bikes.find(b=>b.id===id);if(!ceB)return;
   const t=tipos[ceB.tipo]||{icon:'🚲',label:'Bici'};
   const lista=_ceLista(ceB);
@@ -1487,6 +1500,7 @@ function ceTog(i){const k=Object.keys(ceS)[i];if(k===undefined)return;ceS[k]=!ce
 function ceTodo(v){Object.keys(ceS).forEach(k=>ceS[k]=v);renderCE();}
 function saveCE(apta){
   if(!ceB)return;
+  const _ctx=window._ceCtx;
   const lista=_ceLista(ceB);
   if(!lista){toast('⚠️ Crea primero el checklist de entrega de este modelo',3500,'error');return;}
   const tec=document.getElementById('ce-tec').value.trim();
@@ -1500,7 +1514,11 @@ function saveCE(apta){
   const reg={id:Date.now(),ts:new Date().toISOString(),fecha:ns(),tipo:'entrega',resultado:apta?'apta':'no_apta',tecnico:tec,notas,checklist:{...ceS},checkedCount:done,totalItems:tot,piezas:[],bikeId:b.id};
   if(!hist[b.id])hist[b.id]=[];
   hist[b.id].unshift(reg);if(hist[b.id].length>50)hist[b.id]=hist[b.id].slice(0,50);
-  sh();closeM('mce');ceB=null;
+  sh();closeM('mce');ceB=null;window._ceCtx=null;
+  // Abierto desde "Revisar bici": la revisión cuenta para esa bici de la reserva
+  if(_ctx){const rr=reservas.find(x=>String(x.id)===String(_ctx.resId));const ll=rr&&rr.lineas&&rr.lineas[_ctx.li];
+    if(ll){ll.tallerOk=apta?{fecha:reg.fecha,ts:reg.ts,tec:tec,bikeId:b.id}:null;DB.saveReserva(rr).catch(e=>console.error('tallerOk',e));}
+    if(typeof renderPreparar==='function'&&cv==='preparar')renderPreparar();updFlujoBadges();}
   if(typeof renderBL==='function')renderBL();
   if(apta){toast('✅ '+b.numBici+' revisada: apta para entregar',3000,'success');return;}
   toast('❌ '+b.numBici+' guardada como NO apta',3000,'error');
@@ -1622,4 +1640,122 @@ function _cerrarLlegada(){
   if(n)toast('📥 '+n+' bici'+(n>1?'s':'')+' de vuelta en Mondoñedo',3500,'success');
   if(typeof renderBL==='function')renderBL();if(typeof rDB==='function')rDB();
   const mu=document.getElementById('mubic');if(mu&&mu.classList.contains('on'))renderUbicaciones();
+}
+
+
+// ═══ FLUJO DE SALIDA: 1) Revisar bici (taller)  2) Preparar bici  3) Listas para salir ═══
+// Cada bici de la reserva (línea) guarda en la propia reserva (Supabase):
+//   l.tallerOk = {fecha,tec,bikeId}  → checklist de taller (V28) "Apta" en Revisar bici
+//   l.prepChk  = {item:true…}, l.prepOk = {fecha,por} → Preparar bici completo
+// No toca la disponibilidad ni asigna bicis.
+function _lineasRes(r){
+  if(!r.lineas||!r.lineas.length)r.lineas=[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,bikeAsig:(r.bikesAsig&&r.bikesAsig[0])||null}];
+  return r.lineas;
+}
+function lineaRevisada(l){return !!(l&&l.tallerOk&&l.bikeAsig&&String(l.tallerOk.bikeId)===String(l.bikeAsig.id));}
+function _extraNombre(x){const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.nombre)||x.nombre||('Extra '+x.id);}
+function itemsPrepLinea(l){
+  const it=[];
+  const ped=(l.pedales&&l.pedales[0])||l.pedal||'';
+  if(ped)it.push('Pedales: '+ped);
+  if(l.altura)it.push('Sillín ajustado para ciclista de '+l.altura+' cm');
+  (l.extras||[]).forEach(x=>it.push('Extra: '+_extraNombre(x)+((x.qty||x.cant)>1?' ×'+(x.qty||x.cant):'')));
+  const mod=(CLP[l.tipo]&&CLP[l.tipo].length)?CLP[l.tipo]:DCLP_GEN;
+  mod.forEach(m=>it.push(m));
+  return it;
+}
+function lineaPreparada(l){const it=itemsPrepLinea(l);return !!(l&&l.prepOk&&it.every(i=>l.prepChk&&l.prepChk[i]));}
+function revisarLinea(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];
+  if(!l||!l.bikeAsig){toast('⚠️ Asigna primero la bici a esta línea (botón Asignar)',3500,'error');return;}
+  const b=bikes.find(x=>String(x.id)===String(l.bikeAsig.id));
+  if(!b){toast('⚠️ No encuentro la bici '+l.bikeAsig.num,3500,'error');return;}
+  window._ceCtxNext={resId:r.id,li:li};
+  openCE(b.id);
+}
+
+// ---- 2) PREPARAR BICI ----
+function renderPrepBici(){
+  const el=document.getElementById('prepbici-content');if(!el)return;
+  const lista=getPrepararData().slice().sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
+  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:32px"><div class="empty-state-icon">🧰</div><div class="empty-state-text">No hay reservas activadas para taller</div></div>';return;}
+  const por=(function(){try{return localStorage.getItem('vr_prep_por')||'';}catch(e){return '';}})();
+  let h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><label class="form-label" style="margin:0">Preparado por</label><input class="form-input" id="prep-por" value="'+esc(por)+'" placeholder="Nombre" style="max-width:220px" onchange="try{localStorage.setItem(\'vr_prep_por\',this.value)}catch(e){}"/>'
+    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openM(\'mecl\');setECLModo(\'prep\')">⚙️ Herramientas y repuestos por modelo</button></div>';
+  lista.forEach(r=>{
+    const ls=_lineasRes(r);
+    const hechas=ls.filter(lineaPreparada).length;
+    h+='<div class="card" style="margin-bottom:14px;border:2px solid '+(hechas===ls.length?'#86efac':'#e5e7eb')+'">'
+      +'<div style="padding:12px 14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;background:'+(hechas===ls.length?'#f0fdf4':'#f9fafb')+'">'
+      +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+' · 📍 '+esc(r.dirEntrega||r.lugarIni||'')+'</div></div>'
+      +'<div style="font-weight:800;color:'+(hechas===ls.length?'#15803d':'#92400e')+'">'+hechas+'/'+ls.length+' preparadas</div></div><div style="padding:10px 14px">';
+    ls.forEach((l,li)=>{
+      const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};
+      const it=itemsPrepLinea(l),ok=lineaPreparada(l);
+      h+='<div style="border:1px solid '+(ok?'#86efac':'#e5e7eb')+';background:'+(ok?'#f0fdf4':'#fff')+';border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+        +'<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px"><div style="font-weight:800">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')
+        +(l.bikeAsig?' · <span style="color:#15803d">🔗 '+esc(l.bikeAsig.num)+'</span>':' · <span style="color:#d97706">sin bici asignada</span>')+'</div>'
+        +(ok?'<span style="color:#15803d;font-weight:800;font-size:12px">✅ Preparada'+(l.prepOk.por?' · '+esc(l.prepOk.por):'')+'</span>':'<span style="color:#6b7280;font-size:12px">'+it.filter(i=>l.prepChk&&l.prepChk[i]).length+'/'+it.length+'</span>')+'</div>';
+      it.forEach((i,k)=>{const c=!!(l.prepChk&&l.prepChk[i]);
+        h+='<div class="check-item'+(c?' done':'')+'" onclick="tickPrep('+r.id+','+li+','+k+')"><div class="check-box">'+(c?'✓':'')+'</div><span class="check-text">'+esc(i)+'</span></div>';});
+      h+='</div>';
+    });
+    h+='</div></div>';
+  });
+  el.innerHTML=h;
+}
+function tickPrep(resId,li,k){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];const it=itemsPrepLinea(l);const item=it[k];if(item===undefined)return;
+  if(!l.prepChk)l.prepChk={};
+  l.prepChk[item]=!l.prepChk[item];
+  const todo=it.every(i=>l.prepChk[i]);
+  if(todo){const por=(document.getElementById('prep-por')||{}).value||'';l.prepOk={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por.trim()};toast('✅ Bici '+(li+1)+' de '+r.cliente+' preparada');}
+  else l.prepOk=null;
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  renderPrepBici();updFlujoBadges();
+}
+
+// ---- 3) LISTAS PARA SALIR ----
+function renderListasSalir(){
+  const el=document.getElementById('listas-content');if(!el)return;
+  const lista=getPrepararData().slice().sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
+  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:32px"><div class="empty-state-icon">🚚</div><div class="empty-state-text">No hay reservas activadas para taller</div></div>';return;}
+  const tick=(ok,lbl,go)=>'<span onclick="'+go+'" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800;background:'+(ok?'#dcfce7':'#fee2e2')+';color:'+(ok?'#15803d':'#b91c1c')+'">'+(ok?'✅':'❌')+' '+lbl+'</span>';
+  let h='';
+  lista.forEach(r=>{
+    const ls=_lineasRes(r);
+    const listas=ls.filter(l=>lineaRevisada(l)&&lineaPreparada(l)).length,todas=listas===ls.length;
+    h+='<div class="card" style="margin-bottom:14px;border:2px solid '+(todas?'#22c55e':'#e5e7eb')+'">'
+      +'<div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:'+(todas?'#dcfce7':'#f9fafb')+'">'
+      +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 Inicio '+fmtD(r.ini)+' · 📍 '+esc(r.dirEntrega||r.lugarIni||'')+'</div></div>'
+      +(todas?'<span style="background:#16a34a;color:#fff;padding:6px 12px;border-radius:8px;font-weight:900">✅ LISTA PARA SALIR</span>':'<span style="font-weight:800;color:#92400e">'+listas+'/'+ls.length+' bicis listas</span>')
+      +'</div><div style="padding:8px 14px">';
+    ls.forEach((l,li)=>{
+      const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};
+      const rv=lineaRevisada(l),pp=lineaPreparada(l),ok=rv&&pp;
+      h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 10px;margin:6px 0;border-radius:10px;background:'+(ok?'#16a34a':'#fff')+';border:1px solid '+(ok?'#16a34a':'#e5e7eb')+'">'
+        +'<div style="flex:1;min-width:160px;font-weight:800;color:'+(ok?'#fff':'#111')+'">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')+(l.bikeAsig?' · '+esc(l.bikeAsig.num):' · <span style="color:'+(ok?'#fff':'#d97706')+'">sin asignar</span>')+'</div>'
+        +(ok?'<span style="color:#fff;font-weight:900">✅ Lista para salir</span>'
+            :tick(rv,'Taller',"switchSection('taller','preparar')")+' '+tick(pp,'Preparar',"switchSection('taller','prepbici')"))
+        +'</div>';
+    });
+    h+='<div style="text-align:right;margin-top:6px"><button class="btn '+(todas?'btn-success':'btn-secondary')+' btn-sm" onclick="haSalido('+r.id+')">🚚 Ha salido · quitar de la lista</button></div>';
+    h+='</div></div>';
+  });
+  el.innerHTML=h;
+}
+function haSalido(resId){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const ls=_lineasRes(r),f=ls.filter(l=>!(lineaRevisada(l)&&lineaPreparada(l))).length;
+  if(f&&!confirm('A '+f+' bici'+(f>1?'s':'')+' de '+r.cliente+' le falta taller o preparar.\n¿Quitarla de la lista igualmente?'))return;
+  marcarListoParaEntregar(resId);
+  renderListasSalir();updFlujoBadges();
+}
+function updFlujoBadges(){
+  const lista=getPrepararData();let rev=0,pre=0,lis=0;
+  lista.forEach(r=>{_lineasRes(r).forEach(l=>{if(!lineaRevisada(l))rev++;if(!lineaPreparada(l))pre++;if(lineaRevisada(l)&&lineaPreparada(l))lis++;});});
+  const set=(id,n,col)=>{const b=document.getElementById(id);if(!b)return;b.textContent=n;b.classList.toggle('hidden',!n);if(col)b.style.background=col;};
+  set('prepbici-badge-sb',pre);set('listas-badge-sb',lis,'#16a34a');
 }
