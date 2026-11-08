@@ -529,7 +529,7 @@ function renderLineas(){
     if(!lineas[li].extras)lineas[li].extras=[];
     var k=lineas[li].extras.findIndex(function(x){return x.id===xid;});
     if(!poner&&k>=0)lineas[li].extras.splice(k,1);
-    else if(poner&&k<0){var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1});}
+    else if(poner&&k<0){var cat=catalogoExtras.find(function(x){return x.id===xid;});if(cat)lineas[li].extras.push({id:cat.id,nombre:cat.nombre,icono:cat.icono,precio:cat.precio,qty:1,venta:!!cat.venta});}
     renderLineas();if(typeof recalcTotal==='function')recalcTotal();
   }
   el.querySelectorAll('input[data-xli]').forEach(function(cb){
@@ -2688,6 +2688,8 @@ function _procesarRecogida(codigo) {
     if(liR>=0){
       var lR=lsR[liR];
       var pts=puntosPrepLinea(lR,res,liR);
+      var vendidos=pts.filter(function(p){return p.venta;});
+      pts=pts.filter(function(p){return !p.venta;}); // lo vendido se lo queda el cliente: no se comprueba
       var enviados=lR.prepChk?pts.filter(function(p){return lR.prepChk[p.k];}):pts;
       var sinPrep=!lR.prepChk||!enviados.length;
       if(sinPrep)enviados=pts;
@@ -2700,6 +2702,7 @@ function _procesarRecogida(codigo) {
         +'<div style="font-size:12px;color:#6b7280;margin-bottom:8px">'+(sinPrep?'⚠️ No consta el checklist de Preparar bici: se muestra todo lo que debería llevar.':'Lo que se marcó en Preparar bici'+(lR.prepOk&&lR.prepOk.por?' ('+esc(lR.prepOk.por)+', '+esc(String(lR.prepOk.fecha||'').split(',')[0])+')':'')+'.')
         +' · Bici '+(liR+1)+' de '+lsR.length+(recog?' · ya recogidas '+recog:'')+'</div>'
         +'<div id="rec-dev-items"></div>'
+        +(vendidos.length?'<div style="font-size:12px;color:#6b7280;margin-top:4px">🛒 No se comprueba (venta): '+vendidos.map(function(p){return esc(p.txt.replace(' (venta)',''));}).join(', ')+'</div>':'')
         +'<div id="rec-dev-prog" style="font-size:12.5px;font-weight:800;margin-top:6px"></div>'
         +'</div>';
     }
@@ -2815,7 +2818,7 @@ function exportCSV(){var headers=['ID','Cliente','Telefono','Email','Modelos','F
 // EXTRAS SYSTEM
 var EXTRAS_DEF = [
   {id:1, nombre:'Casco',                   icono:'⛑️', precio:2},
-  {id:2, nombre:'Credencial peregrino',     icono:'📜', precio:3},
+  {id:2, nombre:'Credencial peregrino',     icono:'📜', precio:3, venta:true},
   {id:3, nombre:'Bolsa de manillar',        icono:'👜', precio:4},
   {id:4, nombre:'Alforja trasera',          icono:'🎒', precio:5},
   {id:5, nombre:'Chubasquero',              icono:'🧥', precio:3},
@@ -2847,6 +2850,7 @@ function renderExtrasCatModal(){
     return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--g100)">' +
       '<span style="font-size:20px;width:28px;text-align:center">' + e.icono + '</span>' +
       '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + esc(e.nombre) + '</div></div>' +
+      '<button type="button" onclick="toggleVentaExtra(' + i + ')" title="Lo vendido no se comprueba en la recogida" style="border:1px solid '+(e.venta?'#fcd34d':'#86efac')+';background:'+(e.venta?'#fffbeb':'#f0fdf4')+';color:'+(e.venta?'#92400e':'#15803d')+';border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;font-weight:800;white-space:nowrap">' + (e.venta?'🛒 Venta: no se devuelve':'↩️ Se devuelve') + '</button>' +
       '<span style="font-size:13px;font-weight:700;color:var(--te600)">' + (e.precio||0) + cfg.currency + '</span>' +
       '<button onclick="delExtraCat(' + i + ')" style="background:var(--r50);border:1px solid var(--r100);color:var(--r600);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px;font-weight:700">✕</button>' +
     '</div>';
@@ -2858,7 +2862,9 @@ function addExtraCat(){
   var precio = parseFloat(document.getElementById('ext-precio').value)||0;
   var icono = document.getElementById('ext-icono').value.trim()||'📦';
   if(!nom){toast('Escribe el nombre del extra');return;}
-  catalogoExtras.push({id:Date.now(), nombre:nom, icono:icono, precio:precio});
+  var _vta=document.getElementById('ext-venta');
+  catalogoExtras.push({id:Date.now(), nombre:nom, icono:icono, precio:precio, venta:!!(_vta&&_vta.checked)});
+  if(_vta)_vta.checked=false;
   saveExtrasCat();
   document.getElementById('ext-nombre').value='';
   document.getElementById('ext-precio').value='';
@@ -2868,6 +2874,20 @@ function addExtraCat(){
   toast('Extra añadido al catálogo');
 }
 
+// Extras de venta (credencial, casco comprado…): el cliente se los queda, así que no se
+// comprueban en la recogida. Marcado en el catálogo; la reserva guarda la marca al elegirlo.
+function esExtraVenta(x){
+  if(!x)return false;
+  if(x.venta===true)return true;
+  var c=(catalogoExtras||[]).find(function(e){return String(e.id)===String(x.id);});
+  if(c)return !!c.venta;
+  return /credencial/i.test(x.nombre||''); // por defecto la credencial es de venta
+}
+function toggleVentaExtra(i){
+  var e=catalogoExtras[i];if(!e)return;
+  e.venta=!e.venta;saveExtrasCat();renderExtrasCatModal();
+  toast(e.nombre+(e.venta?': de venta, no se comprueba en la recogida':': se comprueba en la recogida'));
+}
 function delExtraCat(i){
   catalogoExtras.splice(i,1);
   saveExtrasCat();
@@ -3918,6 +3938,8 @@ async function initApp() {
     if (dbCfg && dbCfg.bizName) cfg          = dbCfg;
     if (dbTipos && Object.keys(dbTipos).length) tipos = dbTipos;
     if (dbExtrasCat && dbExtrasCat.length) catalogoExtras = dbExtrasCat;
+    // La credencial es de venta (decidido): se marca si aún no tiene la opción
+    catalogoExtras.forEach(function(e){if(e&&e.venta===undefined&&/credencial/i.test(e.nombre||''))e.venta=true;});
     if (dbPreparar && dbPreparar.length) prepararIds = dbPreparar;
     if (dbImpExcl && dbImpExcl.length) impExcluidas = dbImpExcl;
 
