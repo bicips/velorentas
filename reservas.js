@@ -3827,7 +3827,8 @@ async function initApp() {
       DB.getConfig('historial', {}),
       DB.getConfig('clistas', null),
       DB.getConfig('photos', {}),
-      DB.getConfig('clistasEntrega', {})
+      DB.getConfig('clistasEntrega', {}),
+      DB.getConfig('clistasPrep', {})
     ]);
 
     var dbBikes     = results[0];
@@ -3863,6 +3864,7 @@ async function initApp() {
     // FIX: los checklists son un objeto {modelo:[ítems]}; antes se exigía un array y nunca se cargaban
     if (typeof CLS !== 'undefined' && dbCLS && typeof dbCLS === 'object' && !Array.isArray(dbCLS) && Object.keys(dbCLS).length) CLS = dbCLS;
     if (typeof CLE !== 'undefined' && results[13] && typeof results[13] === 'object' && !Array.isArray(results[13])) CLE = results[13];
+    if (typeof CLP !== 'undefined' && results[14] && typeof results[14] === 'object' && !Array.isArray(results[14])) CLP = results[14];
     if (typeof photos !== 'undefined' && dbPhotos && dbPhotos !== null && !Array.isArray(dbPhotos) && Object.keys(dbPhotos).length) photos = dbPhotos;
 
     // Caché compartida preparar
@@ -3958,7 +3960,7 @@ function imprimirEtiquetasQR(){
 var PAG_NUM=[
   ['v-dash','P01','Panel'],['v-flota','P02','Gestión de flota'],['v-cal','P03','Calendario'],['v-timeline','P04','Timeline'],
   ['v-res','P05','Reservas'],['v-fact','P06','Facturas'],['v-informes','P07','Informes'],['v-tarifas','P08','Tarifas'],['v-clientes','P09','Clientes'],
-  ['vd','P10','Panel taller'],['preparar-view','P11','Revisar bici'],['vb','P12','Bicicletas taller'],['vt','P13','Ficha de taller de una bici'],
+  ['vd','P10','Panel taller'],['preparar-view','P11','Revisar bici'],['prepbici-view','P14','Preparar bici'],['listas-view','P15','Listas para salir'],['vb','P12','Bicicletas taller'],['vt','P13','Ficha de taller de una bici'],
   ['mres','V01','Nueva / editar reserva'],['mdetail','V02','Detalle de reserva'],['mmanasign','V03','Asignar bicicleta (lista)'],['mqrasign','V04','Escanear QR (reserva)'],
   ['m-transito','V05','Seleccionar transporte'],['mday','V06','Reservas del día'],['mfact','V07','Factura'],['msend','V08','Enviar confirmación'],
   ['mcli','V09','Historial del cliente'],['m-extras-cat','V10','Catálogo de extras'],['m-print-sel','V11','Imprimir lista'],['m-import-res','V12','Importar reservas'],
@@ -3967,7 +3969,7 @@ var PAG_NUM=[
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
   ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Checklist antes de entrega'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
-var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-bikes':'P12','nav-recogida':'V18','nav-modelos':'V21','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
+var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-prepbici':'P14','nav-taller-listas':'P15','nav-taller-bikes':'P12','nav-recogida':'V18','nav-modelos':'V21','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
 function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}
 function aplicarNumerosPagina(){
   if(!document.getElementById('pagnum-css')){
@@ -4056,6 +4058,8 @@ function _pagActual(){
   if(ts&&ts.classList.contains('active')){
     var pv=document.getElementById('preparar-view');
     if(pv&&!pv.classList.contains('hidden'))return 't:preparar';
+    var pbv=document.getElementById('prepbici-view');if(pbv&&!pbv.classList.contains('hidden'))return 't:prepbici';
+    var lsv=document.getElementById('listas-view');if(lsv&&!lsv.classList.contains('hidden'))return 't:listas';
     var vt=document.getElementById('vt');if(vt&&vt.classList.contains('active'))return 't:taller';
     var vb=document.getElementById('vb');if(vb&&vb.classList.contains('active'))return 't:bikes';
     return 't:dashboard';
