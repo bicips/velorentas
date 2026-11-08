@@ -1715,6 +1715,21 @@ function abrirTransito(resId) {
 }
 
 
+// Falta de stock calculada como si la reserva ocupara stock (sirve para presupuestos caducados)
+function _faltaSiOcupara(r){
+  var e=r.estado,pd=r.presupDesde;
+  if(presupCaducado(r)){r.estado='confirmada';}
+  try{return faltaStockReserva(r);}finally{r.estado=e;r.presupDesde=pd;}
+}
+function renovarPresupuesto(id){
+  var r=reservas.find(function(x){return x.id===id;});if(!r)return;
+  var fs=_faltaSiOcupara(r);
+  if(fs.length&&!confirm('🚨 Ahora no hay stock suficiente para este presupuesto:\n\n'+fs.map(textoFaltaStock).join('\n')+'\n\n¿Renovar el bloqueo igualmente?'))return;
+  r.presupDesde=Date.now();
+  DB.saveReserva(r).catch(function(e){console.error(e);});
+  toast('🔒 Presupuesto renovado: bloquea stock hasta el '+fmtFH(presupCaduca(r)));
+  renderRes();renderDash();showResDetail(id);
+}
 function volverAPendiente(id){
   var r=reservas.find(function(x){return x.id===id;});if(!r)return;
   var era=(SCFG[r.estado]||{lbl:r.estado}).lbl;
@@ -1735,7 +1750,7 @@ function changeStatus(id,st,extra){
   if(!r)return;
   if(st==='pendiente'&&r.estado!=='pendiente')r.presupDesde=Date.now(); // vuelve a Presupuesto: 72 h desde ahora
   if(st==='confirmada'&&r.estado!=='confirmada'){
-    var fsC=faltaStockReserva(r);
+    var fsC=_faltaSiOcupara(r); // aunque sea un presupuesto caducado, comprobar como si ya ocupara stock
     if(fsC.length&&!confirm('🚨 Esta reserva no tiene stock suficiente:\n\n'+fsC.map(textoFaltaStock).join('\n')+'\n\n¿Confirmarla igualmente?'))return;
   }
   r.estado=st;
@@ -1765,6 +1780,7 @@ function showResDetail(id){
   var st = r.estado;
   // Sequential state transitions
   if(st==='pendiente')      _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'confirmada\')">✅ Confirmar</button>';
+  if(st==='pendiente'&&presupCaducado(r)) _estadosBtns+='<button class="btn bs bsm" title="Vuelve a bloquear stock durante '+_presupHoras()+' h" onclick="renovarPresupuesto('+r.id+')">🔄 Renovar bloqueo ('+_presupHoras()+' h)</button>';
   if(st==='confirmada')     _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'proxima_entrega\')">📅 Próxima entrega</button>';
   if(st==='proxima_entrega')_estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'en_preparacion\')">🔧 En preparación</button>';
   if(st==='en_preparacion') _estadosBtns+='<button class="btn bb bsm" onclick="changeStatus('+r.id+',\'preparada\')">📦 Preparada</button>';
