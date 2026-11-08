@@ -322,8 +322,10 @@ function renderDash(){
   var ingr=reservas.filter(function(r){return r.estado!=='cancelada'&&r.estado!=='anulada'&&r.ini.slice(0,7)===mes;}).reduce(function(s,r){return s+(r.total||0);},0);
   var sg=document.getElementById('dstats');
   if(sg)sg.innerHTML=[{c:'c-teal',i:'🔄',v:activas,l:'Activas hoy'},{c:'c-amber',i:'⏳',v:pend,l:'Presupuestos'},{c:'c-blue',i:'📅',v:prox,l:'Entradas 7 días'},{c:'c-green',i:'💶',v:ingr.toFixed(0)+cfg.currency,l:'Facturación mes'}].map(function(s){return '<div class="scard '+s.c+'"><div class="sico">'+s.i+'</div><div class="sval">'+s.v+'</div><div class="slbl">'+s.l+'</div></div>';}).join('');
-  var arr=reservas.filter(function(r){return r.estado!=='cancelada'&&r.ini>=today&&diffD(today,r.ini)<=7;}).sort(function(a,b){return a.ini.localeCompare(b.ini);});
-  var dep=reservas.filter(function(r){return r.estado!=='cancelada'&&r.fin>=today&&diffD(today,r.fin)<=7;}).sort(function(a,b){return a.fin.localeCompare(b.fin);});
+  // Próximas entradas/salidas: solo reservas aceptadas (sin presupuestos, anuladas, canceladas ni cerradas)
+  var _enMarcha=function(r){return r.estado!=='pendiente'&&ESTADOS_LIBRE_GLOBAL.indexOf(r.estado)<0;};
+  var arr=reservas.filter(function(r){return _enMarcha(r)&&r.ini>=today&&diffD(today,r.ini)<=7;}).sort(function(a,b){return a.ini.localeCompare(b.ini);});
+  var dep=reservas.filter(function(r){return _enMarcha(r)&&r.fin>=today&&diffD(today,r.fin)<=7;}).sort(function(a,b){return a.fin.localeCompare(b.fin);});
   var da=document.getElementById('d-arrivals');if(da)da.innerHTML=arr.length?arr.map(function(r){return miniRow(r,'entrada');}).join(''):emptyHTML('📅','Sin entradas');
   var dd=document.getElementById('d-departs');if(dd)dd.innerHTML=dep.length?dep.map(function(r){return miniRow(r,'salida');}).join(''):emptyHTML('🏁','Sin salidas');
   var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">';
