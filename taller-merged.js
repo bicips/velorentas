@@ -1776,6 +1776,14 @@ function renderPrepBici(){
       const nEx=pts.filter(p=>p.extra).length;
       h+=grupo('reserva','🎒 De esta reserva · '+(nEx?nEx+' extra'+(nEx>1?'s':''):'sin extras'),'#b45309');
       h+=grupo('modelo','🧰 Del modelo '+esc(t.label),'#4b5563');
+      // Observaciones + botón de confirmar
+      h+='<div style="margin-top:10px"><label style="font-size:11px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">📝 Observaciones</label>'
+        +'<textarea class="form-input" rows="2" placeholder="Algo a tener en cuenta de esta bici (falta un repuesto, cambio de sillín, nota para el reparto…)" style="width:100%;margin-top:4px;font-size:13px;resize:vertical" onchange="obsPrep('+r.id+','+li+',this.value)">'+esc(l.prepObs||'')+'</textarea></div>';
+      const todos=hechos===pts.length;
+      h+='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">'
+        +(ok?'<span style="flex:1;font-size:12px;color:#15803d;font-weight:700;align-self:center">✅ Preparada'+(l.prepOk.por?' por '+esc(l.prepOk.por):'')+' · '+esc(String(l.prepOk.fecha||'').split(',')[0])+'</span><button class="btn btn-secondary btn-sm" onclick="desmarcarPreparada('+r.id+','+li+')">↩️ Deshacer</button>'
+            :'<button class="btn '+(todos?'btn-success':'btn-secondary')+'" style="font-weight:800" onclick="marcarPreparada('+r.id+','+li+')">✅ Bici preparada'+(todos?'':' ('+hechos+'/'+pts.length+')')+'</button>')
+        +'</div>';
       h+='</div>';
     });
     h+='</div></div>';
@@ -1788,11 +1796,34 @@ function tickPrep(resId,li,k){
   const l=_lineasRes(r)[li];const it=itemsPrepLinea(l,r,li);const item=it[k];if(item===undefined)return;
   if(!l.prepChk)l.prepChk={};
   l.prepChk[item]=!l.prepChk[item];
-  const todo=it.every(i=>l.prepChk[i]);
-  if(todo){const por=(document.getElementById('prep-por')||{}).value||'';l.prepOk={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por.trim()};toast('✅ Bici '+(li+1)+' de '+r.cliente+' preparada');}
-  else l.prepOk=null;
+  if(!l.prepChk[item])l.prepOk=null; // si se desmarca algo, deja de estar preparada
   DB.saveReserva(r).catch(e=>console.error('prep',e));
   renderPrepBici();updFlujoBadges();
+}
+
+// Confirmar con el botón: "✅ Bici preparada"
+function marcarPreparada(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];const it=itemsPrepLinea(l,r,li);
+  const falta=it.filter(i=>!(l.prepChk&&l.prepChk[i]));
+  if(falta.length){toast('⚠️ Falta marcar: '+falta.join(', '),5000,'error');return;}
+  const por=((document.getElementById('prep-por')||{}).value||'').trim();
+  if(!por){toast('⚠️ Escribe arriba quién la ha preparado',3500,'error');const e=document.getElementById('prep-por');if(e)e.focus();return;}
+  l.prepOk={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por};
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  toast('✅ Bici '+(li+1)+' de '+r.cliente+' preparada');
+  renderPrepBici();updFlujoBadges();
+}
+function desmarcarPreparada(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];l.prepOk=null;
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  renderPrepBici();updFlujoBadges();
+}
+function obsPrep(resId,li,v){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  _lineasRes(r)[li].prepObs=String(v||'').trim();
+  DB.saveReserva(r).catch(e=>console.error('prepObs',e));
 }
 
 // ---- 3) LISTAS PARA SALIR ----
@@ -1817,6 +1848,7 @@ function renderListasSalir(){
         +'<div style="flex:1;min-width:160px;font-weight:800;color:'+(ok?'#fff':'#111')+'">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')+(l.bikeAsig?' · '+esc(l.bikeAsig.num):' · <span style="color:'+(ok?'#fff':'#d97706')+'">sin asignar</span>')+'</div>'
         +(ok?'<span style="color:#fff;font-weight:900">✅ Lista para salir</span>'
             :tick(rv,'Taller',"switchSection('taller','preparar')")+' '+tick(pp,'Preparar',"switchSection('taller','prepbici')"))
+        +(l.prepObs?'<div style="flex-basis:100%;font-size:12px;font-weight:600;color:'+(ok?'#f0fdf4':'#92400e')+'">📝 '+esc(l.prepObs)+'</div>':'')
         +'</div>';
     });
     h+='<div style="text-align:right;margin-top:6px"><button class="btn '+(todas?'btn-success':'btn-secondary')+' btn-sm" onclick="haSalido('+r.id+')">🚚 Ha salido · quitar de la lista</button></div>';
