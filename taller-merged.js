@@ -1697,18 +1697,31 @@ function _lineasRes(r){
   return r.lineas;
 }
 function lineaRevisada(l){return !!(l&&l.tallerOk&&l.bikeAsig&&String(l.tallerOk.bikeId)===String(l.bikeAsig.id));}
-function _extraNombre(x){const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.nombre)||x.nombre||('Extra '+x.id);}
-function itemsPrepLinea(l){
-  const it=[];
-  const ped=(l.pedales&&l.pedales[0])||l.pedal||'';
-  if(ped)it.push('Pedales: '+ped);
-  if(l.altura)it.push('Sillín ajustado para ciclista de '+l.altura+' cm');
-  (l.extras||[]).forEach(x=>it.push('Extra: '+_extraNombre(x)+((x.qty||x.cant)>1?' ×'+(x.qty||x.cant):'')));
-  const mod=(CLP[l.tipo]&&CLP[l.tipo].length)?CLP[l.tipo]:DCLP_GEN;
-  mod.forEach(m=>it.push(m));
-  return it;
+// Extras de una bici de la reserva: los de la línea y, en reservas antiguas, los de la
+// reserva que apuntan a ese modelo/talla (o sin línea, en la primera bici). Igual que la hoja.
+function extrasDeLinea(r,l,li){
+  const out=(l.extras||[]).slice();
+  (r.extras||[]).forEach(ex=>{
+    const suya=(ex.lineaTipo===l.tipo&&ex.lineaTalla===l.talla)||(!ex.lineaTipo&&li===0);
+    if(suya&&!out.some(e=>String(e.id)===String(ex.id)))out.push(ex);
+  });
+  return out;
 }
-function lineaPreparada(l){const it=itemsPrepLinea(l);return !!(l&&l.prepOk&&it.every(i=>l.prepChk&&l.prepChk[i]));}
+function _extraNombre(x){if(x.nombre)return x.nombre;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.nombre)||('Extra '+x.id);} // primero el nombre guardado en la reserva
+function _extraIcono(x){if(x.icono)return x.icono;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.icono)||'🎒';}
+// Puntos a marcar en Preparar bici. Cada punto: {k:clave única, txt, grupo:'reserva'|'modelo', ico}
+function puntosPrepLinea(l,r,li){
+  const pts=[],uds=l.uds||1;
+  for(let u=0;u<uds;u++){const ped=(Array.isArray(l.pedales)&&l.pedales[u])||'';
+    if(ped)pts.push({k:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),txt:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),grupo:'reserva',ico:'🦶'});}
+  if(l.altura)pts.push({k:'Sillín ajustado para ciclista de '+l.altura+' cm',txt:'Sillín ajustado para ciclista de '+l.altura+' cm',grupo:'reserva',ico:'📏'});
+  if(r)extrasDeLinea(r,l,li||0).forEach(x=>{const q=x.qty||x.cant||1;const t='Extra: '+_extraNombre(x)+(q>1?' ×'+q:'');pts.push({k:t,txt:_extraNombre(x)+(q>1?' ×'+q:''),grupo:'reserva',ico:_extraIcono(x),extra:true});});
+  const mod=(CLP[l.tipo]&&CLP[l.tipo].length)?CLP[l.tipo]:DCLP_GEN;
+  mod.forEach(m=>pts.push({k:m,txt:m,grupo:'modelo',ico:'🧰'}));
+  return pts;
+}
+function itemsPrepLinea(l,r,li){return puntosPrepLinea(l,r,li).map(p=>p.k);}
+function lineaPreparada(l,r,li){const it=itemsPrepLinea(l,r,li);return !!(l&&l.prepOk&&it.every(i=>l.prepChk&&l.prepChk[i]));}
 function revisarLinea(resId,li){
   const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
   const l=_lineasRes(r)[li];
@@ -1719,46 +1732,98 @@ function revisarLinea(resId,li){
   openCE(b.id);
 }
 
-// ---- 2) PREPARAR BICI ----
+// ---- 2) PREPARAR BICI (mismo aspecto que Revisar bici) ----
 function renderPrepBici(){
   const el=document.getElementById('prepbici-content');if(!el)return;
   const lista=getPrepararData().slice().sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
-  if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:32px"><div class="empty-state-icon">🧰</div><div class="empty-state-text">No hay reservas activadas para taller</div></div>';return;}
+  if(!lista.length){el.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">🧰</div><div style="font-size:16px;font-weight:700;color:#374151">Sin bicicletas para preparar</div><div style="font-size:13px;color:#6b7280;margin-top:6px">Las reservas activadas para taller aparecen aquí</div></div>';return;}
   const por=(function(){try{return localStorage.getItem('vr_prep_por')||'';}catch(e){return '';}})();
-  let h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><label class="form-label" style="margin:0">Preparado por</label><input class="form-input" id="prep-por" value="'+esc(por)+'" placeholder="Nombre" style="max-width:220px" onchange="try{localStorage.setItem(\'vr_prep_por\',this.value)}catch(e){}"/>'
-    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openM(\'mecl\');setECLModo(\'prep\')">⚙️ Checklists por modelo</button></div>';
+  const SL={};Object.keys(SCFG).forEach(k=>SL[k]=SCFG[k].lbl);
+  let h='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label class="form-label" style="margin:0">Preparado por</label><input class="form-input" id="prep-por" value="'+esc(por)+'" placeholder="Nombre" style="max-width:220px" onchange="try{localStorage.setItem(\'vr_prep_por\',this.value)}catch(e){}"/>'
+    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirChecklistModelo(null,\'prep\')">⚙️ Checklists por modelo</button></div>';
+  h+='<div style="display:flex;flex-direction:column;gap:14px">';
   lista.forEach(r=>{
-    const ls=_lineasRes(r);
-    const hechas=ls.filter(lineaPreparada).length;
-    h+='<div class="card" style="margin-bottom:14px;border:2px solid '+(hechas===ls.length?'#86efac':'#e5e7eb')+'">'
-      +'<div style="padding:12px 14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;background:'+(hechas===ls.length?'#f0fdf4':'#f9fafb')+'">'
-      +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+' · 📍 '+esc(r.dirEntrega||r.lugarIni||'')+'</div></div>'
-      +'<div style="font-weight:800;color:'+(hechas===ls.length?'#15803d':'#92400e')+'">'+hechas+'/'+ls.length+' preparadas</div></div><div style="padding:10px 14px">';
+    const ls=_lineasRes(r),hechas=ls.filter((l,i)=>lineaPreparada(l,r,i)).length,todas=hechas===ls.length;
+    h+='<div style="background:#fff;border:2px solid '+(todas?'#86efac':'#fed7aa')+';border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(234,88,12,.08)">';
+    // cabecera cliente (igual que Revisar bici, en naranja)
+    h+='<div style="background:'+(todas?'#dcfce7':'#ffedd5')+';padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
+      +'<div style="flex:1"><div style="font-weight:900;font-size:16px;color:#7c2d12;margin-bottom:4px">👤 '+esc(r.cliente)+'</div>'
+      +(r.lugarIni?'<div style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:2px">📍 Inicio: <span style="font-weight:800">'+esc(r.lugarIni)+'</span></div>':'')
+      +'<div style="font-size:12px;color:#ea580c">📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+(r.dias?' ('+r.dias+' días)':'')+'</div>'
+      +(r.tel?'<div style="margin-top:4px"><a href="tel:'+esc(r.tel)+'" style="font-size:12px;color:#c2410c;text-decoration:none;font-weight:700">📞 '+esc(r.tel)+'</a></div>':'')
+      +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
+      +'<span style="background:#fff;border:1px solid #fdba74;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#c2410c">'+esc(SL[r.estado]||r.estado)+'</span>'
+      +'<span style="font-weight:900;font-size:13px;color:'+(todas?'#15803d':'#c2410c')+'">'+hechas+'/'+ls.length+' preparadas</span>'
+      +'</div></div>';
+    h+='<div style="padding:12px 16px"><div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🧰 Bicicletas a preparar</div>';
     ls.forEach((l,li)=>{
-      const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};
-      const it=itemsPrepLinea(l),ok=lineaPreparada(l);
-      h+='<div style="border:1px solid '+(ok?'#86efac':'#e5e7eb')+';background:'+(ok?'#f0fdf4':'#fff')+';border-radius:10px;padding:10px 12px;margin-bottom:8px">'
-        +'<div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px"><div style="font-weight:800">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')
-        +(l.bikeAsig?' · <span style="color:#15803d">🔗 '+esc(l.bikeAsig.num)+'</span>':' · <span style="color:#d97706">sin bici asignada</span>')+'</div>'
-        +(ok?'<span style="color:#15803d;font-weight:800;font-size:12px">✅ Preparada'+(l.prepOk.por?' · '+esc(l.prepOk.por):'')+'</span>':'<span style="color:#6b7280;font-size:12px">'+it.filter(i=>l.prepChk&&l.prepChk[i]).length+'/'+it.length+'</span>')+'</div>';
-      it.forEach((i,k)=>{const c=!!(l.prepChk&&l.prepChk[i]);
-        h+='<div class="check-item'+(c?' done':'')+'" onclick="tickPrep('+r.id+','+li+','+k+')"><div class="check-box">'+(c?'✓':'')+'</div><span class="check-text">'+esc(i)+'</span></div>';});
+      const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo,color:'#999'};
+      const pts=puntosPrepLinea(l,r,li),ok=lineaPreparada(l,r,li);
+      const hechos=pts.filter(p=>l.prepChk&&l.prepChk[p.k]).length;
+      h+='<div style="border:2px solid '+(ok?'#86efac':'#e5e7eb')+';border-radius:10px;padding:11px 13px;margin-bottom:8px;background:'+(ok?'#f0fdf4':'#fafafa')+'">';
+      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+        +'<div style="width:38px;height:38px;background:'+(t.color||'#999')+'22;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">'+t.icon+'</div>'
+        +'<div style="flex:1"><div style="font-weight:800;font-size:14px;color:#111">Bici '+(li+1)+' · '+esc(t.label)+'</div>'
+        +'<div style="font-size:13px;color:#374151;font-weight:700">📏 Talla: <span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-weight:800">'+esc(l.talla||'?')+'</span>'+((l.uds||1)>1?' <span style="color:#6b7280">×'+l.uds+'</span>':'')+'</div>'
+        +(l.bikeAsig?'<div style="font-size:12px;color:#15803d;margin-top:3px;font-weight:700">🔗 Bici: '+esc(l.bikeAsig.num)+'</div>':'<div style="font-size:12px;color:#d97706;margin-top:3px">⚠️ Sin bici asignada</div>')
+        +'</div><div style="font-weight:900;font-size:13px;color:'+(ok?'#15803d':'#6b7280')+';text-align:right">'+(ok?'✅ Preparada'+(l.prepOk&&l.prepOk.por?'<div style="font-size:11px;font-weight:700">'+esc(l.prepOk.por)+'</div>':''):hechos+'/'+pts.length)+'</div></div>';
+      const grupo=(g,tit,col)=>{const ps=pts.filter(p=>p.grupo===g);if(!ps.length)return '';
+        return '<div style="font-size:11px;font-weight:800;color:'+col+';text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px">'+tit+'</div>'
+          +ps.map(p=>{const c=!!(l.prepChk&&l.prepChk[p.k]);const k=pts.indexOf(p);
+            return '<div onclick="tickPrep('+r.id+','+li+','+k+')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:5px;border-radius:8px;cursor:pointer;border:1px solid '+(c?'#86efac':(p.extra?'#fcd34d':'#e5e7eb'))+';background:'+(c?'#dcfce7':(p.extra?'#fffbeb':'#fff'))+'">'
+              +'<span style="width:22px;height:22px;border-radius:6px;border:2px solid '+(c?'#16a34a':'#9ca3af')+';background:'+(c?'#16a34a':'#fff')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">'+(c?'✓':'')+'</span>'
+              +'<span style="font-size:17px">'+p.ico+'</span><span style="font-size:14px;font-weight:'+(p.grupo==='reserva'?'800':'600')+';color:#111;'+(c?'text-decoration:line-through;color:#6b7280':'')+'">'+esc(p.txt)+'</span></div>';}).join('');};
+      const nEx=pts.filter(p=>p.extra).length;
+      h+=grupo('reserva','🎒 De esta reserva · '+(nEx?nEx+' extra'+(nEx>1?'s':''):'sin extras'),'#b45309');
+      h+=grupo('modelo','🧰 Del modelo '+esc(t.label),'#4b5563');
+      // Observaciones + botón de confirmar
+      h+='<div style="margin-top:10px"><label style="font-size:11px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">📝 Observaciones</label>'
+        +'<textarea class="form-input" rows="2" placeholder="Algo a tener en cuenta de esta bici (falta un repuesto, cambio de sillín, nota para el reparto…)" style="width:100%;margin-top:4px;font-size:13px;resize:vertical" onchange="obsPrep('+r.id+','+li+',this.value)">'+esc(l.prepObs||'')+'</textarea></div>';
+      const todos=hechos===pts.length;
+      h+='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">'
+        +(ok?'<span style="flex:1;font-size:12px;color:#15803d;font-weight:700;align-self:center">✅ Preparada'+(l.prepOk.por?' por '+esc(l.prepOk.por):'')+' · '+esc(String(l.prepOk.fecha||'').split(',')[0])+'</span><button class="btn btn-secondary btn-sm" onclick="desmarcarPreparada('+r.id+','+li+')">↩️ Deshacer</button>'
+            :'<button class="btn '+(todos?'btn-success':'btn-secondary')+'" style="font-weight:800" onclick="marcarPreparada('+r.id+','+li+')">✅ Bici preparada'+(todos?'':' ('+hechos+'/'+pts.length+')')+'</button>')
+        +'</div>';
       h+='</div>';
     });
     h+='</div></div>';
   });
+  h+='</div>';
   el.innerHTML=h;
 }
 function tickPrep(resId,li,k){
   const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
-  const l=_lineasRes(r)[li];const it=itemsPrepLinea(l);const item=it[k];if(item===undefined)return;
+  const l=_lineasRes(r)[li];const it=itemsPrepLinea(l,r,li);const item=it[k];if(item===undefined)return;
   if(!l.prepChk)l.prepChk={};
   l.prepChk[item]=!l.prepChk[item];
-  const todo=it.every(i=>l.prepChk[i]);
-  if(todo){const por=(document.getElementById('prep-por')||{}).value||'';l.prepOk={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por.trim()};toast('✅ Bici '+(li+1)+' de '+r.cliente+' preparada');}
-  else l.prepOk=null;
+  if(!l.prepChk[item])l.prepOk=null; // si se desmarca algo, deja de estar preparada
   DB.saveReserva(r).catch(e=>console.error('prep',e));
   renderPrepBici();updFlujoBadges();
+}
+
+// Confirmar con el botón: "✅ Bici preparada"
+function marcarPreparada(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];const it=itemsPrepLinea(l,r,li);
+  const falta=it.filter(i=>!(l.prepChk&&l.prepChk[i]));
+  if(falta.length){toast('⚠️ Falta marcar: '+falta.join(', '),5000,'error');return;}
+  const por=((document.getElementById('prep-por')||{}).value||'').trim();
+  if(!por){toast('⚠️ Escribe arriba quién la ha preparado',3500,'error');const e=document.getElementById('prep-por');if(e)e.focus();return;}
+  l.prepOk={fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por};
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  toast('✅ Bici '+(li+1)+' de '+r.cliente+' preparada');
+  renderPrepBici();updFlujoBadges();
+}
+function desmarcarPreparada(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];l.prepOk=null;
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  renderPrepBici();updFlujoBadges();
+}
+function obsPrep(resId,li,v){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  _lineasRes(r)[li].prepObs=String(v||'').trim();
+  DB.saveReserva(r).catch(e=>console.error('prepObs',e));
 }
 
 // ---- 3) LISTAS PARA SALIR ----
@@ -1770,7 +1835,7 @@ function renderListasSalir(){
   let h='';
   lista.forEach(r=>{
     const ls=_lineasRes(r);
-    const listas=ls.filter(l=>lineaRevisada(l)&&lineaPreparada(l)).length,todas=listas===ls.length;
+    const listas=ls.filter((l,i)=>lineaRevisada(l)&&lineaPreparada(l,r,i)).length,todas=listas===ls.length;
     h+='<div class="card" style="margin-bottom:14px;border:2px solid '+(todas?'#22c55e':'#e5e7eb')+'">'
       +'<div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:'+(todas?'#dcfce7':'#f9fafb')+'">'
       +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 Inicio '+fmtD(r.ini)+' · 📍 '+esc(r.dirEntrega||r.lugarIni||'')+'</div></div>'
@@ -1778,11 +1843,12 @@ function renderListasSalir(){
       +'</div><div style="padding:8px 14px">';
     ls.forEach((l,li)=>{
       const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};
-      const rv=lineaRevisada(l),pp=lineaPreparada(l),ok=rv&&pp;
+      const rv=lineaRevisada(l),pp=lineaPreparada(l,r,li),ok=rv&&pp;
       h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 10px;margin:6px 0;border-radius:10px;background:'+(ok?'#16a34a':'#fff')+';border:1px solid '+(ok?'#16a34a':'#e5e7eb')+'">'
         +'<div style="flex:1;min-width:160px;font-weight:800;color:'+(ok?'#fff':'#111')+'">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')+(l.bikeAsig?' · '+esc(l.bikeAsig.num):' · <span style="color:'+(ok?'#fff':'#d97706')+'">sin asignar</span>')+'</div>'
         +(ok?'<span style="color:#fff;font-weight:900">✅ Lista para salir</span>'
             :tick(rv,'Taller',"switchSection('taller','preparar')")+' '+tick(pp,'Preparar',"switchSection('taller','prepbici')"))
+        +(l.prepObs?'<div style="flex-basis:100%;font-size:12px;font-weight:600;color:'+(ok?'#f0fdf4':'#92400e')+'">📝 '+esc(l.prepObs)+'</div>':'')
         +'</div>';
     });
     h+='<div style="text-align:right;margin-top:6px"><button class="btn '+(todas?'btn-success':'btn-secondary')+' btn-sm" onclick="haSalido('+r.id+')">🚚 Ha salido · quitar de la lista</button></div>';
@@ -1792,14 +1858,14 @@ function renderListasSalir(){
 }
 function haSalido(resId){
   const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
-  const ls=_lineasRes(r),f=ls.filter(l=>!(lineaRevisada(l)&&lineaPreparada(l))).length;
+  const ls=_lineasRes(r),f=ls.filter((l,i)=>!(lineaRevisada(l)&&lineaPreparada(l,r,i))).length;
   if(f&&!confirm('A '+f+' bici'+(f>1?'s':'')+' de '+r.cliente+' le falta taller o preparar.\n¿Quitarla de la lista igualmente?'))return;
   marcarListoParaEntregar(resId);
   renderListasSalir();updFlujoBadges();
 }
 function updFlujoBadges(){
   const lista=getPrepararData();let rev=0,pre=0,lis=0;
-  lista.forEach(r=>{_lineasRes(r).forEach(l=>{if(!lineaRevisada(l))rev++;if(!lineaPreparada(l))pre++;if(lineaRevisada(l)&&lineaPreparada(l))lis++;});});
+  lista.forEach(r=>{_lineasRes(r).forEach((l,i)=>{const pp=lineaPreparada(l,r,i);if(!lineaRevisada(l))rev++;if(!pp)pre++;if(lineaRevisada(l)&&pp)lis++;});});
   const set=(id,n,col)=>{const b=document.getElementById(id);if(!b)return;b.textContent=n;b.classList.toggle('hidden',!n);if(col)b.style.background=col;};
   set('prepbici-badge-sb',pre);set('listas-badge-sb',lis,'#16a34a');
 }
