@@ -1701,8 +1701,13 @@ function lineaRevisada(l){return !!(l&&l.tallerOk&&l.bikeAsig&&String(l.tallerOk
 // reserva que apuntan a ese modelo/talla (o sin línea, en la primera bici). Igual que la hoja.
 function extrasDeLinea(r,l,li){
   const out=(l.extras||[]).slice();
+  const ls=_lineasRes(r);
   (r.extras||[]).forEach(ex=>{
-    const suya=(ex.lineaTipo===l.tipo&&ex.lineaTalla===l.talla)||(!ex.lineaTipo&&li===0);
+    // Extras guardados en la reserva (sistema antiguo): van a la bici de su modelo/talla;
+    // si no hay ninguna que coincida (o no indican bici), a la primera. Nunca se pierden.
+    const hayDestino=ex.lineaTipo&&ls.some(x=>x.tipo===ex.lineaTipo&&x.talla===ex.lineaTalla);
+    const primeraQueCoincide=hayDestino?ls.findIndex(x=>x.tipo===ex.lineaTipo&&x.talla===ex.lineaTalla):0;
+    const suya=hayDestino?(li===primeraQueCoincide):(li===0);
     if(suya&&!out.some(e=>String(e.id)===String(ex.id)))out.push(ex);
   });
   return out;
@@ -1732,64 +1737,103 @@ function revisarLinea(resId,li){
   openCE(b.id);
 }
 
-// ---- 2) PREPARAR BICI (mismo aspecto que Revisar bici) ----
+// ---- 2) PREPARAR BICI (misma plantilla que Revisar bici) ----
+// Página: tarjetas como Revisar bici; cada bici muestra pedales/sillín/extras y el botón
+// "🧰 Preparar", que abre la ventana V30 (copia del checklist de Revisar, V28).
 function renderPrepBici(){
   const el=document.getElementById('prepbici-content');if(!el)return;
   const lista=getPrepararData().slice().sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
   if(!lista.length){el.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">🧰</div><div style="font-size:16px;font-weight:700;color:#374151">Sin bicicletas para preparar</div><div style="font-size:13px;color:#6b7280;margin-top:6px">Las reservas activadas para taller aparecen aquí</div></div>';return;}
-  const por=(function(){try{return localStorage.getItem('vr_prep_por')||'';}catch(e){return '';}})();
   const SL={};Object.keys(SCFG).forEach(k=>SL[k]=SCFG[k].lbl);
-  let h='<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><label class="form-label" style="margin:0">Preparado por</label><input class="form-input" id="prep-por" value="'+esc(por)+'" placeholder="Nombre" style="max-width:220px" onchange="try{localStorage.setItem(\'vr_prep_por\',this.value)}catch(e){}"/>'
-    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="abrirChecklistModelo(null,\'prep\')">⚙️ Checklists por modelo</button></div>';
-  h+='<div style="display:flex;flex-direction:column;gap:14px">';
+  let h='<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn btn-ghost btn-sm" onclick="abrirChecklistModelo(null,\'prep\')">⚙️ Checklists por modelo</button></div><div style="display:flex;flex-direction:column;gap:14px">';
   lista.forEach(r=>{
     const ls=_lineasRes(r),hechas=ls.filter((l,i)=>lineaPreparada(l,r,i)).length,todas=hechas===ls.length;
-    h+='<div style="background:#fff;border:2px solid '+(todas?'#86efac':'#fed7aa')+';border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(234,88,12,.08)">';
-    // cabecera cliente (igual que Revisar bici, en naranja)
-    h+='<div style="background:'+(todas?'#dcfce7':'#ffedd5')+';padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">'
-      +'<div style="flex:1"><div style="font-weight:900;font-size:16px;color:#7c2d12;margin-bottom:4px">👤 '+esc(r.cliente)+'</div>'
-      +(r.lugarIni?'<div style="font-size:13px;font-weight:700;color:#c2410c;margin-bottom:2px">📍 Inicio: <span style="font-weight:800">'+esc(r.lugarIni)+'</span></div>':'')
-      +'<div style="font-size:12px;color:#ea580c">📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+(r.dias?' ('+r.dias+' días)':'')+'</div>'
-      +(r.tel?'<div style="margin-top:4px"><a href="tel:'+esc(r.tel)+'" style="font-size:12px;color:#c2410c;text-decoration:none;font-weight:700">📞 '+esc(r.tel)+'</a></div>':'')
+    h+='<div style="background:#fff;border:2px solid #dbeafe;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(37,99,235,.1)">'
+      +'<div style="background:#dbeafe;padding:12px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="flex:1">'
+      +'<div style="font-weight:900;font-size:16px;color:#1e3a5f;margin-bottom:4px">👤 '+esc(r.cliente)+'</div>'
+      +(r.lugarIni?'<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:2px">📍 Inicio: <span style="font-weight:800">'+esc(r.lugarIni)+'</span></div>':'')
+      +'<div style="font-size:12px;color:#3b82f6">📅 '+(r.ini||'')+' → '+(r.fin||'')+(r.dias?' ('+r.dias+' días)':'')+'</div>'
+      +(r.tel?'<div style="margin-top:4px"><a href="tel:'+esc(r.tel)+'" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:700">📞 '+esc(r.tel)+'</a></div>':'')
       +'</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
-      +'<span style="background:#fff;border:1px solid #fdba74;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#c2410c">'+esc(SL[r.estado]||r.estado)+'</span>'
-      +'<span style="font-weight:900;font-size:13px;color:'+(todas?'#15803d':'#c2410c')+'">'+hechas+'/'+ls.length+' preparadas</span>'
-      +'</div></div>';
-    h+='<div style="padding:12px 16px"><div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🧰 Bicicletas a preparar</div>';
+      +'<span style="background:#fff;border:1px solid #93c5fd;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#1d4ed8">'+esc(SL[r.estado]||r.estado)+'</span>'
+      +'<span style="font-weight:900;font-size:13px;color:'+(todas?'#15803d':'#1d4ed8')+'">'+hechas+'/'+ls.length+' preparadas</span></div></div>'
+      +'<div style="padding:12px 16px">'
+      +(r.notas?'<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px;color:#92400e;white-space:pre-wrap"><b>📝 Observaciones de la reserva:</b>\n'+esc(r.notas)+'</div>':'')
+      +'<div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🧰 Bicicletas a preparar</div>';
     ls.forEach((l,li)=>{
       const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo,color:'#999'};
-      const pts=puntosPrepLinea(l,r,li),ok=lineaPreparada(l,r,li);
-      const hechos=pts.filter(p=>l.prepChk&&l.prepChk[p.k]).length;
-      h+='<div style="border:2px solid '+(ok?'#86efac':'#e5e7eb')+';border-radius:10px;padding:11px 13px;margin-bottom:8px;background:'+(ok?'#f0fdf4':'#fafafa')+'">';
-      h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      const ok=lineaPreparada(l,r,li),pts=puntosPrepLinea(l,r,li);
+      const exs=extrasDeLinea(r,l,li);
+      const peds=(Array.isArray(l.pedales)?l.pedales:[]).filter(Boolean);
+      h+='<div style="border:2px solid '+(ok?'#86efac':'#e5e7eb')+';border-radius:10px;padding:11px 13px;margin-bottom:8px;background:'+(ok?'#f0fdf4':'#fafafa')+'">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
         +'<div style="width:38px;height:38px;background:'+(t.color||'#999')+'22;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">'+t.icon+'</div>'
-        +'<div style="flex:1"><div style="font-weight:800;font-size:14px;color:#111">Bici '+(li+1)+' · '+esc(t.label)+'</div>'
-        +'<div style="font-size:13px;color:#374151;font-weight:700">📏 Talla: <span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-weight:800">'+esc(l.talla||'?')+'</span>'+((l.uds||1)>1?' <span style="color:#6b7280">×'+l.uds+'</span>':'')+'</div>'
+        +'<div style="flex:1"><div style="font-weight:800;font-size:14px;color:#111">'+esc(t.label)+'</div>'
+        +'<div style="font-size:13px;color:#374151;font-weight:700">📏 Talla: <span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;font-weight:800">'+esc(l.talla||r.talla||'?')+'</span>'+((l.uds||1)>1?' <span style="color:#6b7280">×'+l.uds+'</span>':'')+'</div>'
         +(l.bikeAsig?'<div style="font-size:12px;color:#15803d;margin-top:3px;font-weight:700">🔗 Bici: '+esc(l.bikeAsig.num)+'</div>':'<div style="font-size:12px;color:#d97706;margin-top:3px">⚠️ Sin bici asignada</div>')
-        +'</div><div style="font-weight:900;font-size:13px;color:'+(ok?'#15803d':'#6b7280')+';text-align:right">'+(ok?'✅ Preparada'+(l.prepOk&&l.prepOk.por?'<div style="font-size:11px;font-weight:700">'+esc(l.prepOk.por)+'</div>':''):hechos+'/'+pts.length)+'</div></div>';
-      const grupo=(g,tit,col)=>{const ps=pts.filter(p=>p.grupo===g);if(!ps.length)return '';
-        return '<div style="font-size:11px;font-weight:800;color:'+col+';text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px">'+tit+'</div>'
-          +ps.map(p=>{const c=!!(l.prepChk&&l.prepChk[p.k]);const k=pts.indexOf(p);
-            return '<div onclick="tickPrep('+r.id+','+li+','+k+')" style="display:flex;align-items:center;gap:10px;padding:9px 10px;margin-bottom:5px;border-radius:8px;cursor:pointer;border:1px solid '+(c?'#86efac':(p.extra?'#fcd34d':'#e5e7eb'))+';background:'+(c?'#dcfce7':(p.extra?'#fffbeb':'#fff'))+'">'
-              +'<span style="width:22px;height:22px;border-radius:6px;border:2px solid '+(c?'#16a34a':'#9ca3af')+';background:'+(c?'#16a34a':'#fff')+';color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">'+(c?'✓':'')+'</span>'
-              +'<span style="font-size:17px">'+p.ico+'</span><span style="font-size:14px;font-weight:'+(p.grupo==='reserva'?'800':'600')+';color:#111;'+(c?'text-decoration:line-through;color:#6b7280':'')+'">'+esc(p.txt)+'</span></div>';}).join('');};
-      const nEx=pts.filter(p=>p.extra).length;
-      h+=grupo('reserva','🎒 De esta reserva · '+(nEx?nEx+' extra'+(nEx>1?'s':''):'sin extras'),'#b45309');
-      h+=grupo('modelo','🧰 Del modelo '+esc(t.label),'#4b5563');
-      // Observaciones + botón de confirmar
-      h+='<div style="margin-top:10px"><label style="font-size:11px;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.4px">📝 Observaciones</label>'
-        +'<textarea class="form-input" rows="2" placeholder="Algo a tener en cuenta de esta bici (falta un repuesto, cambio de sillín, nota para el reparto…)" style="width:100%;margin-top:4px;font-size:13px;resize:vertical" onchange="obsPrep('+r.id+','+li+',this.value)">'+esc(l.prepObs||'')+'</textarea></div>';
-      const todos=hechos===pts.length;
-      h+='<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">'
-        +(ok?'<span style="flex:1;font-size:12px;color:#15803d;font-weight:700;align-self:center">✅ Preparada'+(l.prepOk.por?' por '+esc(l.prepOk.por):'')+' · '+esc(String(l.prepOk.fecha||'').split(',')[0])+'</span><button class="btn btn-secondary btn-sm" onclick="desmarcarPreparada('+r.id+','+li+')">↩️ Deshacer</button>'
-            :'<button class="btn '+(todos?'btn-success':'btn-secondary')+'" style="font-weight:800" onclick="marcarPreparada('+r.id+','+li+')">✅ Bici preparada'+(todos?'':' ('+hechos+'/'+pts.length+')')+'</button>')
+        +'</div><div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">'
+        +'<button onclick="abrirPrepBici('+r.id+','+li+')" style="border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;'+(ok?'background:#dcfce7;color:#15803d':'background:#f3f4f6;color:#374151')+'">'+(ok?'✅ Preparada':'🧰 Preparar')+'</button>'
+        +'</div></div>'
+        // Lo que lleva esta bici (igual que en Revisar se ve la bici asignada)
+        +'<div style="display:flex;flex-wrap:wrap;gap:5px">'
+        +(peds.length?peds.map(p=>'<span style="background:#ede9fe;color:#5b21b6;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800">🦶 '+esc(p)+'</span>').join(''):'<span style="background:#fee2e2;color:#b91c1c;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800">🦶 Pedales sin elegir</span>')
+        +(l.altura?'<span style="background:#e0f2fe;color:#075985;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800">📏 '+esc(l.altura)+' cm</span>':'')
+        +(exs.length?exs.map(x=>'<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:800">'+_extraIcono(x)+' '+esc(_extraNombre(x))+((x.qty||x.cant)>1?' ×'+(x.qty||x.cant):'')+'</span>').join(''):'<span style="background:#f3f4f6;color:#6b7280;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700">Sin extras</span>')
+        +'</div>'
+        +(ok&&l.prepOk?'<div style="font-size:11.5px;color:#15803d;margin-top:4px;font-weight:700">✅ Preparada por '+esc(l.prepOk.por||'')+' · '+esc(String(l.prepOk.fecha||'').split(',')[0])+'</div>':'')
         +'</div>';
-      h+='</div>';
     });
     h+='</div></div>';
   });
   h+='</div>';
   el.innerHTML=h;
+}
+// Ventana V30: copia de la plantilla del checklist de Revisar bici (V28)
+let _pb=null,_pbChk={};
+function abrirPrepBici(resId,li){
+  const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
+  const l=_lineasRes(r)[li];if(!l)return;
+  const t=tipos[l.tipo]||{icon:'🚲',label:l.tipo};
+  _pb={resId:r.id,li:li};
+  _pbChk=Object.assign({},l.prepChk||{});
+  document.getElementById('pb-titulo').textContent=t.icon+' '+(l.bikeAsig?l.bikeAsig.num+' — ':'')+t.label+' · Talla '+(l.talla||'—');
+  document.getElementById('pb-cliente').textContent='👤 '+r.cliente+' · 📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+(l.prepOk?' · Última: preparada por '+(l.prepOk.por||'')+' el '+String(l.prepOk.fecha||'').split(',')[0]:'');
+  document.getElementById('pb-por').value=l.prepOk&&l.prepOk.por||(function(){try{return localStorage.getItem('vr_prep_por')||'';}catch(e){return '';}})();
+  // Observaciones = las de la reserva (las mismas que en la hoja de reserva)
+  document.getElementById('pb-obs').value=r.notas||'';
+  renderPB();openM('mpb');
+}
+function renderPB(){
+  const r=reservas.find(x=>String(x.id)===String(_pb.resId));const l=_lineasRes(r)[_pb.li];
+  const pts=puntosPrepLinea(l,r,_pb.li);
+  let h='',g='';
+  pts.forEach((p,i)=>{
+    if(p.grupo!==g){g=p.grupo;h+='<div style="font-size:11px;font-weight:800;color:'+(g==='reserva'?'#b45309':'#4b5563')+';text-transform:uppercase;letter-spacing:.4px;margin:8px 4px 4px">'+(g==='reserva'?'🎒 De esta reserva':'🧰 Del modelo '+esc((tipos[l.tipo]||{label:l.tipo}).label))+'</div>';}
+    const c=!!_pbChk[p.k];
+    h+='<div class="check-item'+(c?' done':'')+'" onclick="pbTog('+i+')"'+(p.extra&&!c?' style="background:#fffbeb"':'')+'><div class="check-box">'+(c?'✓':'')+'</div><span style="font-size:16px;margin-right:4px">'+p.ico+'</span><span class="check-text">'+esc(p.txt)+'</span></div>';
+  });
+  document.getElementById('pb-items').innerHTML=h;
+  const done=pts.filter(p=>_pbChk[p.k]).length;
+  const pr=document.getElementById('pb-prog');pr.textContent=done+' de '+pts.length+' preparados';pr.style.color=done===pts.length?'var(--green-600)':'var(--blue-600)';
+}
+function pbTog(i){const r=reservas.find(x=>String(x.id)===String(_pb.resId));const l=_lineasRes(r)[_pb.li];const p=puntosPrepLinea(l,r,_pb.li)[i];if(!p)return;_pbChk[p.k]=!_pbChk[p.k];renderPB();}
+function pbTodo(v){const r=reservas.find(x=>String(x.id)===String(_pb.resId));const l=_lineasRes(r)[_pb.li];puntosPrepLinea(l,r,_pb.li).forEach(p=>{_pbChk[p.k]=v;});renderPB();}
+function savePB(){
+  if(!_pb)return;
+  const r=reservas.find(x=>String(x.id)===String(_pb.resId));const li=_pb.li;const l=_lineasRes(r)[li];
+  const pts=puntosPrepLinea(l,r,li);
+  const falta=pts.filter(p=>!_pbChk[p.k]).map(p=>p.txt);
+  const por=document.getElementById('pb-por').value.trim();
+  if(!por){toast('🔴 Falta el nombre de quien prepara',3500,'error');document.getElementById('pb-por').focus();return;}
+  if(falta.length&&!confirm('Faltan '+falta.length+' de '+pts.length+' puntos:\n• '+falta.join('\n• ')+'\n\n¿Guardar sin marcarla como preparada?'))return;
+  try{localStorage.setItem('vr_prep_por',por);}catch(e){}
+  l.prepChk=Object.assign({},_pbChk);
+  r.notas=document.getElementById('pb-obs').value.trim(); // se guardan en la reserva
+  l.prepOk=falta.length?null:{fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por};
+  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  closeM('mpb');_pb=null;
+  toast(falta.length?'💾 Guardado (faltan '+falta.length+' puntos)':'✅ Bici '+(li+1)+' de '+r.cliente+' preparada',3000,falta.length?'':'success');
+  renderPrepBici();updFlujoBadges();
 }
 function tickPrep(resId,li,k){
   const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
@@ -1822,8 +1866,8 @@ function desmarcarPreparada(resId,li){
 }
 function obsPrep(resId,li,v){
   const r=reservas.find(x=>String(x.id)===String(resId));if(!r)return;
-  _lineasRes(r)[li].prepObs=String(v||'').trim();
-  DB.saveReserva(r).catch(e=>console.error('prepObs',e));
+  r.notas=String(v||'').trim();
+  DB.saveReserva(r).catch(e=>console.error('notas',e));
 }
 
 // ---- 3) LISTAS PARA SALIR ----
@@ -1848,9 +1892,9 @@ function renderListasSalir(){
         +'<div style="flex:1;min-width:160px;font-weight:800;color:'+(ok?'#fff':'#111')+'">'+t.icon+' Bici '+(li+1)+' · '+esc(t.label)+' '+esc(l.talla||'')+(l.bikeAsig?' · '+esc(l.bikeAsig.num):' · <span style="color:'+(ok?'#fff':'#d97706')+'">sin asignar</span>')+'</div>'
         +(ok?'<span style="color:#fff;font-weight:900">✅ Lista para salir</span>'
             :tick(rv,'Taller',"switchSection('taller','preparar')")+' '+tick(pp,'Preparar',"switchSection('taller','prepbici')"))
-        +(l.prepObs?'<div style="flex-basis:100%;font-size:12px;font-weight:600;color:'+(ok?'#f0fdf4':'#92400e')+'">📝 '+esc(l.prepObs)+'</div>':'')
         +'</div>';
     });
+    if(r.notas)h+='<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:7px 10px;margin-top:6px;font-size:12.5px;color:#92400e;white-space:pre-wrap"><b>📝 Observaciones:</b> '+esc(r.notas)+'</div>';
     h+='<div style="text-align:right;margin-top:6px"><button class="btn '+(todas?'btn-success':'btn-secondary')+' btn-sm" onclick="haSalido('+r.id+')">🚚 Ha salido · quitar de la lista</button></div>';
     h+='</div></div>';
   });

@@ -1296,6 +1296,32 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="mpb">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">🧰 Preparar bici · checklist</div>
+      <button class="modal-close" onclick="closeM('mpb')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="pb-titulo" style="font-size:16px;font-weight:700;margin-bottom:4px"></div>
+      <div id="pb-cliente" style="font-size:12.5px;color:var(--gray-500);margin-bottom:8px"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span id="pb-prog" style="font-weight:700;font-size:13px"></span>
+        <span><button class="btn btn-ghost btn-xs" onclick="pbTodo(true)">Marcar todo</button> <button class="btn btn-ghost btn-xs" onclick="pbTodo(false)">Desmarcar</button></span>
+      </div>
+      <div id="pb-items" style="max-height:340px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white;padding:6px;margin-bottom:10px"></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+        <div><label class="form-label">Preparado por *</label><input class="form-input" id="pb-por" placeholder="Nombre"/></div>
+        <div><label class="form-label">Observaciones de la reserva</label><textarea class="form-input" id="pb-obs" rows="3" placeholder="Las mismas que en la reserva: lo que añadas aquí se guarda también en la hoja de la reserva" style="resize:vertical"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeM('mpb')">Cancelar</button>
+      <button class="btn btn-success" onclick="savePB()">✅ Bici preparada</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="mecl">
   <div class="modal wide" style="max-width:980px;width:96vw">
     <div class="modal-header">
