@@ -858,34 +858,78 @@ function renderETB(){
 }
 function delBikeFromET(id){const b=bikes.find(x=>x.id===id);if(!b||!confirm(`¿Eliminar ${b.numBici}?`))return;bikes=bikes.filter(x=>x.id!==id);delete hist[id];delete photos[id];sb();sh();sp();renderETB();rDB();toast('🗑️ Bicicleta eliminada');}
 
-// ── EDIT CHECKLIST ────────────────────────────────────────
-let eclModo='taller', eclSugerida=false;
-function _eclFuente(){return eclModo==='entrega'?CLE:eclModo==='prep'?CLP:CLS;}
+// ── EDIT CHECKLIST (V25): por MODELO, con sus dos listas ──
+// Cada modelo: 📦 Revisar bici (CLE) y 🧰 Preparar bici (CLP). Abajo, plegada, la lista de
+// reparaciones de la ficha de taller (CLS). Se guardan las tres a la vez para ese modelo.
+let eclModo='entrega', eclSugerida=false;          // eclModo: qué lista resaltar al abrir
+let eclL={entrega:[],prep:[],taller:[]}, eclSug={entrega:false,prep:false}, eclSucio=false;
+const _ECL_SRC=()=>({entrega:CLE,prep:CLP,taller:CLS});
 function _eclCargar(){
-  const src=_eclFuente();
-  eclSugerida=(eclModo==='entrega'||eclModo==='prep')&&!(src[ect]&&src[ect].length);
-  eci=eclSugerida?[...(eclModo==='prep'?DCLP_GEN:DCLE_GEN)]:[...(src[ect]||[])];
+  const S=_ECL_SRC();
+  ['entrega','prep','taller'].forEach(k=>{
+    const v=S[k][ect];
+    eclSug[k]=(k!=='taller')&&!(v&&v.length);
+    eclL[k]=eclSug[k]?[...(k==='prep'?DCLP_GEN:DCLE_GEN)]:[...(v||[])];
+  });
+  eclSucio=false;
 }
-function setECLModo(m){eclModo=m;_eclCargar();renderECL(true);}
-function abrirChecklistEntregaModelo(k){eclModo='entrega'; /* = checklist de Revisar bici */ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
+function setECLModo(m){eclModo=m;if(!tipos[ect])ect=Object.keys(tipos)[0];_eclCargar();renderECL(true);}
+function abrirChecklistEntregaModelo(k){eclModo='entrega';ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
+function abrirChecklistModelo(k,modo){eclModo=modo||'entrega';ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
 function renderECL(yaCargado){
   if(!tipos[ect])ect=Object.keys(tipos)[0];
   if(!yaCargado)_eclCargar();
-  const mb=document.getElementById('ecl-modo');
-  if(mb)mb.innerHTML=[['entrega','📦 1 · Revisar bici'],['prep','🧰 2 · Preparar bici'],['taller','🔧 Reparaciones (ficha de taller)']].map(([k,l])=>`<button class="type-tab ${eclModo===k?'active':''}" onclick="setECLModo('${k}')">${l}</button>`).join('');
-  const nt=document.getElementById('ecl-nota');
-  if(nt){nt.style.display=eclSugerida?'':'none';nt.textContent=eclModo==='prep'?'Este modelo aún no tiene lista de Preparar bici (herramientas y repuestos que lleva). Te propongo una genérica: ajústala y pulsa Guardar. Los pedales, la altura del sillín y los extras de cada reserva se añaden solos.':'Este modelo aún no tiene checklist de Revisar bici. Te propongo una lista genérica: ajústala a este modelo y pulsa Guardar.';}
-  document.getElementById('ecl-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>`<button class="type-tab ${ect===k?'active':''}" onclick="swCL('${k}')">${t.icon} ${t.label}</button>`).join('');
+  document.getElementById('ecl-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>{
+    const ok=(CLE[k]&&CLE[k].length)&&(CLP[k]&&CLP[k].length);
+    return `<button class="type-tab ${ect===k?'active':''}" onclick="swCL('${k}')" title="${ok?'Las dos listas configuradas':'Falta configurar alguna lista'}">${t.icon} ${esc(t.label)}${ok?'':' <span style="color:#d97706">•</span>'}</button>`;}).join('');
+  const t=tipos[ect]||{icon:'🚲',label:ect};
+  document.getElementById('ecl-modelo').innerHTML=`<span style="font-size:22px">${t.icon}</span> <b>${esc(t.label)}</b>`;
+  const cp=document.getElementById('ecl-copiar');
+  if(cp)cp.innerHTML='<option value="">📋 Copiar listas de…</option>'+Object.entries(tipos).filter(([k])=>k!==ect).map(([k,tt])=>`<option value="${k}">${tt.icon} ${esc(tt.label)}</option>`).join('');
   renderECI();
 }
-function swCL(t){ect=t;_eclCargar();renderECL(true);}
-function renderECI(){
-  document.getElementById('ecl-items').innerHTML=eci.length?eci.map((item,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid var(--gray-100)"><span style="font-size:12px;color:var(--gray-400);width:22px;flex-shrink:0">${i+1}</span><input class="form-input" style="flex:1;padding:6px 10px;font-size:13px" value="${esc(item)}" oninput="eci[${i}]=this.value"/><button onclick="eci.splice(${i},1);renderECI()" style="background:none;border:none;color:var(--red-400);cursor:pointer;font-size:18px;padding:0 4px;flex-shrink:0">✕</button></div>`).join(''):`<div class="empty-state" style="padding:20px"><div class="empty-state-text">Sin ítems. Añade el primero.</div></div>`;
+function _eclBloque(k){
+  const L=eclL[k];
+  const lst=L.length?L.map((item,i)=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:1px solid var(--gray-100)">
+      <span style="font-size:11px;color:var(--gray-400);width:18px;flex-shrink:0;text-align:right">${i+1}</span>
+      <input class="form-input" style="flex:1;padding:6px 8px;font-size:13px" value="${esc(item)}" oninput="eclL['${k}'][${i}]=this.value;eclSucio=true"/>
+      <button class="btn btn-ghost btn-xs" title="Subir" onclick="eclMover('${k}',${i},-1)" ${i===0?'disabled':''}>↑</button>
+      <button class="btn btn-ghost btn-xs" title="Bajar" onclick="eclMover('${k}',${i},1)" ${i===L.length-1?'disabled':''}>↓</button>
+      <button class="btn btn-ghost btn-xs" title="Quitar" onclick="eclL['${k}'].splice(${i},1);eclSucio=true;renderECI()">✕</button>
+    </div>`).join(''):'<div style="color:var(--gray-400);font-size:13px;padding:10px">Sin puntos todavía</div>';
+  return lst+`<div style="display:flex;gap:6px;margin-top:8px"><input class="form-input" id="ecl-new-${k}" placeholder="+ Añadir punto…" style="padding:7px 9px;font-size:13px" onkeydown="if(event.key==='Enter')addCLI('${k}')"/><button class="btn btn-primary btn-sm" onclick="addCLI('${k}')">Añadir</button></div>`;
 }
-function addCLI(){const v=document.getElementById('ecl-new').value.trim();if(!v)return;eci.push(v);document.getElementById('ecl-new').value='';renderECI();}
-function saveCL(){
-  if(eclModo==='entrega'){CLE[ect]=[...eci];sce();}else if(eclModo==='prep'){CLP[ect]=[...eci];scp();}else{CLS[ect]=[...eci];sc();}
-  closeM('mecl');toast('✅ Checklist '+(eclModo==='entrega'?'de Revisar bici':eclModo==='prep'?'de Preparar bici':'de reparaciones')+' guardado para '+(tipos[ect]?.label||ect));
+function renderECI(){
+  const sug=k=>eclSug[k]?'<div style="background:#fef3c7;color:#92400e;border-radius:6px;padding:5px 8px;font-size:11.5px;margin-bottom:6px">Lista sugerida: ajústala y pulsa Guardar</div>':'';
+  document.getElementById('ecl-rev').innerHTML=sug('entrega')+_eclBloque('entrega');
+  document.getElementById('ecl-prep').innerHTML=sug('prep')+_eclBloque('prep');
+  document.getElementById('ecl-rep').innerHTML=_eclBloque('taller');
+  ['ecl-col-rev','ecl-col-prep'].forEach((id,i)=>{const e=document.getElementById(id);if(e)e.style.boxShadow=(eclModo===(i?'prep':'entrega'))?'0 0 0 3px #bfdbfe':'';});
+}
+function eclMover(k,i,d){const L=eclL[k],j=i+d;if(j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];eclSucio=true;renderECI();}
+function addCLI(k){k=k||'entrega';const inp=document.getElementById('ecl-new-'+k);const v=(inp&&inp.value||'').trim();if(!v)return;eclL[k].push(v);eclSucio=true;renderECI();const n=document.getElementById('ecl-new-'+k);if(n)n.focus();}
+function eclCopiarDe(k){
+  if(!k)return;const S=_ECL_SRC(),t=tipos[k]||{label:k};
+  if(!confirm('¿Copiar las listas de '+t.label+' en '+((tipos[ect]||{}).label||ect)+'?\nSustituye lo que hay en pantalla (no se guarda hasta pulsar Guardar).')){document.getElementById('ecl-copiar').value='';return;}
+  eclL.entrega=[...(S.entrega[k]&&S.entrega[k].length?S.entrega[k]:DCLE_GEN)];
+  eclL.prep=[...(S.prep[k]&&S.prep[k].length?S.prep[k]:DCLP_GEN)];
+  eclSug.entrega=eclSug.prep=false;eclSucio=true;renderECL(true);
+}
+function swCL(k){
+  if(k===ect)return;
+  if(eclSucio&&confirm('¿Guardar los cambios de '+((tipos[ect]||{}).label||ect)+' antes de cambiar de modelo?'))_eclGuardar();
+  ect=k;_eclCargar();renderECL(true);
+}
+function _eclGuardar(){
+  const limpia=L=>L.map(x=>String(x).trim()).filter(Boolean);
+  CLE[ect]=limpia(eclL.entrega);CLP[ect]=limpia(eclL.prep);CLS[ect]=limpia(eclL.taller);
+  sce();scp();sc();eclSucio=false;eclSug.entrega=eclSug.prep=false;
+}
+function eclCerrar(){if(eclSucio&&confirm('Hay cambios sin guardar en '+((tipos[ect]||{}).label||ect)+'. ¿Guardarlos?'))_eclGuardar();eclSucio=false;closeM('mecl');}
+function saveCL(cerrar){
+  _eclGuardar();
+  toast('✅ Checklists de '+((tipos[ect]||{}).label||ect)+' guardados');
+  if(cerrar!==false)closeM('mecl');else renderECL(true);
   if(typeof renderPrepBici==='function'&&cv==='prepbici')renderPrepBici();
   if(typeof renderBL==='function')renderBL();
 }
@@ -1682,7 +1726,7 @@ function renderPrepBici(){
   if(!lista.length){el.innerHTML='<div class="empty-state" style="padding:32px"><div class="empty-state-icon">🧰</div><div class="empty-state-text">No hay reservas activadas para taller</div></div>';return;}
   const por=(function(){try{return localStorage.getItem('vr_prep_por')||'';}catch(e){return '';}})();
   let h='<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><label class="form-label" style="margin:0">Preparado por</label><input class="form-input" id="prep-por" value="'+esc(por)+'" placeholder="Nombre" style="max-width:220px" onchange="try{localStorage.setItem(\'vr_prep_por\',this.value)}catch(e){}"/>'
-    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openM(\'mecl\');setECLModo(\'prep\')">⚙️ Herramientas y repuestos por modelo</button></div>';
+    +'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openM(\'mecl\');setECLModo(\'prep\')">⚙️ Checklists por modelo</button></div>';
   lista.forEach(r=>{
     const ls=_lineasRes(r);
     const hechas=ls.filter(lineaPreparada).length;

@@ -1212,7 +1212,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px">Bicicletas de este modelo <span id="et-nb"></span></div>
         <button class="btn btn-secondary btn-xs" onclick="abrirChecklistEntregaModelo(etc)">📦 Checklist Revisar bici</button>
-        <button class="btn btn-secondary btn-xs" onclick="eclModo='prep';ect=etc;openM('mecl');_eclCargar();renderECL(true)">🧰 Checklist Preparar bici</button>
+        <button class="btn btn-secondary btn-xs" onclick="abrirChecklistModelo(etc,'prep')">🧰 Checklist Preparar bici</button>
         <button class="btn btn-secondary btn-xs" onclick="nuevaBiciDeModelo()">➕ Añadir bici de este modelo</button>
       </div>
       <div id="et-bikes" style="max-height:280px;overflow-y:auto"></div>
@@ -1297,24 +1297,37 @@
 </div>
 
 <div class="modal-overlay" id="mecl">
-  <div class="modal wide">
+  <div class="modal wide" style="max-width:980px;width:96vw">
     <div class="modal-header">
-      <div class="modal-title">Editar checklists</div>
-      <button class="modal-close" onclick="closeM('mecl')">✕</button>
+      <div class="modal-title">☑️ Checklists por modelo</div>
+      <button class="modal-close" onclick="eclCerrar()">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="type-tabs" id="ecl-modo" style="margin-bottom:6px"></div>
-      <div class="type-tabs" id="ecl-tabs"></div>
-      <div id="ecl-nota" style="display:none;background:#fef3c7;color:#92400e;border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:8px"></div>
-      <div id="ecl-items" style="max-height:320px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:var(--radius-sm);background:white;padding:8px;margin-bottom:12px"></div>
-      <div style="display:flex;gap:8px">
-        <input class="form-input" id="ecl-new" placeholder="+ Nuevo ítem del checklist..." onkeydown="if(event.key==='Enter')addCLI()"/>
-        <button class="btn btn-primary" onclick="addCLI()">Añadir</button>
+    <div class="modal-body" style="max-height:74vh;overflow-y:auto">
+      <div class="type-tabs" id="ecl-tabs" style="flex-wrap:wrap;margin-bottom:10px"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div id="ecl-modelo" style="font-size:17px;display:flex;align-items:center;gap:6px"></div>
+        <select class="form-input" id="ecl-copiar" onchange="eclCopiarDe(this.value)" style="width:auto;margin-left:auto;font-size:13px;padding:6px 8px"></select>
       </div>
+      <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div id="ecl-col-rev" style="border:1px solid var(--gray-200);border-radius:12px;padding:12px;background:#fff">
+          <div style="font-weight:800;font-size:15px">📦 1 · Revisar bici</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">Lo que revisa el taller antes de cada salida (página Revisar bici)</div>
+          <div id="ecl-rev"></div>
+        </div>
+        <div id="ecl-col-prep" style="border:1px solid var(--gray-200);border-radius:12px;padding:12px;background:#fff">
+          <div style="font-weight:800;font-size:15px">🧰 2 · Preparar bici</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">Herramientas y repuestos de este modelo. <b>Los pedales, la altura del sillín y los extras de cada reserva se añaden solos.</b></div>
+          <div id="ecl-prep"></div>
+        </div>
+      </div>
+      <details style="margin-top:14px;border:1px dashed var(--gray-300);border-radius:10px;padding:8px 12px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--gray-600)">🔧 Lista de reparaciones (ficha de taller de este modelo)</summary>
+        <div id="ecl-rep" style="margin-top:8px"></div>
+      </details>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeM('mecl')">Cancelar</button>
-      <button class="btn btn-success" onclick="saveCL()">💾 Guardar checklist</button>
+      <button class="btn btn-secondary" onclick="eclCerrar()">Cerrar</button>
+      <button class="btn btn-success" onclick="saveCL(false)">💾 Guardar este modelo</button>
     </div>
   </div>
 </div>
