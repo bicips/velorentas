@@ -1693,16 +1693,18 @@ function _cerrarLlegada(){
 //   l.prepChk  = {item:true…}, l.prepOk = {fecha,por} → Preparar bici completo
 // No toca la disponibilidad ni asigna bicis.
 function _lineasRes(r){
-  if(!r.lineas||!r.lineas.length)r.lineas=[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,bikeAsig:(r.bikesAsig&&r.bikesAsig[0])||null}];
+  if(Array.isArray(r.lineas))r.lineas=r.lineas.filter(Boolean);
+  if(!Array.isArray(r.lineas)||!r.lineas.length)r.lineas=[{tipo:r.tipo,talla:r.talla,uds:r.uds||1,bikeAsig:(r.bikesAsig&&r.bikesAsig[0])||null}];
   return r.lineas;
 }
 function lineaRevisada(l){return !!(l&&l.tallerOk&&l.bikeAsig&&String(l.tallerOk.bikeId)===String(l.bikeAsig.id));}
 // Extras de una bici de la reserva: los de la línea y, en reservas antiguas, los de la
 // reserva que apuntan a ese modelo/talla (o sin línea, en la primera bici). Igual que la hoja.
+const _arr=v=>Array.isArray(v)?v.filter(x=>x&&typeof x==='object'):[]; // datos antiguos: puede no ser una lista
 function extrasDeLinea(r,l,li){
-  const out=(l.extras||[]).slice();
+  const out=_arr(l.extras).slice();
   const ls=_lineasRes(r);
-  (r.extras||[]).forEach(ex=>{
+  _arr(r.extras).forEach(ex=>{
     // Extras guardados en la reserva (sistema antiguo): van a la bici de su modelo/talla;
     // si no hay ninguna que coincida (o no indican bici), a la primera. Nunca se pierden.
     const hayDestino=ex.lineaTipo&&ls.some(x=>x.tipo===ex.lineaTipo&&x.talla===ex.lineaTalla);
@@ -1712,12 +1714,13 @@ function extrasDeLinea(r,l,li){
   });
   return out;
 }
-function _extraNombre(x){if(x.nombre)return x.nombre;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.nombre)||('Extra '+x.id);} // primero el nombre guardado en la reserva
-function _extraIcono(x){if(x.icono)return x.icono;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.icono)||'🎒';}
+function _extraNombre(x){if(!x)return 'Extra';if(x.nombre)return x.nombre;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.nombre)||('Extra '+x.id);} // primero el nombre guardado en la reserva
+function _extraIcono(x){if(!x)return '🎒';if(x.icono)return x.icono;const c=(catalogoExtras||[]).find(e=>String(e.id)===String(x.id));return (c&&c.icono)||'🎒';}
 // Puntos a marcar en Preparar bici. Cada punto: {k:clave única, txt, grupo:'reserva'|'modelo', ico}
 function puntosPrepLinea(l,r,li){
   const pts=[],uds=l.uds||1;
-  for(let u=0;u<uds;u++){const ped=(Array.isArray(l.pedales)&&l.pedales[u])||'';
+  const _peds=Array.isArray(l.pedales)?l.pedales:(l.pedales?[l.pedales]:(l.pedal?[l.pedal]:[]));
+  for(let u=0;u<uds;u++){const ped=_peds[u]||'';
     if(ped)pts.push({k:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),txt:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),grupo:'reserva',ico:'🦶'});}
   if(l.altura)pts.push({k:'Sillín ajustado para ciclista de '+l.altura+' cm',txt:'Sillín ajustado para ciclista de '+l.altura+' cm',grupo:'reserva',ico:'📏'});
   if(r)extrasDeLinea(r,l,li||0).forEach(x=>{const q=x.qty||x.cant||1;const t='Extra: '+_extraNombre(x)+(q>1?' ×'+q:'');pts.push({k:t,txt:_extraNombre(x)+(q>1?' ×'+q:''),grupo:'reserva',ico:_extraIcono(x),extra:true});});
@@ -1740,7 +1743,8 @@ function revisarLinea(resId,li){
 // ---- 2) PREPARAR BICI (misma plantilla que Revisar bici) ----
 // Página: tarjetas como Revisar bici; cada bici muestra pedales/sillín/extras y el botón
 // "🧰 Preparar", que abre la ventana V30 (copia del checklist de Revisar, V28).
-function renderPrepBici(){
+function renderPrepBici(){try{_renderPrepBici();}catch(e){console.error(e);const el=document.getElementById('prepbici-content');if(el)el.insertAdjacentHTML('afterbegin','<div style="background:#fee2e2;color:#991b1b;border-radius:8px;padding:10px;margin-bottom:10px;font-weight:700">⚠️ Error al mostrar Preparar bici: '+esc(e.message)+'</div>');}}
+function _renderPrepBici(){
   const el=document.getElementById('prepbici-content');if(!el)return;
   const lista=getPrepararData().slice().sort((a,b)=>String(a.ini).localeCompare(String(b.ini)));
   if(!lista.length){el.innerHTML='<div style="padding:40px 20px;text-align:center"><div style="font-size:48px;margin-bottom:12px">🧰</div><div style="font-size:16px;font-weight:700;color:#374151">Sin bicicletas para preparar</div><div style="font-size:13px;color:#6b7280;margin-top:6px">Las reservas activadas para taller aparecen aquí</div></div>';return;}
@@ -1818,7 +1822,8 @@ function renderPB(){
 }
 function pbTog(i){const r=reservas.find(x=>String(x.id)===String(_pb.resId));const l=_lineasRes(r)[_pb.li];const p=puntosPrepLinea(l,r,_pb.li)[i];if(!p)return;_pbChk[p.k]=!_pbChk[p.k];renderPB();}
 function pbTodo(v){const r=reservas.find(x=>String(x.id)===String(_pb.resId));const l=_lineasRes(r)[_pb.li];puntosPrepLinea(l,r,_pb.li).forEach(p=>{_pbChk[p.k]=v;});renderPB();}
-function savePB(){
+function savePB(){try{_savePB();}catch(e){console.error(e);toast('⚠️ Error al guardar: '+e.message,7000,'error');}}
+function _savePB(){
   if(!_pb)return;
   const r=reservas.find(x=>String(x.id)===String(_pb.resId));const li=_pb.li;const l=_lineasRes(r)[li];
   const pts=puntosPrepLinea(l,r,li);
@@ -1830,7 +1835,7 @@ function savePB(){
   l.prepChk=Object.assign({},_pbChk);
   r.notas=document.getElementById('pb-obs').value.trim(); // se guardan en la reserva
   l.prepOk=falta.length?null:{fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),por:por};
-  DB.saveReserva(r).catch(e=>console.error('prep',e));
+  DB.saveReserva(r).catch(e=>{console.error('prep',e);toast('⚠️ No se ha podido guardar en el servidor: '+(e&&e.message||e)+'. Revisa la conexión y vuelve a pulsar.',7000,'error');});
   closeM('mpb');_pb=null;
   toast(falta.length?'💾 Guardado (faltan '+falta.length+' puntos)':'✅ Bici '+(li+1)+' de '+r.cliente+' preparada',3000,falta.length?'':'success');
   renderPrepBici();updFlujoBadges();
