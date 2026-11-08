@@ -1738,7 +1738,7 @@ function puntosPrepLinea(l,r,li){
   for(let u=0;u<uds;u++){const ped=_peds[u]||'';
     if(ped)pts.push({k:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),txt:'Pedales: '+ped+(uds>1?' (bici '+(u+1)+')':''),grupo:'reserva',ico:'🦶'});}
   if(l.altura)pts.push({k:'Sillín ajustado para ciclista de '+l.altura+' cm',txt:'Sillín ajustado para ciclista de '+l.altura+' cm',grupo:'reserva',ico:'📏'});
-  if(r)extrasDeLinea(r,l,li||0).forEach(x=>{const q=x.qty||x.cant||1;const t='Extra: '+_extraNombre(x)+(q>1?' ×'+q:'');pts.push({k:t,txt:_extraNombre(x)+(q>1?' ×'+q:''),grupo:'reserva',ico:_extraIcono(x),extra:true});});
+  if(r)extrasDeLinea(r,l,li||0).forEach(x=>{const q=x.qty||x.cant||1;const t='Extra: '+_extraNombre(x)+(q>1?' ×'+q:'');const v=(typeof esExtraVenta==='function')&&esExtraVenta(x);pts.push({k:t,txt:_extraNombre(x)+(q>1?' ×'+q:'')+(v?' (venta)':''),grupo:'reserva',ico:_extraIcono(x),extra:true,venta:v});});
   const mod=(CLP[l.tipo]&&CLP[l.tipo].length)?CLP[l.tipo]:DCLP_GEN;
   mod.forEach(m=>pts.push({k:m,txt:m,grupo:'modelo',ico:'🧰'}));
   return pts;
