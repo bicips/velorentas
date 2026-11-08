@@ -3967,7 +3967,7 @@ var PAG_NUM=[
   ['mbloqueo','V13','Bloquear bicicletas'],['mmodelo-edit','V15','Nuevo / editar modelo'],['mcfg','V16','Configuración'],
   ['m-bike-estado','V17','Cambiar estado de bici'],['m-recogida','V18','Recogida de bicicleta'],['mubic','V29','Dónde están las bicis'],['masignar','V19','Asignar bicicleta (revisar bici)'],
   ['madd','V20','Nueva / editar bicicleta'],['met','V21','Tipos y modelos'],['mqr','V22','Escanear QR (taller)'],['metiquetas','V23','Etiquetas QR'],
-  ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Checklist antes de entrega'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
+  ['mparts','V24','Añadir pieza'],['mecl','V25','Editar checklists'],['mce','V28','Revisar bici (checklist)'],['mh','V26','Historial de revisiones'],['m-aver-warn','V27','Bici con alquileres pendientes']
 ];
 var NAV_NUM={'nav-dash':'P01','nav-flota':'P02','nav-cal':'P03','nav-timeline':'P04','nav-res':'P05','nav-fact':'P06','nav-informes':'P07','nav-tarifas':'P08','nav-clientes':'P09','nav-taller-dash':'P10','nav-taller-preparar':'P11','nav-taller-prepbici':'P14','nav-taller-listas':'P15','nav-taller-bikes':'P12','nav-recogida':'V18','nav-modelos':'V21','nav-extras':'V10','nav-checklists':'V25','nav-etiquetas':'V23','nav-cfg':'V16'};
 function _numOn(){try{return localStorage.getItem('vr_num_pag')!=='0';}catch(e){return true;}}

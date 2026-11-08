@@ -239,7 +239,7 @@ function renderBL(){
         <button class="btn btn-ghost btn-icon" title="Historial" onclick="openHB(${b.id})">📋</button>
         <button class="btn btn-ghost btn-icon" title="Editar" onclick="openEB(${b.id})">✏️</button>
         <button class="btn ${b.estado==='disponible'?'btn-secondary':'btn-success'} btn-sm" onclick="toggleE(${b.id})">${b.estado==='disponible'?'⚠️ Averiar':'✅ Activar'}</button>
-        <button class="btn btn-secondary btn-sm" title="Checklist antes de entregar" onclick="openCE(${b.id})">☑️ Entrega</button>
+        <button class="btn btn-secondary btn-sm" title="Checklist de Revisar bici" onclick="openCE(${b.id})">📦 Revisar</button>
         <button class="btn btn-primary btn-sm" onclick="openT(${b.id})">🔧 Taller</button>
       </div>
     </div>`;
@@ -867,14 +867,14 @@ function _eclCargar(){
   eci=eclSugerida?[...(eclModo==='prep'?DCLP_GEN:DCLE_GEN)]:[...(src[ect]||[])];
 }
 function setECLModo(m){eclModo=m;_eclCargar();renderECL(true);}
-function abrirChecklistEntregaModelo(k){eclModo='entrega';ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
+function abrirChecklistEntregaModelo(k){eclModo='entrega'; /* = checklist de Revisar bici */ect=k||etc;openM('mecl');_eclCargar();renderECL(true);}
 function renderECL(yaCargado){
   if(!tipos[ect])ect=Object.keys(tipos)[0];
   if(!yaCargado)_eclCargar();
   const mb=document.getElementById('ecl-modo');
-  if(mb)mb.innerHTML=[['taller','🔧 Revisión de taller'],['entrega','🚚 Antes de cada entrega'],['prep','🧰 Preparar bici']].map(([k,l])=>`<button class="type-tab ${eclModo===k?'active':''}" onclick="setECLModo('${k}')">${l}</button>`).join('');
+  if(mb)mb.innerHTML=[['entrega','📦 1 · Revisar bici'],['prep','🧰 2 · Preparar bici'],['taller','🔧 Reparaciones (ficha de taller)']].map(([k,l])=>`<button class="type-tab ${eclModo===k?'active':''}" onclick="setECLModo('${k}')">${l}</button>`).join('');
   const nt=document.getElementById('ecl-nota');
-  if(nt){nt.style.display=eclSugerida?'':'none';nt.textContent=eclModo==='prep'?'Este modelo aún no tiene lista de Preparar bici (herramientas y repuestos que lleva). Te propongo una genérica: ajústala y pulsa Guardar.':'Este modelo aún no tiene checklist de entrega. Te propongo una lista genérica: ajústala a este modelo y pulsa Guardar.';}
+  if(nt){nt.style.display=eclSugerida?'':'none';nt.textContent=eclModo==='prep'?'Este modelo aún no tiene lista de Preparar bici (herramientas y repuestos que lleva). Te propongo una genérica: ajústala y pulsa Guardar. Los pedales, la altura del sillín y los extras de cada reserva se añaden solos.':'Este modelo aún no tiene checklist de Revisar bici. Te propongo una lista genérica: ajústala a este modelo y pulsa Guardar.';}
   document.getElementById('ecl-tabs').innerHTML=Object.entries(tipos).map(([k,t])=>`<button class="type-tab ${ect===k?'active':''}" onclick="swCL('${k}')">${t.icon} ${t.label}</button>`).join('');
   renderECI();
 }
@@ -885,7 +885,7 @@ function renderECI(){
 function addCLI(){const v=document.getElementById('ecl-new').value.trim();if(!v)return;eci.push(v);document.getElementById('ecl-new').value='';renderECI();}
 function saveCL(){
   if(eclModo==='entrega'){CLE[ect]=[...eci];sce();}else if(eclModo==='prep'){CLP[ect]=[...eci];scp();}else{CLS[ect]=[...eci];sc();}
-  closeM('mecl');toast('✅ Checklist '+(eclModo==='entrega'?'de entrega':eclModo==='prep'?'de Preparar bici':'de taller')+' guardado para '+(tipos[ect]?.label||ect));
+  closeM('mecl');toast('✅ Checklist '+(eclModo==='entrega'?'de Revisar bici':eclModo==='prep'?'de Preparar bici':'de reparaciones')+' guardado para '+(tipos[ect]?.label||ect));
   if(typeof renderPrepBici==='function'&&cv==='prepbici')renderPrepBici();
   if(typeof renderBL==='function')renderBL();
 }
@@ -911,7 +911,7 @@ function renderHistorial(){
       <div class="history-header" onclick="togH(this)">
         <div class="history-icon">${th}</div>
         <div class="history-info">
-          <div class="history-title">${b?esc(b.numBici):'?'} <span style="font-weight:400;color:var(--gray-400)">— ${esc(rev.fecha)}</span>${rev.tipo==='entrega'?` <span class="badge ${rev.resultado==='apta'?'badge-green':'badge-red'}">🚚 Antes de entrega · ${rev.resultado==='apta'?'Apta':'No apta'}</span>`:''}</div>
+          <div class="history-title">${b?esc(b.numBici):'?'} <span style="font-weight:400;color:var(--gray-400)">— ${esc(rev.fecha)}</span>${rev.tipo==='entrega'?` <span class="badge ${rev.resultado==='apta'?'badge-green':'badge-red'}">📦 Revisar bici · ${rev.resultado==='apta'?'Apta':'No apta'}</span>`:''}</div>
           <div class="history-meta">
             <span>👤 ${esc(rev.tecnico)}</span>
             <span>✅ ${rev.checkedCount}/${rev.totalItems} ítems</span>
@@ -1464,11 +1464,11 @@ function _ceLista(b){return (CLE[b.tipo]&&CLE[b.tipo].length)?CLE[b.tipo]:null;}
 function _ultEntrega(b){return (hist[b.id]||[]).find(r=>r.tipo==='entrega')||null;}
 function _ultEntregaHTML(b){
   const u=_ultEntrega(b);
-  if(!u)return '<span class="bike-detail-item" style="color:var(--gray-400)">🚚 Sin revisión de entrega</span>';
+  if(!u)return '<span class="bike-detail-item" style="color:var(--gray-400)">📦 Sin revisar</span>';
   const f=(u.fecha||'').split(',')[0];
   return u.resultado==='apta'
-    ?`<span class="bike-detail-item" style="color:var(--green-600);font-weight:600">🚚 Revisada para entrega ${esc(f)} ✅</span>`
-    :`<span class="bike-detail-item" style="color:#dc2626;font-weight:600">🚚 No apta ${esc(f)} ❌</span>`;
+    ?`<span class="bike-detail-item" style="color:var(--green-600);font-weight:600">📦 Revisada ${esc(f)} ✅</span>`
+    :`<span class="bike-detail-item" style="color:#dc2626;font-weight:600">📦 No apta ${esc(f)} ❌</span>`;
 }
 function openCE(id){
   window._ceCtx=window._ceCtxNext||null;window._ceCtxNext=null; // contexto solo si viene de Revisar bici
@@ -1478,7 +1478,7 @@ function openCE(id){
   ceS={};(lista||[]).forEach(i=>ceS[i]=false);
   document.getElementById('ce-titulo').textContent=`${t.icon} ${ceB.numBici} — ${ceB.modelo||t.label} · Talla ${ceB.talla||'—'}`;
   const u=_ultEntrega(ceB);
-  document.getElementById('ce-ultima').innerHTML=u?`Última revisión de entrega: <b>${esc(u.fecha)}</b> por ${esc(u.tecnico)} — ${u.resultado==='apta'?'✅ Apta':'❌ No apta'}`:'Esta bici aún no tiene revisiones de entrega.';
+  document.getElementById('ce-ultima').innerHTML=u?`Última revisión: <b>${esc(u.fecha)}</b> por ${esc(u.tecnico)} — ${u.resultado==='apta'?'✅ Apta':'❌ No apta'}`:'Esta bici aún no tiene revisiones.';
   document.getElementById('ce-aviso-aver').style.display=ceB.estado==='averiada'?'':'none';
   document.getElementById('ce-tec').value=localStorage.getItem('vr_ce_tec')||'';
   document.getElementById('ce-notas').value='';
@@ -1488,7 +1488,7 @@ function renderCE(){
   const el=document.getElementById('ce-items'),lista=_ceLista(ceB);
   const t=tipos[ceB.tipo]||{label:ceB.tipo};
   if(!lista){
-    el.innerHTML=`<div class="empty-state" style="padding:20px"><div class="empty-state-icon">☑️</div><div class="empty-state-text">El modelo <b>${esc(t.label)}</b> aún no tiene checklist de entrega.</div><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="closeM('mce');abrirChecklistEntregaModelo('${ceB.tipo}')">Crear checklist de este modelo</button></div>`;
+    el.innerHTML=`<div class="empty-state" style="padding:20px"><div class="empty-state-icon">☑️</div><div class="empty-state-text">El modelo <b>${esc(t.label)}</b> aún no tiene checklist de Revisar bici.</div><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="closeM('mce');abrirChecklistEntregaModelo('${ceB.tipo}')">Crear checklist de este modelo</button></div>`;
     document.getElementById('ce-prog').textContent='';return;
   }
   el.innerHTML=lista.map((item,i)=>`<div class="check-item${ceS[item]?' done':''}" onclick="ceTog(${i})"><div class="check-box">${ceS[item]?'✓':''}</div><span class="check-text">${esc(item)}</span></div>`).join('');
@@ -1502,7 +1502,7 @@ function saveCE(apta){
   if(!ceB)return;
   const _ctx=window._ceCtx;
   const lista=_ceLista(ceB);
-  if(!lista){toast('⚠️ Crea primero el checklist de entrega de este modelo',3500,'error');return;}
+  if(!lista){toast('⚠️ Crea primero el checklist de Revisar bici de este modelo',3500,'error');return;}
   const tec=document.getElementById('ce-tec').value.trim();
   if(!tec){toast('🔴 Falta el nombre de quien revisa',3500,'error');document.getElementById('ce-tec').focus();return;}
   const tot=lista.length,done=Object.values(ceS).filter(Boolean).length;

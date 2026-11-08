@@ -1211,7 +1211,8 @@
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px">Bicicletas de este modelo <span id="et-nb"></span></div>
-        <button class="btn btn-secondary btn-xs" onclick="abrirChecklistEntregaModelo(etc)">☑️ Checklist de entrega</button>
+        <button class="btn btn-secondary btn-xs" onclick="abrirChecklistEntregaModelo(etc)">📦 Checklist Revisar bici</button>
+        <button class="btn btn-secondary btn-xs" onclick="eclModo='prep';ect=etc;openM('mecl');_eclCargar();renderECL(true)">🧰 Checklist Preparar bici</button>
         <button class="btn btn-secondary btn-xs" onclick="nuevaBiciDeModelo()">➕ Añadir bici de este modelo</button>
       </div>
       <div id="et-bikes" style="max-height:280px;overflow-y:auto"></div>
@@ -1270,7 +1271,7 @@
 <div class="modal-overlay" id="mce">
   <div class="modal wide">
     <div class="modal-header">
-      <div class="modal-title">☑️ Checklist antes de entrega</div>
+      <div class="modal-title">📦 Revisar bici · checklist de taller</div>
       <button class="modal-close" onclick="closeM('mce')">✕</button>
     </div>
     <div class="modal-body">
