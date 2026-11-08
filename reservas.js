@@ -2692,6 +2692,7 @@ function _procesarRecogida(codigo) {
   var lugarHtml='<div style="margin-top:12px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:10px 12px">'
     +'<label style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase">📍 La bici queda en</label>'
     +'<input id="rec-lugar" class="fi" value="'+esc(lugarFin)+'" style="width:100%;margin-top:4px;font-weight:700"/>'
+    +'<input id="rec-lugar-dir" class="fi" value="" placeholder="Dirección (opcional): hotel, calle… si se queda allí" style="width:100%;margin-top:6px"/>'
     +'<div style="font-size:11.5px;color:#6b7280;margin-top:3px">'+(resLugar?'Lugar de finalización de la reserva de '+esc(resLugar.cliente)+'.':'No hay reserva: escribe dónde se recoge.')+' Si se recoge en otro sitio, cámbialo.</div></div>';
   // Checklist de lo que se envió con esta bici (lo marcado en Preparar bici) para comprobar que vuelve todo
   var devHtml='';window._recDev=null;
@@ -2798,8 +2799,8 @@ function _confirmarRecogida(bikeId, resId) {
   // Update bike status
   if(chkBici && chkBici.checked) {
     bici.estado = chkTaller && chkTaller.checked ? 'averiada' : 'disponible';
-    var _lug=document.getElementById('rec-lugar');
-    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return String(r.id)===String(resId);}):null, 'Recogida', _lug&&_lug.value.trim()); // queda donde se recoge (informativo)
+    var _lug=document.getElementById('rec-lugar'),_dir=document.getElementById('rec-lugar-dir');
+    if(typeof ubicarEnFinDeReserva==='function') ubicarEnFinDeReserva(bici, resId?reservas.find(function(r){return String(r.id)===String(resId);}):null, 'Recogida', _lug&&_lug.value.trim(), _dir&&_dir.value.trim()); // queda donde se recoge (informativo)
     if(!bici.estadosHist) bici.estadosHist=[];
     bici.estadosHist.push({estado:bici.estado,fecha:new Date().toLocaleString('es-ES'),ts:new Date().toISOString(),nota:'Recogida'});
     DB.saveBici(bici).catch(function(e){console.error('recogida saveBici',e);});
