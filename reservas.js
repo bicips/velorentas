@@ -1572,13 +1572,8 @@ function renderRes(){
                isPrep?'background:#dbeafe;border-left:4px solid #2563eb':
                isHoy?'background:rgba(20,184,166,.06);border-left:4px solid var(--te500)':
                isEntrando?'background:rgba(239,68,68,.05);border-left:4px solid var(--r500)':'border-left:4px solid transparent';
-    return '<div class="trow" style="cursor:pointer;'+rowBg+';align-items:flex-start" onclick="toggleSel('+r.id+',event)">'
-      // Checkbox
-      +'<div style="flex-shrink:0;padding-top:2px;margin-right:2px">'
-        +'<div style="width:18px;height:18px;border-radius:4px;border:2px solid '+(sel?'var(--b600)':'var(--g300)')+';background:'+(sel?'var(--b600)':'#fff')+';display:flex;align-items:center;justify-content:center;pointer-events:none">'
-          +(sel?'<span style="color:#fff;font-size:11px;font-weight:900;line-height:1">✓</span>':'')
-        +'</div>'
-      +'</div>'
+    // Pulsar en la reserva la abre (ya no hay casilla de selección)
+    return '<div class="trow" title="Pulsa para abrir la reserva" style="cursor:pointer;'+rowBg+';align-items:flex-start" onclick="abrirReservaFila('+r.id+',event)">'
       // Icon
       +'<span style="font-size:20px;flex-shrink:0;padding-top:1px">'+t.icon+'</span>'
       // Info
@@ -1605,7 +1600,6 @@ function renderRes(){
       // Actions
       +'<div class="trow-acts" onclick="event.stopPropagation()">'
         +'<span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span>'
-        +'<button class="btn bs bxs" onclick="showResDetail('+r.id+')">Ver</button>'
         +'<button class="btn bs bxs" onclick="openEditRes('+r.id+')">✏️</button>'
         +'<button class="btn bd bxs" onclick="delRes('+r.id+')">🗑️</button>'
         +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Rev.':'Revisar bici')+'</button>'
@@ -1615,6 +1609,11 @@ function renderRes(){
   }).join('');
 }
 
+// Abrir la reserva al pulsar en su fila (los botones de la derecha siguen haciendo lo suyo)
+function abrirReservaFila(id,event){
+  if(event&&event.target.closest&&event.target.closest('.trow-acts,button,a,input,select'))return;
+  showResDetail(id);
+}
 // Selection
 function toggleSel(id,event){
   // If clicking on action buttons, don't toggle
