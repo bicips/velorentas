@@ -194,6 +194,54 @@ const DB = (function () {
     onEstado(f) { _oyentes.push(f); f(_estado()); },
     estado() { return { estado: _estado(), pendientes: _pend, fallidos: _fallidos.slice() }; },
 
+    // ── TIEMPO REAL (Supabase Realtime) ────────────────────────
+    // Avisa al momento cuando otro equipo guarda algo en reservas, bicis o config.
+    // onCambio(tabla) se llama en cada aviso; onEstado('conectado'|'conectando'|'sin-activar'|'desconectado').
+    realtime(onCambio, onEstado) {
+      if (typeof WebSocket === 'undefined') return;
+      var ws = null, ref = 0, hb = null, espera = 1000, joinRef = null, cerrado = false;
+      var estado = function (e) { try { onEstado && onEstado(e); } catch (x) {} };
+      var enviar = function (topic, event, payload) {
+        if (!ws || ws.readyState !== 1) return; ref++;
+        ws.send(JSON.stringify({ topic: topic, event: event, payload: payload || {}, ref: String(ref), join_ref: topic === 'phoenix' ? null : joinRef }));
+        return String(ref);
+      };
+      var conectar = function () {
+        if (cerrado) return;
+        estado('conectando');
+        try { ws = new WebSocket(URL.replace(/^http/, 'ws') + '/realtime/v1/websocket?apikey=' + encodeURIComponent(KEY) + '&vsn=1.0.0'); }
+        catch (e) { setTimeout(conectar, espera = Math.min(espera * 2, 30000)); return; }
+        ws.onopen = function () {
+          joinRef = null;
+          joinRef = enviar('realtime:velorentas', 'phx_join', {
+            config: { broadcast: { self: false }, presence: { key: '' },
+              postgres_changes: ['reservas', 'bicis', 'config'].map(function (t) { return { event: '*', schema: 'public', table: t }; }) },
+            access_token: KEY
+          });
+          clearInterval(hb); hb = setInterval(function () { enviar('phoenix', 'heartbeat', {}); }, 25000);
+        };
+        ws.onmessage = function (ev) {
+          var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+          if (m.event === 'phx_reply' && m.ref === joinRef) {
+            var ok = m.payload && m.payload.status === 'ok';
+            var pc = ok && m.payload.response && m.payload.response.postgres_changes;
+            if (ok) { espera = 1000; estado('conectado'); } else { estado('sin-activar'); }
+            return;
+          }
+          if (m.event === 'system' && m.payload && m.payload.status === 'error') { estado('sin-activar'); return; }
+          if (m.event === 'postgres_changes') {
+            var d = m.payload && m.payload.data; var t = (d && d.table) || '';
+            try { onCambio && onCambio(t); } catch (e) { console.error('realtime', e); }
+          }
+          if (m.event === 'phx_error' || m.event === 'phx_close') { try { ws.close(); } catch (e) {} }
+        };
+        ws.onclose = function () { clearInterval(hb); if (cerrado) return; estado('desconectado'); setTimeout(conectar, espera); espera = Math.min(espera * 2, 30000); };
+        ws.onerror = function () { try { ws.close(); } catch (e) {} };
+      };
+      conectar();
+      return { cerrar: function () { cerrado = true; clearInterval(hb); try { ws && ws.close(); } catch (e) {} } };
+    },
+
     // ── TEST DE CONEXIÓN ───────────────────────────────────────
     async ping() {
       try {
