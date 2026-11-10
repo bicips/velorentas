@@ -725,7 +725,7 @@ function openNewRes(preTipo,preTalla){
   document.getElementById('mres-tit').textContent='Nueva reserva';
   currentResId=null;
   document.getElementById('r-eid').value='';
-  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega','r-dir-devolucion'].forEach(function(id){document.getElementById(id).value='';});
+  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega','r-dir-devolucion','r-notas-priv'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('r-estado').value='pendiente';document.getElementById('r-estado').setAttribute('data-prev',document.getElementById('r-estado').value);colorEstadoSel();
   document.getElementById('r-ini').value=todayS();
   document.getElementById('r-fin').value=addD(todayS(),cfg.minDays-1);
@@ -750,6 +750,7 @@ function openEditRes(id){
   document.getElementById('r-email').value=r.email||'';
   document.getElementById('r-dni').value=r.dni||'';
   document.getElementById('r-notas').value=r.notas||'';
+  document.getElementById('r-notas-priv').value=r.notasPriv||'';
   document.getElementById('r-ppd').value=r.ppd||'';
   document.getElementById('r-total').value=r.total||r.precio||'';
   document.getElementById('r-estado').value=r.estado||'pendiente';document.getElementById('r-estado').setAttribute('data-prev',document.getElementById('r-estado').value);colorEstadoSel();
@@ -1040,7 +1041,7 @@ function saveRes(forzarSinStock){
   var res={sinStock:_sinStock,id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
   var _vf=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   res.lugarIni=_vf('r-lugar-ini');res.lugarFin=_vf('r-lugar-fin')||'Santiago de Compostela';
-  res.dirEntrega=_vf('r-dir-entrega');res.dirDevolucion=_vf('r-dir-devolucion');
+  res.dirEntrega=_vf('r-dir-entrega');res.dirDevolucion=_vf('r-dir-devolucion');res.notasPriv=_vf('r-notas-priv');
   // Presupuesto: guarda desde cuándo bloquea stock (72 h). Al editar se conserva; si pasa a Presupuesto, empieza ahora.
   var _ant=eidN?reservas.find(function(r){return r.id===eidN;}):null;
   // Al editar se conservan los datos que no están en el formulario (devoluciones, ubicaciones, etc.)
@@ -1652,6 +1653,7 @@ function renderRes(){
           +(r.lugarIni?'<span>📍 '+esc(r.lugarIni)+'</span>':'')
           +(r.dirEntrega?'<span>🚚 '+mapsA(r.dirEntrega,null,dirEntregaRes(r))+'</span>':'')
           +(r.dirDevolucion?'<span>↩️ '+mapsA(r.dirDevolucion,null,dirDevolucionRes(r))+'</span>':'')
+          +(r.notasPriv?'<span title="'+esc(r.notasPriv)+'" style="color:#92400e;font-weight:700">🔒 Nota privada</span>':'')
           +'<span>🏁 '+esc(r.lugarFin||'Santiago de Compostela')+'</span>'
           +(r.total?'<span style="font-weight:700;color:var(--te600)">'+r.total+cfg.currency+'</span>':'')
           +(hasBike?'<span style="color:var(--gr600)">🚲 '+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')

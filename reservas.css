@@ -252,3 +252,12 @@ textarea.fi{resize:vertical;min-height:80px}
   .trow-acts .btn{padding:5px 8px;font-size:11px}
   .trow-info{min-width:0;flex:1}
 }
+
+/* Editar reserva más grande (solo ordenador; en el móvil manda movil.css) */
+@media (min-width:821px){
+#mres .mbox{max-height:96vh}
+#mres .mtit{font-size:20px}
+#mres .fl{font-size:12px}
+#mres .fi{font-size:15px;padding:10px 12px}
+#mres .mbdy{padding:20px 26px}
+}
