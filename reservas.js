@@ -525,6 +525,7 @@ function renderLineas(){
     html+='<div style="display:flex;align-items:center;gap:4px">';
     html+='<span style="font-size:11px;color:#6b7280">€/d</span>';
     html+='<input type="number" data-li="'+i+'" data-f="ppd" min="0" step="0.01" value="'+(l.ppd||'')+'" placeholder="0" style="width:68px;padding:6px 7px;font-size:13px;border:1px solid #e5e7eb;border-radius:8px"/>';
+    html+='<span id="lin-tot-'+i+'" style="font-size:11px;color:#6b7280;white-space:nowrap"></span>';
     html+='</div>';
     html+=availTxt;
     // Bici asignada a esta línea (guardada en l.bikeAsig)
@@ -624,10 +625,10 @@ function renderLineas(){
     inp.addEventListener('change',function(){
       var idx=parseInt(this.getAttribute('data-li'));
       var field=this.getAttribute('data-f');
-      if(field==='tipo'){lineas[idx].tipo=this.value;lineas[idx].talla='';lineas[idx].ppd=0;renderLineas();return;}
+      if(field==='tipo'){lineas[idx].tipo=this.value;lineas[idx].talla='';lineas[idx].ppd=0;delete lineas[idx].precioManual;delete lineas[idx]._congelado;delete lineas[idx].precioTotal;lineas[idx].tarifaAuto=false;renderLineas();return;}
       if(field==='talla'){
         lineas[idx].talla=this.value;
-        var p=tarifas[lineas[idx].tipo+'_'+this.value];if(p)lineas[idx].ppd=p;
+        delete lineas[idx].precioManual;delete lineas[idx]._congelado;var p=tarifas[lineas[idx].tipo+'_'+this.value];if(p&&precioModeloDias(lineas[idx].tipo,1)==null&&!(tarifas.porDias&&tarifas.porDias[lineas[idx].tipo]&&Object.keys(tarifas.porDias[lineas[idx].tipo].p||{}).length))lineas[idx].ppd=p;
         // Comprobar si hay más líneas de este tipo+talla que stock disponible
         var iniV=document.getElementById('r-ini').value,finV=document.getElementById('r-fin').value;
         var eidV=document.getElementById('r-eid').value,eidNv=eidV?parseInt(eidV):null;
@@ -655,7 +656,7 @@ function renderLineas(){
         }
         renderLineas();recalcPPD();return;
       }
-      if(field==='ppd'){lineas[idx].ppd=parseFloat(this.value)||0;recalcPPD();return;}
+      if(field==='ppd'){lineas[idx].ppd=parseFloat(this.value)||0;lineas[idx].precioManual=true;lineas[idx].tarifaAuto=false;delete lineas[idx].precioTotal;recalcPPD();return;}
     });
   });
   el.querySelectorAll('button[data-rm]').forEach(function(btn){
@@ -703,9 +704,21 @@ function renderLineas(){
 function recalcPPD(){
   var ini=document.getElementById('r-ini').value,fin=document.getElementById('r-fin').value;
   if(!ini||!fin)return;
-  var dias=diffD(ini,fin)+1;
-  var totalPPD=lineas.reduce(function(s,l){return s+(l.ppd||0)*(l.uds||1);},0);
-  if(totalPPD){document.getElementById('r-ppd').value=totalPPD.toFixed(2);if(dias>=cfg.minDays)document.getElementById('r-total').value=(totalPPD*dias).toFixed(2);}
+  var dias=diffD(ini,fin)+1,total=0;
+  lineas.forEach(function(l,i){
+    if(!l||!l.tipo)return;
+    // Precio del listado de Tarifas (P08) según los días, salvo si se puso a mano o la reserva ya estaba hecha
+    if(!l.precioManual&&!l._congelado){
+      var p=precioModeloDias(l.tipo,dias);
+      if(p!=null){l.precioTotal=p;l.ppd=Math.round(p/dias*100)/100;l.tarifaAuto=true;}
+    }
+    var lt=(l.tarifaAuto&&!l.precioManual&&l.precioTotal!=null)?l.precioTotal:(l.ppd||0)*dias;
+    total+=lt*(l.uds||1);
+    var inp=document.querySelector('#r-lineas input[data-li="'+i+'"][data-f="ppd"]')||document.querySelector('input[data-li="'+i+'"][data-f="ppd"]');
+    if(inp&&document.activeElement!==inp)inp.value=l.ppd||'';
+    var lb=document.getElementById('lin-tot-'+i);if(lb)lb.textContent=lt?'= '+(Math.round(lt*100)/100)+' '+(cfg.currency||'€')+' ('+dias+' d)'+(l.tarifaAuto&&!l.precioManual?' · tarifa':''):'';
+  });
+  if(total){document.getElementById('r-ppd').value=(total/dias).toFixed(2);if(dias>=cfg.minDays)document.getElementById('r-total').value=total.toFixed(2);}
 }
 
 function checkAllLineas(){
@@ -761,8 +774,8 @@ function openEditRes(id){
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
   document.getElementById('r-dir-devolucion').value=r.dirDevolucion||'';
   // Cargar líneas primero para poder emparejar _lineaIdx
-  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();return c;}):
-    [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
+  var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();c._congelado=true;return c;}):
+    [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[],_congelado:true}];
   // Usar lineas[i].bikeAsig directamente si ya viene de Supabase
   // Solo reconstruir desde bikesAsig para reservas antiguas sin bikeAsig en líneas
   var tieneLineasConAsig = rLineas.some(function(l){ return l.bikeAsig; });
@@ -980,7 +993,7 @@ function calcDays(){
   if(d<cfg.minDays){el.style.cssText='display:block;background:var(--r50);color:var(--r600);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML='Mínimo '+cfg.minDays+' días — seleccionados: '+d;}
   else{el.style.cssText='display:block;background:var(--gr50);color:var(--gr700);font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px';el.innerHTML=d+' días de alquiler';}
 }
-function calcPrice(){recalcPPD();}
+function calcPrice(){lineas.forEach(function(l){if(l&&l.tarifaAuto)delete l._congelado;});recalcPPD();} // al cambiar fechas se recalcula con la tarifa
 function chkAvail(){checkAllLineas();}
 
 function saveRes(forzarSinStock){
@@ -1038,7 +1051,7 @@ function saveRes(forzarSinStock){
   var bikeNum=primAsig?primAsig.num:'';
   var totalUds=validLineas.reduce(function(s,l){return s+(l.uds||1);},0);
   var _sinStock=errStock.length?{fecha:new Date().toISOString(),detalle:errStock.map(function(e){return e.label+' '+e.talla+': pide '+e.pide+', hay '+e.disp;}).join(' · ')}:null;
-  var res={sinStock:_sinStock,id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
+  var res={sinStock:_sinStock,id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.map(function(l){if(!l)return l;var c=Object.assign({},l);delete c._congelado;return c;}),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
   var _vf=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
   res.lugarIni=_vf('r-lugar-ini');res.lugarFin=_vf('r-lugar-fin')||'Santiago de Compostela';
   res.dirEntrega=_vf('r-dir-entrega');res.dirDevolucion=_vf('r-dir-devolucion');res.notasPriv=_vf('r-notas-priv');
@@ -2403,8 +2416,55 @@ function doSendSMS(){var phone=getSendPhone();if(!phone){toast('Sin telefono reg
 function copyMsgClipboard(){var msg=getSendMsg();if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){toast('Mensaje copiado');});}else{var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Mensaje copiado');}closeM('msend');}
 
 // TARIFAS
-function renderTarifas(){var html='';Object.keys(tipos).forEach(function(k){var t=tipos[k];html+='<div style="margin-bottom:20px"><div style="font-weight:700;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--g100)"><span>'+t.icon+'</span> '+esc(t.label)+'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">';t.sizes.forEach(function(talla){var key=k+'_'+talla,val=tarifas[key]||'';html+='<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--g50);border:1px solid var(--g200);border-radius:8px"><div style="flex:1;font-size:13px;font-weight:600">'+esc(talla)+'</div><input type="number" class="fi" data-key="'+key+'" min="0" step="0.01" value="'+val+'" placeholder="0.00" style="width:90px;padding:6px 8px;font-size:13px" oninput="tarifas[\''+key+'\']=parseFloat(this.value)||0"/><span style="font-size:13px;color:var(--g500)">'+cfg.currency+'/dia</span></div>';});html+='</div></div>';});var el=document.getElementById('tarifas-body');if(el)el.innerHTML=html;}
-function saveTarifas(){document.querySelectorAll('[data-key]').forEach(function(inp){tarifas[inp.dataset.key]=parseFloat(inp.value)||0;});sT();toast('Tarifas guardadas');}
+// ── TARIFAS (P08): listado de precios por modelo según nº de días ──
+// tarifas.porDias[modelo] = {p:{'1':precio total 1 día,'2':…}, extra: €/día a partir del último día del listado}
+// Todas las tallas del modelo tienen el mismo precio.
+var _tarMaxDef=15;
+function _tarModelo(k){tarifas.porDias=tarifas.porDias||{};return tarifas.porDias[k]=tarifas.porDias[k]||{p:{},extra:0,max:_tarMaxDef};}
+function precioModeloDias(tipo,dias){
+  var t=(tarifas.porDias||{})[tipo];if(!t||!t.p||!dias)return null;
+  var defs=Object.keys(t.p).map(Number).filter(function(d){return t.p[d]>0;}).sort(function(a,b){return a-b;});
+  if(!defs.length)return null;
+  if(t.p[dias]>0)return +t.p[dias];
+  var bajo=defs.filter(function(d){return d<dias;}).pop();
+  if(bajo==null)return null; // menos días que el primero del listado y sin precio para ese día
+  return Math.round((+t.p[bajo]+(dias-bajo)*(+t.extra||0))*100)/100;
+}
+function renderTarifas(){
+  var cur=cfg.currency||'€';
+  var html='<div style="font-size:13px;color:var(--g500);margin-bottom:14px">Precio <b>total</b> del alquiler de una bici según los días. Vale para todas las tallas del modelo. Si una reserva tiene más días que el listado, se suma el precio de <b>día adicional</b>.</div>';
+  Object.keys(tipos).forEach(function(k){
+    var t=tipos[k],m=_tarModelo(k),max=Math.max(m.max||_tarMaxDef,Object.keys(m.p).reduce(function(a,d){return Math.max(a,+d);},0));
+    html+='<div style="margin-bottom:22px;border:1px solid var(--g200);border-radius:12px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;background:var(--g50);border-bottom:1px solid var(--g200)">'
+      +'<span style="font-size:20px">'+(t.icon||'🚲')+'</span><div style="font-weight:800;font-size:15px;flex:1">'+esc(t.label)+' <span style="font-weight:600;font-size:12px;color:var(--g500)">· tallas '+esc((t.sizes||[]).join(', '))+'</span></div>'
+      +'<span style="font-size:12px;color:var(--g500)">Rellenar con</span><input type="number" min="0" step="0.01" id="tar-rell-'+k+'" class="fi" placeholder="€/día" style="width:80px;padding:5px 7px;font-size:13px"/>'
+      +'<button class="btn bs bxs" onclick="tarRellenar(\''+k+'\')" title="Pone en cada día: precio por día × días">× días</button>'
+      +'</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;padding:12px 14px">';
+    for(var d=1;d<=max;d++){
+      var v=m.p[d]>0?m.p[d]:'';
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:7px 9px;background:#fff;border:1px solid var(--g200);border-radius:8px">'
+        +'<div style="font-size:12.5px;font-weight:700;width:56px;white-space:nowrap">'+d+' día'+(d>1?'s':'')+'</div>'
+        +'<input type="number" class="fi" min="0" step="0.01" value="'+v+'" placeholder="—" data-tar="'+k+'" data-dia="'+d+'" oninput="tarSet(\''+k+'\','+d+',this.value)" style="width:72px;padding:5px 7px;font-size:13px"/>'
+        +'<span style="font-size:12px;color:var(--g500)">'+cur+'</span>'
+        +'<span id="tar-pd-'+k+'-'+d+'" style="font-size:10.5px;color:var(--g400);white-space:nowrap">'+(v?(v/d).toFixed(2)+'/d':'')+'</span></div>';
+    }
+    html+='</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 14px 12px">'
+      +'<button class="btn bs bxs" onclick="tarMasDias(\''+k+'\')">+ Añadir día</button>'
+      +'<span style="font-size:13px;font-weight:700;margin-left:auto">Día adicional (más de '+max+' días):</span>'
+      +'<input type="number" class="fi" min="0" step="0.01" value="'+(m.extra||'')+'" placeholder="0" oninput="_tarModelo(\''+k+'\').extra=parseFloat(this.value)||0" style="width:80px;padding:5px 7px;font-size:13px"/><span style="font-size:12px;color:var(--g500)">'+cur+'/día</span>'
+      +'</div></div>';
+  });
+  var el=document.getElementById('tarifas-body');if(el)el.innerHTML=html;
+}
+function tarSet(k,d,v){var m=_tarModelo(k),n=parseFloat(v);if(n>0)m.p[d]=n;else delete m.p[d];var s=document.getElementById('tar-pd-'+k+'-'+d);if(s)s.textContent=n>0?(n/d).toFixed(2)+'/d':'';}
+function tarMasDias(k){var m=_tarModelo(k);m.max=(m.max||_tarMaxDef)+1;renderTarifas();}
+function tarRellenar(k){
+  var e=document.getElementById('tar-rell-'+k),pd=parseFloat(e&&e.value);if(!(pd>0)){toast('Escribe el precio por día');return;}
+  var m=_tarModelo(k),max=m.max||_tarMaxDef;for(var d=1;d<=max;d++)m.p[d]=Math.round(pd*d*100)/100;
+  if(!m.extra)m.extra=pd;renderTarifas();toast('Rellenado: '+pd+' × días. Ajusta los que quieras y guarda.');
+}
+function saveTarifas(){sT();toast('💾 Tarifas guardadas');}
 function getPriceForRes(tipo,talla){return tarifas[tipo+'_'+talla]||0;}
 
 // INFORMES
