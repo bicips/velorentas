@@ -672,7 +672,7 @@ function openNewRes(preTipo,preTalla){
   document.getElementById('mres-tit').textContent='Nueva reserva';
   currentResId=null;
   document.getElementById('r-eid').value='';
-  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega'].forEach(function(id){document.getElementById(id).value='';});
+  ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega','r-dir-devolucion'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('r-estado').value='pendiente';
   document.getElementById('r-ini').value=todayS();
   document.getElementById('r-fin').value=addD(todayS(),cfg.minDays-1);
@@ -705,6 +705,7 @@ function openEditRes(id){
   document.getElementById('r-lugar-ini').value=r.lugarIni||'';
   document.getElementById('r-lugar-fin').value=r.lugarFin||'Santiago de Compostela';
   document.getElementById('r-dir-entrega').value=r.dirEntrega||'';
+  document.getElementById('r-dir-devolucion').value=r.dirDevolucion||'';
   // Cargar líneas primero para poder emparejar _lineaIdx
   var rLineas=r.lineas&&r.lineas.length?r.lineas.map(function(l){var c=Object.assign({},l);if(Array.isArray(l.pedales))c.pedales=l.pedales.slice();return c;}):
     [{tipo:r.tipo||'',talla:r.talla||'',uds:r.uds||1,ppd:r.ppd||0,extras:[]}];
@@ -984,8 +985,13 @@ function saveRes(forzarSinStock){
   var totalUds=validLineas.reduce(function(s,l){return s+(l.uds||1);},0);
   var _sinStock=errStock.length?{fecha:new Date().toISOString(),detalle:errStock.map(function(e){return e.label+' '+e.talla+': pide '+e.pide+', hay '+e.disp;}).join(' · ')}:null;
   var res={sinStock:_sinStock,id:eidN||Date.now(),cliente:nom,tel:tel,email:document.getElementById('r-email').value.trim(),dni:document.getElementById('r-dni').value.trim(),tipo:prim.tipo,talla:prim.talla,uds:totalUds,bikeId:bikeId,bikeNum:bikeNum,lineas:lineas.slice(),bikesAsig:asignadas.slice(),ini:ini,fin:fin,dias:diffD(ini,fin)+1,ppd:parseFloat(document.getElementById('r-ppd').value)||0,total:parseFloat(document.getElementById('r-total').value)||0,precio:parseFloat(document.getElementById('r-total').value)||0,estado:document.getElementById('r-estado').value||'pendiente',notas:document.getElementById('r-notas').value.trim(),ts:new Date().toISOString(),origen:'interno',extras:lineas.reduce(function(s,l){return s.concat((l.extras||[]).map(function(e){return {id:e.id,nombre:e.nombre,icono:e.icono,precio:e.precio,qty:e.qty,lineaTipo:l.tipo,lineaTalla:l.talla};}));},[])}; 
+  var _vf=function(id){var e=document.getElementById(id);return e?e.value.trim():'';};
+  res.lugarIni=_vf('r-lugar-ini');res.lugarFin=_vf('r-lugar-fin')||'Santiago de Compostela';
+  res.dirEntrega=_vf('r-dir-entrega');res.dirDevolucion=_vf('r-dir-devolucion');
   // Presupuesto: guarda desde cuándo bloquea stock (72 h). Al editar se conserva; si pasa a Presupuesto, empieza ahora.
   var _ant=eidN?reservas.find(function(r){return r.id===eidN;}):null;
+  // Al editar se conservan los datos que no están en el formulario (devoluciones, ubicaciones, etc.)
+  if(_ant){var _base=Object.assign({},_ant);Object.keys(res).forEach(function(k){_base[k]=res[k];});if(_ant.origen)_base.origen=_ant.origen;res=_base;}
   if(res.estado==='pendiente')res.presupDesde=(_ant&&_ant.estado==='pendiente'&&_presupDesde(_ant))||Date.now();
   // Si en Editar se pasa a Recogida/Finalizada, sus bicis quedan donde termina la reserva (informativo)
   if(_ant&&_ant.estado!==res.estado&&(res.estado==='recogida'||res.estado==='finalizada')&&typeof ubicarEnFinDeReserva==='function'){
@@ -1592,6 +1598,7 @@ function renderRes(){
           +'<span>'+bikesLine+'</span>'
           +(r.lugarIni?'<span>📍 '+esc(r.lugarIni)+'</span>':'')
           +(r.dirEntrega?'<span>🚚 '+esc(r.dirEntrega)+'</span>':'')
+          +(r.dirDevolucion?'<span>↩️ '+esc(r.dirDevolucion)+'</span>':'')
           +'<span>🏁 '+esc(r.lugarFin||'Santiago de Compostela')+'</span>'
           +(r.total?'<span style="font-weight:700;color:var(--te600)">'+r.total+cfg.currency+'</span>':'')
           +(hasBike?'<span style="color:var(--gr600)">🚲 '+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')
@@ -1789,7 +1796,7 @@ function showResDetail(id){
   var t=tipos[r.tipo]||{icon:'🚲',label:r.tipo,color:'#999'};
   var hasBike=r.bikesAsig&&r.bikesAsig.length>0;
   var bikesLine=r.lineas&&r.lineas.length>1?r.lineas.map(function(l){var tl=tipos[l.tipo]||{label:l.tipo};return tl.label+' talla '+esc(l.talla)+(l.uds>1?' x'+l.uds:'');}).join(', '):t.label+' '+esc(r.talla)+(r.uds>1?' x'+r.uds:'');
-  var fields=[['Entrada',fmtD(r.ini)],['Salida',fmtD(r.fin)],['Duración',r.dias+' días'],['📍 Inicio',esc(r.lugarIni||'-')],['🏁 Finalización',esc(r.lugarFin||'Santiago de Compostela')],['🚚 Dir. entrega',esc(r.dirEntrega||'-')],['Bicicleta(s)',bikesLine],['Asignada(s)',hasBike?r.bikesAsig.map(function(b){return b.num;}).join(', '):'Sin asignar'],['Total',r.total?(r.total+cfg.currency):'-'],['Origen',r.origen==='publico'?'Portal web':'Interno']];
+  var fields=[['Entrada',fmtD(r.ini)],['Salida',fmtD(r.fin)],['Duración',r.dias+' días'],['📍 Inicio',esc(r.lugarIni||'-')],['🏁 Finalización',esc(r.lugarFin||'Santiago de Compostela')],['🚚 Dir. entrega',esc(r.dirEntrega||'-')],['↩️ Dir. devolución',esc(r.dirDevolucion||'-')],['Bicicleta(s)',bikesLine],['Asignada(s)',hasBike?r.bikesAsig.map(function(b){return b.num;}).join(', '):'Sin asignar'],['Total',r.total?(r.total+cfg.currency):'-'],['Origen',r.origen==='publico'?'Portal web':'Interno']];
   document.getElementById('mdetail-body').innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px"><div style="width:50px;height:50px;background:'+t.color+'18;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">'+t.icon+'</div><div style="flex:1"><div style="font-family:var(--fontd);font-size:18px;font-weight:700">'+esc(r.cliente)+'</div><div style="font-size:13px;color:var(--g400)">'+esc(r.tel)+(r.email?' - '+esc(r.email):'')+(r.dni?' - DNI: '+esc(r.dni):'')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">'+fields.map(function(f){return '<div style="background:var(--g50);border-radius:8px;padding:9px 12px"><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">'+f[0]+'</div><div style="font-size:14px;font-weight:600;color:'+(f[1]==='Sin asignar'?'var(--am500)':'var(--g900)')+'">'+f[1]+'</div></div>';}).join('')+'</div>'+(r.notas?'<div style="background:var(--am50);border:1px solid var(--am100);border-radius:8px;padding:11px 14px;margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--am600);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Notas</div><div style="font-size:13px">'+esc(r.notas)+'</div></div>':'')+
   (r.extras&&r.extras.length?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:11px 14px"><div style="font-size:10px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎒 Extras</div>'+r.extras.map(function(e){return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px"><span>'+e.icono+'</span><span style="flex:1">'+esc(e.nombre)+(e.lineaTipo?'<span style="font-size:10px;color:var(--g400);margin-left:4px">('+esc((tipos[e.lineaTipo]||{label:e.lineaTipo}).label)+' '+esc(e.lineaTalla||'')+')</span>':'')+'</span><span style="color:var(--g500)">×'+(e.qty||1)+'</span><span style="font-weight:700;color:#0d9488">'+(( e.precio||0)*(e.qty||1)).toFixed(0)+cfg.currency+'</span></div>';}).join('')+'</div>':'');
   var _estadosBtns = '';
@@ -2691,7 +2698,7 @@ function _procesarRecogida(codigo) {
   var lugarHtml='<div style="margin-top:12px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:10px 12px">'
     +'<label style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase">📍 La bici queda en</label>'
     +'<input id="rec-lugar" class="fi" value="'+esc(lugarFin)+'" style="width:100%;margin-top:4px;font-weight:700"/>'
-    +'<input id="rec-lugar-dir" class="fi" value="" placeholder="Dirección (opcional): hotel, calle… si se queda allí" style="width:100%;margin-top:6px"/>'
+    +'<input id="rec-lugar-dir" class="fi" value="'+esc((resLugar&&resLugar.dirDevolucion)||'')+'" placeholder="Dirección (opcional): hotel, calle… si se queda allí" style="width:100%;margin-top:6px"/>'
     +'<div style="font-size:11.5px;color:#6b7280;margin-top:3px">'+(resLugar?'Lugar de finalización de la reserva de '+esc(resLugar.cliente)+'.':'No hay reserva: escribe dónde se recoge.')+' Si se recoge en otro sitio, cámbialo.</div></div>';
   // Checklist de lo que se envió con esta bici (lo marcado en Preparar bici) para comprobar que vuelve todo
   var devHtml='';window._recDev=null;
@@ -3641,6 +3648,7 @@ var PRINT_FIELDS = [
   {key:'lugarIni',  lbl:'Lugar de inicio',     def:true},
   {key:'lugarFin',  lbl:'Destino',             def:false},
   {key:'dirEntrega',lbl:'Dirección entrega',   def:false},
+  {key:'dirDevolucion',lbl:'Dirección devolución',def:false},
   {key:'modelo',    lbl:'Modelo / Talla',      def:true},
   {key:'bicisAsig', lbl:'Bicicletas asignadas',def:false},
   {key:'total',     lbl:'Total',               def:false},
@@ -3733,6 +3741,7 @@ function ejecutarImpresion(){
     if(key==='lugarIni') return esc(r.lugarIni||'—');
     if(key==='lugarFin') return esc(r.lugarFin||'Santiago de Compostela');
     if(key==='dirEntrega')return esc(r.dirEntrega||'—');
+    if(key==='dirDevolucion')return esc(r.dirDevolucion||'—');
     if(key==='modelo'){
       var t2=tipos[r.tipo]||{icon:'🚲',label:r.tipo};
       return r.lineas&&r.lineas.length>1
