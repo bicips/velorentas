@@ -395,7 +395,7 @@
 
 <!-- Nueva/Editar Reserva -->
 <div class="mover" id="mres">
-  <div class="mbox w720">
+  <div class="mbox w1100">
     <div class="mhdr"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0"><div class="mtit" id="mres-tit">Nueva reserva</div><select class="fi" id="r-estado" title="Estado de la reserva" onchange="onCambioEstadoSel()" style="width:auto;padding:6px 10px;font-weight:800;font-size:14px;border-width:2px;cursor:pointer">
             <option value="anulada">🚫 Anulada</option>
             <option value="pendiente">⏳ Presupuesto</option>
@@ -485,7 +485,10 @@
         <div class="fg"><label class="fl">Precio/día total (€)</label><input class="fi" id="r-ppd" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcPrice()"/></div>
         <div class="fg"><label class="fl">Total reserva (€)</label><input class="fi" id="r-total" type="number" min="0" step="0.01" placeholder="0.00"/></div>
       </div>
-      <div class="fg"><label class="fl">Notas</label><textarea class="fi" id="r-notas" placeholder="Observaciones, peticiones especiales..."></textarea></div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">📝 Observaciones <span style="text-transform:none;font-weight:600;color:var(--g400)">(salen en la hoja impresa)</span></label><textarea class="fi" id="r-notas" placeholder="Observaciones, peticiones especiales..." style="min-height:90px"></textarea></div>
+        <div class="fg"><label class="fl" style="color:#92400e">🔒 Observaciones privadas <span style="text-transform:none;font-weight:600">(no se imprimen ni se envían)</span></label><textarea class="fi" id="r-notas-priv" placeholder="Solo para uso interno: pagos, incidencias, trato con el cliente…" style="min-height:90px;background:#fffbeb;border-color:#fcd34d"></textarea></div>
+      </div>
 
       <!-- Asignación de bicis físicas -->
       <div style="background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:14px;margin-top:4px">
