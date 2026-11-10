@@ -31,6 +31,22 @@ function sC(){DB.saveConfig('cfg',cfg).catch(function(e){console.error('sC',e);}
 function sBikes(){DB.saveBicis(bikes).catch(function(e){console.error('sBikes',e);});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 // Direcciones → Google Maps (en el móvil abre la app de Maps)
+// Selector de estado en la cabecera de Editar reserva, coloreado según el estado
+var ESTADO_COLOR={anulada:'#dc2626',cancelada:'#dc2626',pendiente:'#d97706',confirmada:'#2563eb',proxima_entrega:'#7c3aed',en_preparacion:'#ea580c',preparada:'#0d9488',transito_furgo:'#2563eb',transito_carlos:'#2563eb',transito_seur:'#2563eb',entregada:'#16a34a',alquiler:'#16a34a',pendiente_recoger:'#d97706',recogida:'#4b5563',finalizada:'#4b5563'};
+function _lblEstado(st){var c=SCFG[st];return c?((c.icon?c.icon+' ':'')+c.lbl):st;}
+function confirmarCambioEstado(r,st){
+  if(!r||r.estado===st)return true;
+  return confirm('¿Confirmas el cambio de estado'+(r.cliente?' de la reserva de '+r.cliente:'')+'?\n\n'+_lblEstado(r.estado||'pendiente')+'  →  '+_lblEstado(st));
+}
+// Al cambiar el estado en Editar reserva se pide confirmación; si no, vuelve al anterior
+function onCambioEstadoSel(){
+  var e=document.getElementById('r-estado');if(!e)return;
+  var prev=e.getAttribute('data-prev')||'pendiente';
+  var nom=(document.getElementById('r-nom')||{}).value||'';
+  if(e.value!==prev&&!confirmarCambioEstado({estado:prev,cliente:nom.trim()},e.value)){e.value=prev;}
+  e.setAttribute('data-prev',e.value);colorEstadoSel();
+}
+function colorEstadoSel(){var e=document.getElementById('r-estado');if(!e)return;var c=ESTADO_COLOR[e.value]||'#374151';e.style.borderColor=c;e.style.color=c;e.style.background=c+'14';}
 function mapsUrl(t){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(String(t||'').trim());}
 function mapsA(t,vacio){t=String(t||'').trim();if(!t||t==='-')return vacio==null?'-':vacio;
   return '<a href="'+mapsUrl(t)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir en Google Maps" style="color:#2563eb;text-decoration:underline;text-underline-offset:2px">🗺️ '+esc(t)+'</a>';}
@@ -678,7 +694,7 @@ function openNewRes(preTipo,preTalla){
   currentResId=null;
   document.getElementById('r-eid').value='';
   ['r-nom','r-tel','r-email','r-dni','r-notas','r-ppd','r-total','r-lugar-ini','r-lugar-fin','r-dir-entrega','r-dir-devolucion'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('r-estado').value='pendiente';
+  document.getElementById('r-estado').value='pendiente';document.getElementById('r-estado').setAttribute('data-prev',document.getElementById('r-estado').value);colorEstadoSel();
   document.getElementById('r-ini').value=todayS();
   document.getElementById('r-fin').value=addD(todayS(),cfg.minDays-1);
   document.getElementById('r-lugar-fin').value='Santiago de Compostela';
@@ -704,7 +720,7 @@ function openEditRes(id){
   document.getElementById('r-notas').value=r.notas||'';
   document.getElementById('r-ppd').value=r.ppd||'';
   document.getElementById('r-total').value=r.total||r.precio||'';
-  document.getElementById('r-estado').value=r.estado||'pendiente';
+  document.getElementById('r-estado').value=r.estado||'pendiente';document.getElementById('r-estado').setAttribute('data-prev',document.getElementById('r-estado').value);colorEstadoSel();
   document.getElementById('r-ini').value=r.ini||'';
   document.getElementById('r-fin').value=r.fin||'';
   document.getElementById('r-lugar-ini').value=r.lugarIni||'';
@@ -1076,7 +1092,7 @@ function assignBike(bike){
       r.bikesAsig=asignadas.slice();
       r.lineas=lineas.slice();
       if(asignadas.length>0){r.bikeId=asignadas[0].id;r.bikeNum=asignadas[0].num;}
-      if(r.estado==='pendiente'){r.estado='confirmada';toast('🚲 '+bike.numBici+' asignada · Reserva confirmada');}
+      if(r.estado==='pendiente'&&confirmarCambioEstado(r,'confirmada')){r.estado='confirmada';var _se=document.getElementById('r-estado');if(_se){_se.value='confirmada';_se.setAttribute('data-prev','confirmada');colorEstadoSel();}toast('🚲 '+bike.numBici+' asignada · Reserva confirmada');}
       else{toast('🚲 '+bike.numBici+' asignada y guardada');}
       sR();updBadge();
       if(CV==='res')renderRes();
@@ -1665,6 +1681,7 @@ function selNone(){resSel=[];renderRes();}
 // Batch actions
 function batchStatus(st){
   if(!resSel.length)return;
+  if(!confirm('¿Confirmas cambiar '+resSel.length+' reserva'+(resSel.length>1?'s':'')+' al estado '+_lblEstado(st)+'?'))return;
   var n=0;
   var libera=ESTADOS_LIBRE_GLOBAL.indexOf(st)>=0;
   resSel.forEach(function(id){
@@ -1752,7 +1769,7 @@ function volverAPendiente(id){
   var r=reservas.find(function(x){return x.id===id;});if(!r)return;
   var era=(SCFG[r.estado]||{lbl:r.estado}).lbl;
   if(!confirm('¿Volver la reserva de '+r.cliente+' a PRESUPUESTO?\nAhora está: '+era+'.\n\nLas bicis asignadas se mantienen; si no las quieres, quítalas a mano.'))return;
-  changeStatus(id,'pendiente');
+  changeStatus(id,'pendiente',null,true);
   showResDetail(id);
 }
 function anularReserva(id){
@@ -1760,12 +1777,13 @@ function anularReserva(id){
   if(!confirm('¿ANULAR la reserva de '+r.cliente+' ('+fmtD(r.ini)+' → '+fmtD(r.fin)+')?\n\nDeja de ocupar stock y sus bicis vuelven a estar disponibles.\nPodrás reactivarla después si hace falta.'))return;
   // fuera de la lista de Preparar
   if(typeof prepararIds!=='undefined'){var i=prepararIds.findIndex(function(x){return x==id;});if(i>=0){prepararIds.splice(i,1);if(typeof savePreparar==='function')savePreparar();}}
-  changeStatus(id,'anulada');
+  changeStatus(id,'anulada',null,true);
   showResDetail(id);
 }
-function changeStatus(id,st,extra){
+function changeStatus(id,st,extra,yaConfirmado){
   var r=reservas.find(function(x){return x.id===id;});
   if(!r)return;
+  if(!yaConfirmado&&!confirmarCambioEstado(r,st))return;
   if(st==='pendiente'&&r.estado!=='pendiente')r.presupDesde=Date.now(); // vuelve a Presupuesto: 72 h desde ahora
   if(st==='confirmada'&&r.estado!=='confirmada'){
     var fsC=_faltaSiOcupara(r); // aunque sea un presupuesto caducado, comprobar como si ya ocupara stock
