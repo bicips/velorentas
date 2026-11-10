@@ -490,8 +490,8 @@
         <div class="fg"><label class="fl" style="color:#92400e">🔒 Observaciones privadas <span style="text-transform:none;font-weight:600">(no se imprimen ni se envían)</span></label><textarea class="fi" id="r-notas-priv" placeholder="Solo para uso interno: pagos, incidencias, trato con el cliente…" style="min-height:90px;background:#fffbeb;border-color:#fcd34d"></textarea></div>
       </div>
 
-      <!-- Asignación de bicis físicas -->
-      <div style="background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:14px;margin-top:4px">
+      <!-- Asignación de bicis físicas: oculto, ya se asigna desde cada bici en "Bicicletas de la reserva" (se mantiene en el HTML porque el código lo usa) -->
+      <div id="r-asig-bloque" style="display:none;background:var(--am50);border:1px solid var(--am100);border-radius:10px;padding:14px;margin-top:4px">
         <div style="font-size:12px;font-weight:700;color:var(--am700);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📷 Asignación de bicicleta(s) — por QR o manual</div>
         <div id="r-bikes-asig" style="margin-bottom:10px"></div>
         <div style="display:flex;gap:7px;flex-wrap:wrap">
