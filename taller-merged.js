@@ -1161,7 +1161,7 @@ function renderPreparar(){
     // Dirección de entrega
     if(r.dirEntrega){
       html+='<div style="padding:8px 16px 12px;border-top:1px solid #f0f0f0;font-size:12px;color:#6b7280">';
-      html+='🚚 Entrega en: <strong>'+(typeof mapsA==='function'?mapsA(r.dirEntrega):esc(r.dirEntrega))+'</strong>';
+      html+='🚚 Entrega en: <strong>'+(typeof mapsA==='function'?mapsA(r.dirEntrega,null,dirEntregaRes(r)):esc(r.dirEntrega))+'</strong>';
       html+='</div>';
     }
 
@@ -1926,7 +1926,7 @@ function renderListasSalir(){
     const listas=ls.filter((l,i)=>lineaRevisada(l)&&lineaPreparada(l,r,i)).length,todas=listas===ls.length;
     h+='<div class="card" style="margin-bottom:14px;border:2px solid '+(todas?'#22c55e':'#e5e7eb')+'">'
       +'<div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:'+(todas?'#dcfce7':'#f9fafb')+'">'
-      +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 Inicio '+fmtD(r.ini)+' · 📍 '+(typeof mapsA==='function'?mapsA(r.dirEntrega||r.lugarIni,''):esc(r.dirEntrega||r.lugarIni||''))+'</div></div>'
+      +'<div><div style="font-weight:800;font-size:15px">'+esc(r.cliente)+'</div><div style="font-size:12px;color:#6b7280">📅 Inicio '+fmtD(r.ini)+' · 📍 '+(typeof mapsA==='function'?mapsA(r.dirEntrega||r.lugarIni,'',dirEntregaRes(r)):esc(r.dirEntrega||r.lugarIni||''))+'</div></div>'
       +(todas?'<span style="background:#16a34a;color:#fff;padding:6px 12px;border-radius:8px;font-weight:900">✅ LISTA PARA SALIR</span>':'<span style="font-weight:800;color:#92400e">'+listas+'/'+ls.length+' bicis listas</span>')
       +'</div><div style="padding:8px 14px">';
     ls.forEach((l,li)=>{
