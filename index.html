@@ -431,9 +431,12 @@
         <div class="fg"><label class="fl">Email <a href="#" onclick="abrirMensaje('email');return false" style="float:right;font-weight:800;color:#2563eb;text-transform:none">✉️ Enviar email</a></label><input class="fi" id="r-email" type="email" placeholder="cliente@email.com"/></div>
         <div class="fg"><label class="fl">DNI / Pasaporte</label><input class="fi" id="r-dni" placeholder="12345678A"/></div>
       </div>
-      <div class="fr2">
-        <div class="fg"><label class="fl">Fecha inicio *</label><input class="fi" id="r-ini" type="date" onchange="calcDays();calcPrice();renderLineas()"/></div>
-        <div class="fg"><label class="fl">Fecha fin *</label><input class="fi" id="r-fin" type="date" onchange="calcDays();calcPrice();renderLineas()"/></div>
+      <div class="fg" id="r-rango">
+        <label class="fl">📅 Fechas del alquiler * <span style="text-transform:none;font-weight:600;color:var(--g400)">(toca el inicio y después el fin)</span></label>
+        <button type="button" class="fi" onclick="rangoAbrir()" style="text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%"><span id="r-rango-txt"></span><span>📅</span></button>
+        <div id="r-rango-cal" style="display:none;margin-top:6px;padding:12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;box-shadow:0 6px 20px rgba(0,0,0,.08)"></div>
+        <input id="r-ini" type="date" style="display:none" onchange="calcDays();calcPrice();renderLineas()"/>
+        <input id="r-fin" type="date" style="display:none" onchange="calcDays();calcPrice();renderLineas()"/>
       </div>
       <div id="r-dinfo" style="display:none;font-size:13px;padding:8px 12px;border-radius:8px;margin:-6px 0 12px"></div>
       <div class="fr2">
@@ -1467,6 +1470,7 @@
 <script src="taller-merged.js"></script>
 <script src="mensajes.js"></script>
 <script src="alojamientos.js"></script>
+<script src="fechas.js"></script>
 <script>
 // App instalable en el móvil (y siempre la versión más nueva del programa)
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
