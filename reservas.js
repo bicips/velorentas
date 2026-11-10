@@ -34,17 +34,40 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 // Selector de estado en la cabecera de Editar reserva, coloreado según el estado
 var ESTADO_COLOR={anulada:'#dc2626',cancelada:'#dc2626',pendiente:'#d97706',confirmada:'#2563eb',proxima_entrega:'#7c3aed',en_preparacion:'#ea580c',preparada:'#0d9488',transito_furgo:'#2563eb',transito_carlos:'#2563eb',transito_seur:'#2563eb',entregada:'#16a34a',alquiler:'#16a34a',pendiente_recoger:'#d97706',recogida:'#4b5563',finalizada:'#4b5563'};
 function _lblEstado(st){var c=SCFG[st];return c?((c.icon?c.icon+' ':'')+c.lbl):st;}
-function confirmarCambioEstado(r,st){
-  if(!r||r.estado===st)return true;
-  return confirm('¿Confirmas el cambio de estado'+(r.cliente?' de la reserva de '+r.cliente:'')+'?\n\n'+_lblEstado(r.estado||'pendiente')+'  →  '+_lblEstado(st));
+// Ventana de confirmación propia (la del navegador se puede bloquear y entonces no sale)
+function pedirConfirmacion(titulo,html,okTxt,onOk,onCancel,peligro){
+  var v=document.createElement('div');v.className='vr-confirm';
+  v.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+  v.innerHTML='<div style="background:#fff;border-radius:14px;width:420px;max-width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.35)">'
+    +'<div style="font-size:17px;font-weight:800;margin-bottom:10px;color:#111">'+titulo+'</div>'
+    +'<div style="font-size:14px;color:#374151;margin-bottom:18px;line-height:1.45">'+html+'</div>'
+    +'<div style="display:flex;gap:8px"><button type="button" data-b="no" style="flex:1;padding:11px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer">Cancelar</button>'
+    +'<button type="button" data-b="si" style="flex:1;padding:11px;background:'+(peligro?'#dc2626':'#0d9488')+';color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer">'+(okTxt||'Confirmar')+'</button></div></div>';
+  var fin=function(ok){v.remove();document.removeEventListener('keydown',tecla,true);if(ok){if(onOk)onOk();}else if(onCancel)onCancel();};
+  var tecla=function(ev){if(ev.key==='Escape'){ev.stopPropagation();fin(false);}};
+  v.querySelector('[data-b="no"]').onclick=function(){fin(false);};
+  v.querySelector('[data-b="si"]').onclick=function(){fin(true);};
+  v.addEventListener('click',function(ev){if(ev.target===v)fin(false);});
+  document.addEventListener('keydown',tecla,true);
+  document.body.appendChild(v);v.querySelector('[data-b="si"]').focus();
+}
+function _htmlCambioEstado(cliente,de,a){
+  return (cliente?'Reserva de <b>'+esc(cliente)+'</b><br><br>':'')
+    +'<span style="display:inline-block;padding:4px 10px;border-radius:8px;background:#f3f4f6;font-weight:700">'+esc(_lblEstado(de||'pendiente'))+'</span>'
+    +'  →  <span style="display:inline-block;padding:4px 10px;border-radius:8px;background:#ccfbf1;color:#0f766e;font-weight:800">'+esc(_lblEstado(a))+'</span>';
+}
+function confirmarCambioEstado(r,st,onOk,onCancel){
+  if(!r||r.estado===st){if(onOk)onOk();return;}
+  pedirConfirmacion('¿Confirmas el cambio de estado?',_htmlCambioEstado(r.cliente,r.estado,st),'Sí, cambiar estado',onOk,onCancel,st==='anulada'||st==='cancelada');
 }
 // Al cambiar el estado en Editar reserva se pide confirmación; si no, vuelve al anterior
 function onCambioEstadoSel(){
   var e=document.getElementById('r-estado');if(!e)return;
-  var prev=e.getAttribute('data-prev')||'pendiente';
-  var nom=(document.getElementById('r-nom')||{}).value||'';
-  if(e.value!==prev&&!confirmarCambioEstado({estado:prev,cliente:nom.trim()},e.value)){e.value=prev;}
-  e.setAttribute('data-prev',e.value);colorEstadoSel();
+  var prev=e.getAttribute('data-prev')||'pendiente',nuevo=e.value;
+  if(nuevo===prev){colorEstadoSel();return;}
+  var nom=((document.getElementById('r-nom')||{}).value||'').trim();
+  e.value=prev;colorEstadoSel(); // hasta que se confirme, sigue el anterior
+  confirmarCambioEstado({estado:prev,cliente:nom},nuevo,function(){e.value=nuevo;e.setAttribute('data-prev',nuevo);colorEstadoSel();});
 }
 function colorEstadoSel(){var e=document.getElementById('r-estado');if(!e)return;var c=ESTADO_COLOR[e.value]||'#374151';e.style.borderColor=c;e.style.color=c;e.style.background=c+'14';}
 function mapsUrl(t){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(String(t||'').trim());}
@@ -1092,8 +1115,8 @@ function assignBike(bike){
       r.bikesAsig=asignadas.slice();
       r.lineas=lineas.slice();
       if(asignadas.length>0){r.bikeId=asignadas[0].id;r.bikeNum=asignadas[0].num;}
-      if(r.estado==='pendiente'&&confirmarCambioEstado(r,'confirmada')){r.estado='confirmada';var _se=document.getElementById('r-estado');if(_se){_se.value='confirmada';_se.setAttribute('data-prev','confirmada');colorEstadoSel();}toast('🚲 '+bike.numBici+' asignada · Reserva confirmada');}
-      else{toast('🚲 '+bike.numBici+' asignada y guardada');}
+      toast('🚲 '+bike.numBici+' asignada y guardada');
+      if(r.estado==='pendiente'){var _rr=r;confirmarCambioEstado(_rr,'confirmada',function(){_rr.estado='confirmada';var _se=document.getElementById('r-estado');if(_se){_se.value='confirmada';_se.setAttribute('data-prev','confirmada');colorEstadoSel();}sR();updBadge();toast('✅ Reserva confirmada');});}
       sR();updBadge();
       if(CV==='res')renderRes();
       if(CV==='dash')renderDash();
@@ -1681,7 +1704,7 @@ function selNone(){resSel=[];renderRes();}
 // Batch actions
 function batchStatus(st){
   if(!resSel.length)return;
-  if(!confirm('¿Confirmas cambiar '+resSel.length+' reserva'+(resSel.length>1?'s':'')+' al estado '+_lblEstado(st)+'?'))return;
+  if(!arguments[1]){pedirConfirmacion('¿Confirmas el cambio de estado?','Cambiar <b>'+resSel.length+' reserva'+(resSel.length>1?'s':'')+'</b> al estado <b>'+esc(_lblEstado(st))+'</b>','Sí, cambiar estado',function(){batchStatus(st,true);});return;}
   var n=0;
   var libera=ESTADOS_LIBRE_GLOBAL.indexOf(st)>=0;
   resSel.forEach(function(id){
@@ -1780,14 +1803,14 @@ function anularReserva(id){
   changeStatus(id,'anulada',null,true);
   showResDetail(id);
 }
-function changeStatus(id,st,extra,yaConfirmado){
+function changeStatus(id,st,extra,yaConfirmado,stockOk){
   var r=reservas.find(function(x){return x.id===id;});
   if(!r)return;
-  if(!yaConfirmado&&!confirmarCambioEstado(r,st))return;
+  if(!yaConfirmado){if(r.estado!==st){confirmarCambioEstado(r,st,function(){changeStatus(id,st,extra,true);});return;}}
   if(st==='pendiente'&&r.estado!=='pendiente')r.presupDesde=Date.now(); // vuelve a Presupuesto: 72 h desde ahora
   if(st==='confirmada'&&r.estado!=='confirmada'){
     var fsC=_faltaSiOcupara(r); // aunque sea un presupuesto caducado, comprobar como si ya ocupara stock
-    if(fsC.length&&!confirm('🚨 Esta reserva no tiene stock suficiente:\n\n'+fsC.map(textoFaltaStock).join('\n')+'\n\n¿Confirmarla igualmente?'))return;
+    if(fsC.length&&!stockOk){pedirConfirmacion('🚨 Sin stock suficiente','Esta reserva no tiene stock suficiente:<br><br><div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px;color:#b91c1c;white-space:pre-line">'+esc(fsC.map(textoFaltaStock).join('\n'))+'</div><br>¿Confirmarla igualmente?','Confirmar igualmente',function(){changeStatus(id,st,extra,true,true);},null,true);return;}
   }
   r.estado=st;
   if(extra) Object.assign(r,extra);
