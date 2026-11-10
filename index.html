@@ -422,8 +422,12 @@
         </div>
       </div>
       <div class="fg">
-        <label class="fl">🚚 Dirección de entrega</label>
+        <label class="fl">🚚 Dirección de entrega <a href="#" onclick="abrirMapsCampo('r-dir-entrega');return false" style="float:right;font-weight:700;color:#2563eb;text-transform:none">🗺️ Ver en Maps</a></label>
         <input class="fi" id="r-dir-entrega" placeholder="Ej: Hotel Parador, Rúa do Franco 3, Santiago de Compostela"/>
+      </div>
+      <div class="fg">
+        <label class="fl">↩️ Dirección de devolución <a href="#" onclick="abrirMapsCampo('r-dir-devolucion');return false" style="float:right;font-weight:700;color:#2563eb;text-transform:none">🗺️ Ver en Maps</a></label>
+        <input class="fi" id="r-dir-devolucion" placeholder="Ej: Hotel San Miguel, Praza de San Miguel 9, Santiago de Compostela"/>
       </div>
       <datalist id="lugares-sugeridos">
         <option value="Santiago de Compostela"/>
