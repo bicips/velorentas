@@ -3,9 +3,9 @@
 // (pregunta al servidor si ha cambiado, sin usar la caché del navegador),
 // así ya no hace falta Ctrl+Shift+R. Sin internet abre la última copia guardada
 // del programa (los datos de Supabase siguen necesitando conexión por ahora).
-const CACHE = 'bicips-app-v7';
+const CACHE = 'bicips-app-v8';
 const BASE = ['./', './index.html', './reservas.css', './taller.css', './movil.css',
-  './db.js', './reservas.js', './taller-merged.js', './qr-engine.js',
+  './db.js', './reservas.js', './taller-merged.js', './mensajes.js', './qr-engine.js',
   './manifest.webmanifest', './icons/icon-192.png'];
 
 self.addEventListener('install', e => {

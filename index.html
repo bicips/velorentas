@@ -415,10 +415,10 @@
     <div class="mbdy">
       <div class="fr2">
         <div class="fg"><label class="fl">Nombre cliente *</label><input class="fi" id="r-nom" placeholder="Nombre completo"/></div>
-        <div class="fg"><label class="fl">Teléfono *</label><input class="fi" id="r-tel" type="tel" placeholder="+34 600 000 000"/></div>
+        <div class="fg"><label class="fl">Teléfono * <a href="#" onclick="abrirMensaje('whatsapp');return false" style="float:right;font-weight:800;color:#16a34a;text-transform:none">💬 WhatsApp</a></label><input class="fi" id="r-tel" type="tel" placeholder="+34 600 000 000"/></div>
       </div>
       <div class="fr2">
-        <div class="fg"><label class="fl">Email</label><input class="fi" id="r-email" type="email" placeholder="cliente@email.com"/></div>
+        <div class="fg"><label class="fl">Email <a href="#" onclick="abrirMensaje('email');return false" style="float:right;font-weight:800;color:#2563eb;text-transform:none">✉️ Enviar email</a></label><input class="fi" id="r-email" type="email" placeholder="cliente@email.com"/></div>
         <div class="fg"><label class="fl">DNI / Pasaporte</label><input class="fi" id="r-dni" placeholder="12345678A"/></div>
       </div>
       <div class="fr2">
@@ -1452,6 +1452,7 @@
 <script src="db.js"></script>
 <script src="reservas.js"></script>
 <script src="taller-merged.js"></script>
+<script src="mensajes.js"></script>
 <script>
 // App instalable en el móvil (y siempre la versión más nueva del programa)
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

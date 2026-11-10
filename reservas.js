@@ -1660,6 +1660,7 @@ function renderRes(){
       // Actions
       +'<div class="trow-acts" onclick="event.stopPropagation()">'
         +'<span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span>'
+        +'<button class="btn bxs" title="Enviar WhatsApp o email al cliente" onclick="abrirMensaje(null,'+r.id+')" style="padding:3px 7px;border:1px solid #86efac;background:#f0fdf4;color:#15803d;font-size:11px;font-weight:700">💬 Mensaje</button>'
         +'<button class="btn bd bxs" onclick="delRes('+r.id+')">🗑️</button>'
         +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Rev.':'Revisar bici')+'</button>'
         +'<button type="button" onclick="_imprimirHojaUna('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid #fcd34d;background:#fef3c7;color:#b45309;font-size:11px;font-weight:700">🖨️ Hoja</button>'
