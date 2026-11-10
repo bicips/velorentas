@@ -60,6 +60,7 @@
         <button class="ni" id="nav-taller-preparar" onclick="switchSection('taller','preparar')"><span class="ic">📦</span> Revisar bici <span id="prep-badge-sb" class="nbadge hidden">0</span></button>
         <button class="ni" id="nav-taller-prepbici" onclick="switchSection('taller','prepbici')"><span class="ic">🧰</span> Preparar bici <span id="prepbici-badge-sb" class="nbadge hidden">0</span></button>
         <button class="ni" id="nav-taller-listas" onclick="switchSection('taller','listas')"><span class="ic">🚚</span> Listas para salir <span id="listas-badge-sb" class="nbadge hidden">0</span></button>
+        <button class="ni" id="nav-taller-rutas" onclick="switchSection('taller','rutas')"><span class="ic">🗺️</span> Entregas y recogidas</button>
         <button class="ni" id="nav-recogida" onclick="abrirRecogidaQR()"><span class="ic">📷</span> Recogida bici</button>
         <button class="ni" id="nav-flota" onclick="goV('flota')"><span class="ic">🚲</span> Gestión de flota</button>
       </div>
@@ -884,6 +885,13 @@
         </div>
         <div id="listas-content" style="padding:16px 18px"></div>
       </div>
+      <!-- ENTREGAS Y RECOGIDAS VIEW (P16) -->
+      <div id="rutas-view" class="hidden">
+        <div class="section-header" style="padding:16px 18px 0">
+          <div><div class="section-title">🗺️ Entregas y recogidas</div><div class="section-desc">Programa hora y responsable, elige las reservas de la ruta y ábrela en Google Maps</div></div>
+        </div>
+        <div id="rutas-content" style="padding:16px 18px"></div>
+      </div>
 
       <div id="type-selector-view">
         <div class="section-header">
@@ -1455,6 +1463,7 @@
 <script src="db.js"></script>
 <script src="reservas.js"></script>
 <script src="taller-merged.js"></script>
+<script src="rutas.js"></script>
 <script>
 // App instalable en el móvil (y siempre la versión más nueva del programa)
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

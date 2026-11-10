@@ -53,7 +53,7 @@ function showView(v){
   });
   var prepView = document.getElementById('preparar-view');
   if(prepView) prepView.classList.add('hidden');
-  ['prepbici-view','listas-view'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('hidden');});
+  ['prepbici-view','listas-view','rutas-view'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.add('hidden');});
   var _vh0=document.getElementById('vb-historial');if(_vh0)_vh0.style.display='';
 
   // Show requested view
@@ -61,7 +61,7 @@ function showView(v){
   if(viewId){
     var viewEl=document.getElementById(viewId);
     if(viewEl) viewEl.classList.add('active');
-  } else if(v==='preparar'||v==='prepbici'||v==='listas'){
+  } else if(v==='preparar'||v==='prepbici'||v==='listas'||v==='rutas'){
     // estas vistas viven dentro de vb — need vb active too
     var vbEl = document.getElementById('vb');
     if(vbEl) vbEl.classList.add('active');
@@ -85,7 +85,7 @@ function showView(v){
   var uniNav=document.getElementById('nav-taller-'+v);
   if(uniNav) uniNav.classList.add('on');
 
-  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Revisar bici',prepbici:'Preparar bici',listas:'Listas para salir'};
+  var titles={dashboard:'Panel General',bikes:'Bicicletas',taller:'Hoja de Taller',preparar:'Revisar bici',prepbici:'Preparar bici',listas:'Listas para salir',rutas:'Entregas y recogidas'};
   var titleEl=document.getElementById('topbar-title');
   if(titleEl) titleEl.textContent=titles[v]||'';
   cv=v;
@@ -94,6 +94,7 @@ function showView(v){
   if(v==='preparar'){renderPreparar();updPrepBadge();}
   if(v==='prepbici')renderPrepBici();
   if(v==='listas')renderListasSalir();
+  if(v==='rutas'&&typeof renderRutas==='function')renderRutas();
   if(typeof updFlujoBadges==='function')updFlujoBadges();
 }
 
