@@ -1572,8 +1572,8 @@ function renderRes(){
                isPrep?'background:#dbeafe;border-left:4px solid #2563eb':
                isHoy?'background:rgba(20,184,166,.06);border-left:4px solid var(--te500)':
                isEntrando?'background:rgba(239,68,68,.05);border-left:4px solid var(--r500)':'border-left:4px solid transparent';
-    // Pulsar en la reserva la abre (ya no hay casilla de selección)
-    return '<div class="trow" title="Pulsa para abrir la reserva" style="cursor:pointer;'+rowBg+';align-items:flex-start" onclick="abrirReservaFila('+r.id+',event)">'
+    // Pulsar en la reserva abre Editar (ya no hay casilla de selección)
+    return '<div class="trow" title="Pulsa para editar la reserva" style="cursor:pointer;'+rowBg+';align-items:flex-start" onclick="abrirReservaFila('+r.id+',event)">'
       // Icon
       +'<span style="font-size:20px;flex-shrink:0;padding-top:1px">'+t.icon+'</span>'
       // Info
@@ -1600,7 +1600,7 @@ function renderRes(){
       // Actions
       +'<div class="trow-acts" onclick="event.stopPropagation()">'
         +'<span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span>'
-        +'<button class="btn bs bxs" onclick="openEditRes('+r.id+')">✏️</button>'
+        +'<button class="btn bs bxs" title="Ver la ficha (cambiar estado, anular…)" onclick="showResDetail('+r.id+')">👁️ Ver</button>'
         +'<button class="btn bd bxs" onclick="delRes('+r.id+')">🗑️</button>'
         +'<button type="button" onclick="togglePreparar('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid '+(isPrep?'#7c3aed':'#c4b5fd')+';background:'+(isPrep?'#7c3aed':'#faf5ff')+';color:'+(isPrep?'#fff':'#6d28d9')+';font-size:11px;font-weight:700">🔧 '+(isPrep?'Rev.':'Revisar bici')+'</button>'
         +'<button type="button" onclick="_imprimirHojaUna('+r.id+')" class="btn bxs" style="padding:3px 7px;border:1px solid #fcd34d;background:#fef3c7;color:#b45309;font-size:11px;font-weight:700">🖨️ Hoja</button>'
@@ -1612,7 +1612,7 @@ function renderRes(){
 // Abrir la reserva al pulsar en su fila (los botones de la derecha siguen haciendo lo suyo)
 function abrirReservaFila(id,event){
   if(event&&event.target.closest&&event.target.closest('.trow-acts,button,a,input,select'))return;
-  showResDetail(id);
+  openEditRes(id); // pulsar en la reserva abre Editar
 }
 // Selection
 function toggleSel(id,event){
