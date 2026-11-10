@@ -4371,17 +4371,29 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   if(document.body)arrancar();else document.addEventListener('DOMContentLoaded',arrancar);
 })();
 
-var _syncDesde=null,_syncTimer=null,_syncAvisados={};
+var _syncDesde=null,_syncTimer=null,_syncAvisados={},_rtEstado='',_rtDeb=null,_syncPendiente=false;
 function iniciarSincronizacion(){
   if(_syncTimer||!DB.cambiosDesde)return;
   _syncDesde=new Date(Date.now()-60000).toISOString();
-  _syncTimer=setInterval(function(){if(document.visibilityState!=='hidden')sincronizarAhora();},8000);
+  // Respaldo: cada 8 s (o cada 30 s si el tiempo real está conectado)
+  var n=0;
+  _syncTimer=setInterval(function(){n++;if(document.visibilityState==='hidden')return;if(_rtEstado==='conectado'&&n%4)return;sincronizarAhora();},8000);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')sincronizarAhora();});
+  // Tiempo real: al recibir un aviso se traen los cambios al momento
+  if(DB.realtime)DB.realtime(function(){clearTimeout(_rtDeb);_rtDeb=setTimeout(sincronizarAhora,250);},function(e){var antes=_rtEstado;_rtEstado=e;_pintarRT();if(e==='conectado'&&antes!=='conectado')sincronizarAhora();});
+}
+// Indicador pequeño: ⚡ al instante / ⏱ cada 8 s
+function _pintarRT(){
+  var el=document.getElementById('estado-rt');
+  if(!el){el=document.createElement('div');el.id='estado-rt';el.style.cssText='position:fixed;left:12px;bottom:46px;z-index:99997;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;box-shadow:0 1px 4px rgba(0,0,0,.12);font-family:inherit;cursor:default';document.body.appendChild(el);}
+  if(_rtEstado==='conectado'){el.style.background='#ecfdf5';el.style.color='#047857';el.textContent='⚡ Al instante';el.title='Los cambios de otros equipos llegan al momento';}
+  else if(_rtEstado==='sin-activar'){el.style.background='#f3f4f6';el.style.color='#6b7280';el.textContent='⏱ Cada 8 s';el.title='El tiempo real no está activado en Supabase: los cambios llegan cada 8 segundos';}
+  else{el.style.background='#f3f4f6';el.style.color='#6b7280';el.textContent='⏱ Cada 8 s';el.title='Conectando el tiempo real… mientras, los cambios llegan cada 8 segundos';}
 }
 function _reemplazar(obj,nuevo){Object.keys(obj).forEach(function(k){delete obj[k];});Object.assign(obj,nuevo);}
 var _syncEnCurso=false;
 async function sincronizarAhora(){
-  if(_syncEnCurso||!_syncDesde)return;_syncEnCurso=true;
+  if(!_syncDesde)return;if(_syncEnCurso){_syncPendiente=true;return;}_syncEnCurso=true;
   // margen de 2 min por si los relojes de los equipos no coinciden (lo repetido se descarta)
   var desde=new Date(new Date(_syncDesde).getTime()-120000).toISOString();
   var cambios=0,maxTs=_syncDesde;
@@ -4427,7 +4439,7 @@ async function sincronizarAhora(){
     _syncDesde=maxTs;
     if(cambios)_refrescarPantalla();
   }catch(e){console.warn('sincronizar',e);}
-  finally{_syncEnCurso=false;}
+  finally{_syncEnCurso=false;if(_syncPendiente){_syncPendiente=false;setTimeout(sincronizarAhora,50);}}
 }
 // Repinta la página que se está viendo (sin cerrar ventanas abiertas)
 function _refrescarPantalla(){
