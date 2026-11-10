@@ -396,7 +396,22 @@
 <!-- Nueva/Editar Reserva -->
 <div class="mover" id="mres">
   <div class="mbox w720">
-    <div class="mhdr"><div class="mtit" id="mres-tit">Nueva reserva</div><button class="mcls" onclick="closeM('mres')">✕</button></div>
+    <div class="mhdr"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0"><div class="mtit" id="mres-tit">Nueva reserva</div><select class="fi" id="r-estado" title="Estado de la reserva" onchange="onCambioEstadoSel()" style="width:auto;padding:6px 10px;font-weight:800;font-size:14px;border-width:2px;cursor:pointer">
+            <option value="anulada">🚫 Anulada</option>
+            <option value="pendiente">⏳ Presupuesto</option>
+            <option value="confirmada">✅ Confirmada</option>
+            <option value="proxima_entrega">📅 Próxima entrega</option>
+            <option value="en_preparacion">🔧 En preparación</option>
+            <option value="preparada">📦 Preparada</option>
+            <option value="transito_furgo">🚐 Tránsito (Furgo)</option>
+            <option value="transito_carlos">🚗 Tránsito (Carlos)</option>
+            <option value="transito_seur">📦 Tránsito (Seur)</option>
+            <option value="entregada">🏁 Entregada</option>
+            <option value="alquiler">🚲 Alquiler</option>
+            <option value="pendiente_recoger">🔔 Pendiente recoger</option>
+            <option value="recogida">✔️ Recogida</option>
+            <option value="cancelada">❌ Cancelada</option>
+          </select></div><button class="mcls" onclick="closeM('mres')">✕</button></div>
     <div class="mbdy">
       <div class="fr2">
         <div class="fg"><label class="fl">Nombre cliente *</label><input class="fi" id="r-nom" placeholder="Nombre completo"/></div>
@@ -466,27 +481,9 @@
         <div id="r-avail" style="display:none;padding:10px 14px;font-size:13px;border-top:1px solid var(--g100)"></div>
       </div>
 
-      <div class="fr3">
+      <div class="fr2">
         <div class="fg"><label class="fl">Precio/día total (€)</label><input class="fi" id="r-ppd" type="number" min="0" step="0.01" placeholder="0.00" oninput="calcPrice()"/></div>
         <div class="fg"><label class="fl">Total reserva (€)</label><input class="fi" id="r-total" type="number" min="0" step="0.01" placeholder="0.00"/></div>
-        <div class="fg"><label class="fl">Estado</label>
-          <select class="fi" id="r-estado">
-            <option value="anulada">🚫 Anulada</option>
-            <option value="pendiente">⏳ Presupuesto</option>
-            <option value="confirmada">✅ Confirmada</option>
-            <option value="proxima_entrega">📅 Próxima entrega</option>
-            <option value="en_preparacion">🔧 En preparación</option>
-            <option value="preparada">📦 Preparada</option>
-            <option value="transito_furgo">🚐 Tránsito (Furgo)</option>
-            <option value="transito_carlos">🚗 Tránsito (Carlos)</option>
-            <option value="transito_seur">📦 Tránsito (Seur)</option>
-            <option value="entregada">🏁 Entregada</option>
-            <option value="alquiler">🚲 Alquiler</option>
-            <option value="pendiente_recoger">🔔 Pendiente recoger</option>
-            <option value="recogida">✔️ Recogida</option>
-            <option value="cancelada">❌ Cancelada</option>
-          </select>
-        </div>
       </div>
       <div class="fg"><label class="fl">Notas</label><textarea class="fi" id="r-notas" placeholder="Observaciones, peticiones especiales..."></textarea></div>
 
