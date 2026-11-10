@@ -1693,6 +1693,8 @@ function renderRes(){
     +'</div>';
   }).join('');
 }
+// La vista tabla también se repinta cuando cambian los filtros de estado, la búsqueda o el orden
+(function(){var _orig=renderRes;renderRes=function(){var x=_orig.apply(this,arguments);try{if(typeof vistaTabla!=='undefined'&&vistaTabla&&typeof renderTablaRes==='function')renderTablaRes();}catch(e){console.error(e);}return x;};})();
 
 // Abrir la reserva al pulsar en su fila (los botones de la derecha siguen haciendo lo suyo)
 function abrirReservaFila(id,event){
