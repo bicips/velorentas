@@ -338,7 +338,7 @@ function miniRow(r,tipo){
   var dateStr=tipo==='entrada'?fmtDs(r.ini):fmtDs(r.fin);var icon=tipo==='entrada'?'📅':'🏁';
   var hasBike=r.bikesAsig&&r.bikesAsig.length>0;
   var bikesLine=r.lineas&&r.lineas.length>1?r.lineas.map(function(l){var tl=tipos[l.tipo]||{label:l.tipo};return tl.label+' '+esc(l.talla)+(l.uds>1?' x'+l.uds:'');}).join(' | '):(tipos[r.tipo]||{label:r.tipo}).label+' '+esc(r.talla)+(r.uds>1?' x'+r.uds:'');
-  return '<div class="trow" onclick="showResDetail('+r.id+')" style="cursor:pointer"><span style="font-size:18px">'+t.icon+'</span><div class="trow-info"><div class="trow-main">'+esc(r.cliente)+'</div><div class="trow-sub"><span>'+icon+' '+dateStr+'</span><span>'+bikesLine+'</span>'+(hasBike?'<span style="color:var(--gr600)">'+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';
+  return '<div class="trow" onclick="openEditRes('+r.id+')" title="Pulsa para editar la reserva" style="cursor:pointer"><span style="font-size:18px">'+t.icon+'</span><div class="trow-info"><div class="trow-main">'+esc(r.cliente)+'</div><div class="trow-sub"><span>'+icon+' '+dateStr+'</span><span>'+bikesLine+'</span>'+(hasBike?'<span style="color:var(--gr600)">'+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';
 }
 
 // FLOTA
@@ -2041,7 +2041,7 @@ function renderCal(){
       else if(activeData&&!activeData.isBlq){
         cbg=activeData.sinAsignar?'#fef3c7':activeData.col[0]; // yellow for unassigned
         var tipTxt=esc(activeData.cliente||'')+'|'+esc(activeData.estado||'')+'|'+esc((tipos[activeData.tipo]||{label:activeData.tipo}).label+' '+activeData.talla)+(activeData.sinAsignar?' (sin bici asignada)':'');
-        extraAttrs=' data-tip="'+tipTxt+'" data-rid="'+activeData.resId+'" onmouseenter="calTip(event,this)" onmouseleave="calTipHide()" onclick="showResDetail('+activeData.resId+')" style="cursor:pointer"';
+        extraAttrs=' data-tip="'+tipTxt+'" data-rid="'+activeData.resId+'" onmouseenter="calTip(event,this)" onmouseleave="calTipHide()" onclick="openEditRes('+activeData.resId+')" style="cursor:pointer"';
       }
       else{cbg=bg;}
       var borderL=isM1?'border-left:2px solid #475569;':'';
@@ -2101,7 +2101,7 @@ function openDayM(ds){
   var res=reservas.filter(function(r){return r.estado!=='cancelada'&&inRange(ds,r.ini,r.fin);});
   var blq=bloqueos.filter(function(b){return inRange(ds,b.ini,b.fin);});
   var html=blq.map(function(b){var t=tipos[b.tipo]||{label:b.tipo};return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g100)"><span style="font-size:18px">🔒</span><div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(b.motivo||'Bloqueo')+'</div><div style="font-size:12px;color:var(--g400)">'+esc(t.label)+' - '+esc(b.talla)+' - x'+b.uds+' bicis - hasta '+fmtDs(b.fin)+'</div></div><span class="badge bn-red"><span class="bdot"></span>Bloqueado</span></div>';}).join('');
-  html+=res.map(function(r){var t=tipos[r.tipo]||{icon:'🚲'};var sc=SCFG[r.estado]||{lbl:r.estado,cls:'bn-gray'};var isI=r.ini===ds,isF=r.fin===ds;return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer" onclick="closeM(\'mday\');showResDetail('+r.id+')"><span style="font-size:18px">'+t.icon+'</span><div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(r.cliente)+(isI?' <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px">ENTRADA</span>':'')+(isF?' <span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:4px">SALIDA</span>':'')+'</div><div style="font-size:12px;color:var(--g400)">'+(tipos[r.tipo]||{label:r.tipo}).label+' '+esc(r.talla)+' - '+r.dias+' días</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';}).join('');
+  html+=res.map(function(r){var t=tipos[r.tipo]||{icon:'🚲'};var sc=SCFG[r.estado]||{lbl:r.estado,cls:'bn-gray'};var isI=r.ini===ds,isF=r.fin===ds;return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--g100);cursor:pointer" onclick="closeM(\'mday\');openEditRes('+r.id+')"><span style="font-size:18px">'+t.icon+'</span><div style="flex:1"><div style="font-weight:700;font-size:13px">'+esc(r.cliente)+(isI?' <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 5px;border-radius:4px">ENTRADA</span>':'')+(isF?' <span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:4px">SALIDA</span>':'')+'</div><div style="font-size:12px;color:var(--g400)">'+(tipos[r.tipo]||{label:r.tipo}).label+' '+esc(r.talla)+' - '+r.dias+' días</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';}).join('');
   if(!html)html=emptyHTML('📅','Sin reservas ni bloqueos');
   document.getElementById('mday-body').innerHTML=html;openM('mday');
 }
@@ -2256,7 +2256,7 @@ function renderTL(){
       }
       var col=rcol(r.id);
       var pct=(s/dates.length)*100,w=((e-s+1)/dates.length)*100;
-      html+='<div class="tl-blk" style="left:'+pct+'%;width:'+w+'%;background:'+col[0]+';color:'+col[1]+'" onclick="showResDetail('+r.id+')" title="'+esc(r.cliente)+'">'+esc(r.cliente.split(' ')[0])+'</div>';
+      html+='<div class="tl-blk" style="left:'+pct+'%;width:'+w+'%;background:'+col[0]+';color:'+col[1]+'" onclick="openEditRes('+r.id+')" title="'+esc(r.cliente)+'">'+esc(r.cliente.split(' ')[0])+'</div>';
     });
 
     html+='</div></div>';
@@ -3171,7 +3171,7 @@ function renderTablaRes(){
     var isFin=row.fin===todayS();
     var rowStyle='background:'+bg+';border-bottom:1px solid #e5e7eb;transition:background .1s;'+(isRowPrep?'border-left:4px solid #2563eb;':'border-left:4px solid transparent;');
     var hoverBg='rgba(13,148,136,.07)';
-    html+='<tr data-bg="'+bg+'" data-prep="'+(isRowPrep?'1':'0')+'" style="'+rowStyle+'cursor:pointer" onclick="showResDetail('+row.resId+')" onmouseover="this.style.background=this.getAttribute(\'data-prep\')==\'1\'?\'#bfdbfe\':\'rgba(20,184,166,.08)\'" onmouseout="this.style.background=this.dataset.bg">';
+    html+='<tr data-bg="'+bg+'" data-prep="'+(isRowPrep?'1':'0')+'" style="'+rowStyle+'cursor:pointer" title="Pulsa para editar la reserva" onclick="if(!event.target.closest(\'button,a,input,select\'))openEditRes('+row.resId+')" onmouseover="this.style.background=this.getAttribute(\'data-prep\')==\'1\'?\'#bfdbfe\':\'rgba(20,184,166,.08)\'" onmouseout="this.style.background=this.dataset.bg">';
     // Cliente
     html+='<td style="padding:9px 12px;border-right:1px solid #f3f4f6;white-space:nowrap;font-weight:600;color:#111">';
     html+=esc(row.cliente);
