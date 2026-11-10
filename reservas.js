@@ -30,6 +30,11 @@ function sT(){DB.saveConfig('tarifas',tarifas).catch(function(e){console.error('
 function sC(){DB.saveConfig('cfg',cfg).catch(function(e){console.error('sC',e);});}
 function sBikes(){DB.saveBicis(bikes).catch(function(e){console.error('sBikes',e);});}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Direcciones → Google Maps (en el móvil abre la app de Maps)
+function mapsUrl(t){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(String(t||'').trim());}
+function mapsA(t,vacio){t=String(t||'').trim();if(!t||t==='-')return vacio==null?'-':vacio;
+  return '<a href="'+mapsUrl(t)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Abrir en Google Maps" style="color:#2563eb;text-decoration:underline;text-underline-offset:2px">🗺️ '+esc(t)+'</a>';}
+function abrirMapsCampo(id){var e=document.getElementById(id);var v=e&&e.value.trim();if(!v){toast('Escribe primero la dirección');return;}window.open(mapsUrl(v),'_blank','noopener');}
 function toD(s){return new Date(s+'T00:00:00');}
 function isoD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');} // fecha LOCAL (antes usaba UTC y en España daba un día menos)
 function addD(d,n){var r=toD(d);r.setDate(r.getDate()+n);return isoD(r);}
@@ -338,7 +343,7 @@ function miniRow(r,tipo){
   var dateStr=tipo==='entrada'?fmtDs(r.ini):fmtDs(r.fin);var icon=tipo==='entrada'?'📅':'🏁';
   var hasBike=r.bikesAsig&&r.bikesAsig.length>0;
   var bikesLine=r.lineas&&r.lineas.length>1?r.lineas.map(function(l){var tl=tipos[l.tipo]||{label:l.tipo};return tl.label+' '+esc(l.talla)+(l.uds>1?' x'+l.uds:'');}).join(' | '):(tipos[r.tipo]||{label:r.tipo}).label+' '+esc(r.talla)+(r.uds>1?' x'+r.uds:'');
-  return '<div class="trow" onclick="openEditRes('+r.id+')" title="Pulsa para editar la reserva" style="cursor:pointer"><span style="font-size:18px">'+t.icon+'</span><div class="trow-info"><div class="trow-main">'+esc(r.cliente)+'</div><div class="trow-sub"><span>'+icon+' '+dateStr+'</span><span>'+bikesLine+'</span>'+(hasBike?'<span style="color:var(--gr600)">'+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';
+  return '<div class="trow" onclick="openEditRes('+r.id+')" title="Pulsa para editar la reserva" style="cursor:pointer"><span style="font-size:18px">'+t.icon+'</span><div class="trow-info"><div class="trow-main">'+esc(r.cliente)+'</div><div class="trow-sub"><span>'+icon+' '+dateStr+'</span><span>'+bikesLine+'</span>'+mapsA(tipo==='entrada'?(r.dirEntrega||r.lugarIni):(r.dirDevolucion||r.lugarFin),'')+(hasBike?'<span style="color:var(--gr600)">'+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div>';
 }
 
 // FLOTA
@@ -1597,8 +1602,8 @@ function renderRes(){
           +'<span>⏱️ '+r.dias+' días</span>'
           +'<span>'+bikesLine+'</span>'
           +(r.lugarIni?'<span>📍 '+esc(r.lugarIni)+'</span>':'')
-          +(r.dirEntrega?'<span>🚚 '+esc(r.dirEntrega)+'</span>':'')
-          +(r.dirDevolucion?'<span>↩️ '+esc(r.dirDevolucion)+'</span>':'')
+          +(r.dirEntrega?'<span>🚚 '+mapsA(r.dirEntrega)+'</span>':'')
+          +(r.dirDevolucion?'<span>↩️ '+mapsA(r.dirDevolucion)+'</span>':'')
           +'<span>🏁 '+esc(r.lugarFin||'Santiago de Compostela')+'</span>'
           +(r.total?'<span style="font-weight:700;color:var(--te600)">'+r.total+cfg.currency+'</span>':'')
           +(hasBike?'<span style="color:var(--gr600)">🚲 '+r.bikesAsig.map(function(b){return esc(b.num);}).join(', ')+'</span>':'<span style="color:var(--am500)">⚠️ Sin asignar</span>')
@@ -1796,7 +1801,7 @@ function showResDetail(id){
   var t=tipos[r.tipo]||{icon:'🚲',label:r.tipo,color:'#999'};
   var hasBike=r.bikesAsig&&r.bikesAsig.length>0;
   var bikesLine=r.lineas&&r.lineas.length>1?r.lineas.map(function(l){var tl=tipos[l.tipo]||{label:l.tipo};return tl.label+' talla '+esc(l.talla)+(l.uds>1?' x'+l.uds:'');}).join(', '):t.label+' '+esc(r.talla)+(r.uds>1?' x'+r.uds:'');
-  var fields=[['Entrada',fmtD(r.ini)],['Salida',fmtD(r.fin)],['Duración',r.dias+' días'],['📍 Inicio',esc(r.lugarIni||'-')],['🏁 Finalización',esc(r.lugarFin||'Santiago de Compostela')],['🚚 Dir. entrega',esc(r.dirEntrega||'-')],['↩️ Dir. devolución',esc(r.dirDevolucion||'-')],['Bicicleta(s)',bikesLine],['Asignada(s)',hasBike?r.bikesAsig.map(function(b){return b.num;}).join(', '):'Sin asignar'],['Total',r.total?(r.total+cfg.currency):'-'],['Origen',r.origen==='publico'?'Portal web':'Interno']];
+  var fields=[['Entrada',fmtD(r.ini)],['Salida',fmtD(r.fin)],['Duración',r.dias+' días'],['📍 Inicio',mapsA(r.lugarIni)],['🏁 Finalización',mapsA(r.lugarFin||'Santiago de Compostela')],['🚚 Dir. entrega',mapsA(r.dirEntrega)],['↩️ Dir. devolución',mapsA(r.dirDevolucion)],['Bicicleta(s)',bikesLine],['Asignada(s)',hasBike?r.bikesAsig.map(function(b){return b.num;}).join(', '):'Sin asignar'],['Total',r.total?(r.total+cfg.currency):'-'],['Origen',r.origen==='publico'?'Portal web':'Interno']];
   document.getElementById('mdetail-body').innerHTML='<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px"><div style="width:50px;height:50px;background:'+t.color+'18;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0">'+t.icon+'</div><div style="flex:1"><div style="font-family:var(--fontd);font-size:18px;font-weight:700">'+esc(r.cliente)+'</div><div style="font-size:13px;color:var(--g400)">'+esc(r.tel)+(r.email?' - '+esc(r.email):'')+(r.dni?' - DNI: '+esc(r.dni):'')+'</div></div><span class="badge '+sc.cls+'"><span class="bdot"></span>'+sc.lbl+'</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">'+fields.map(function(f){return '<div style="background:var(--g50);border-radius:8px;padding:9px 12px"><div style="font-size:10px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">'+f[0]+'</div><div style="font-size:14px;font-weight:600;color:'+(f[1]==='Sin asignar'?'var(--am500)':'var(--g900)')+'">'+f[1]+'</div></div>';}).join('')+'</div>'+(r.notas?'<div style="background:var(--am50);border:1px solid var(--am100);border-radius:8px;padding:11px 14px;margin-bottom:8px"><div style="font-size:10px;font-weight:700;color:var(--am600);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Notas</div><div style="font-size:13px">'+esc(r.notas)+'</div></div>':'')+
   (r.extras&&r.extras.length?'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:11px 14px"><div style="font-size:10px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🎒 Extras</div>'+r.extras.map(function(e){return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px"><span>'+e.icono+'</span><span style="flex:1">'+esc(e.nombre)+(e.lineaTipo?'<span style="font-size:10px;color:var(--g400);margin-left:4px">('+esc((tipos[e.lineaTipo]||{label:e.lineaTipo}).label)+' '+esc(e.lineaTalla||'')+')</span>':'')+'</span><span style="color:var(--g500)">×'+(e.qty||1)+'</span><span style="font-weight:700;color:#0d9488">'+(( e.precio||0)*(e.qty||1)).toFixed(0)+cfg.currency+'</span></div>';}).join('')+'</div>':'');
   var _estadosBtns = '';
@@ -2698,7 +2703,7 @@ function _procesarRecogida(codigo) {
   var lugarHtml='<div style="margin-top:12px;background:#ede9fe;border:1px solid #c4b5fd;border-radius:8px;padding:10px 12px">'
     +'<label style="font-size:12px;font-weight:800;color:#5b21b6;text-transform:uppercase">📍 La bici queda en</label>'
     +'<input id="rec-lugar" class="fi" value="'+esc(lugarFin)+'" style="width:100%;margin-top:4px;font-weight:700"/>'
-    +'<input id="rec-lugar-dir" class="fi" value="'+esc((resLugar&&resLugar.dirDevolucion)||'')+'" placeholder="Dirección (opcional): hotel, calle… si se queda allí" style="width:100%;margin-top:6px"/>'
+    +'<div style="display:flex;gap:6px;margin-top:6px"><input id="rec-lugar-dir" class="fi" value="'+esc((resLugar&&resLugar.dirDevolucion)||'')+'" placeholder="Dirección (opcional): hotel, calle… si se queda allí" style="flex:1"/><button type="button" style="padding:6px 10px;border:1px solid #c4b5fd;background:#fff;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap" onclick="abrirMapsCampo(\'rec-lugar-dir\')" title="Abrir en Google Maps">🗺️ Maps</button></div>'
     +'<div style="font-size:11.5px;color:#6b7280;margin-top:3px">'+(resLugar?'Lugar de finalización de la reserva de '+esc(resLugar.cliente)+'.':'No hay reserva: escribe dónde se recoge.')+' Si se recoge en otro sitio, cámbialo.</div></div>';
   // Checklist de lo que se envió con esta bici (lo marcado en Preparar bici) para comprobar que vuelve todo
   var devHtml='';window._recDev=null;
@@ -3740,8 +3745,8 @@ function ejecutarImpresion(){
     if(key==='dias')     return (r.dias||0)+'d';
     if(key==='lugarIni') return esc(r.lugarIni||'—');
     if(key==='lugarFin') return esc(r.lugarFin||'Santiago de Compostela');
-    if(key==='dirEntrega')return esc(r.dirEntrega||'—');
-    if(key==='dirDevolucion')return esc(r.dirDevolucion||'—');
+    if(key==='dirEntrega')return mapsA(r.dirEntrega,'—');
+    if(key==='dirDevolucion')return mapsA(r.dirDevolucion,'—');
     if(key==='modelo'){
       var t2=tipos[r.tipo]||{icon:'🚲',label:r.tipo};
       return r.lineas&&r.lineas.length>1
