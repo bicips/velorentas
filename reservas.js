@@ -4419,6 +4419,9 @@ async function sincronizarAhora(){
         case 'clistasEntrega': if(typeof CLE!=='undefined'&&JSON.stringify(CLE)!==JSON.stringify(d)){CLE=d;cambios++;} break;
         case 'clistasPrep': if(typeof CLP!=='undefined'&&JSON.stringify(CLP)!==JSON.stringify(d)){CLP=d;cambios++;} break;
         case 'facturas': if(JSON.stringify(facturas)!==JSON.stringify(d)){facturas=d;cambios++;} break;
+        // tarifas: no se pisan mientras alguien las está editando en esta pantalla
+        case 'tarifas': if(CV!=='tarifas'&&JSON.stringify(tarifas)!==JSON.stringify(d)){tarifas=d;cambios++;} break;
+        case 'alojamientos': if(typeof alojamientos!=='undefined'&&!document.getElementById('m-aloj')&&JSON.stringify(alojamientos)!==JSON.stringify(d)){alojamientos=Array.isArray(d)?d:[];_alojCargado=true;try{_alojDatalist();alojInfoForm();}catch(e){}cambios++;} break;
       }
     });
     _syncDesde=maxTs;
