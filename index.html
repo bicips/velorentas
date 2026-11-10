@@ -51,6 +51,7 @@
         <button class="ni" id="nav-cal" onclick="goV('cal')"><span class="ic">📅</span> Calendario</button>
         <button class="ni" id="nav-timeline" onclick="goV('timeline')"><span class="ic">⏱️</span> Timeline</button>
         <button class="ni" id="nav-clientes" onclick="goV('clientes')"><span class="ic">👤</span> Clientes</button>
+        <button class="ni" id="nav-aloj" onclick="goV('aloj')"><span class="ic">🏨</span> Alojamientos</button>
       </div>
     </div>
 
@@ -372,6 +373,15 @@
         <button class="btn bp bsm" onclick="saveTarifas()">💾 Guardar tarifas</button>
       </div>
       <div class="card"><div class="cb" id="tarifas-body"></div></div>
+    </div>
+
+    <!-- ══ ALOJAMIENTOS (P16) ══ -->
+    <div class="view" id="v-aloj">
+      <div class="shdr"><div><div class="st">Alojamientos</div><div class="sd-">Sitios de entrega y recogida: si aceptan bicis y qué tal el trato</div></div>
+        <button class="btn bp bsm" onclick="abrirAloj(null)">+ Nuevo sitio</button>
+      </div>
+      <div style="position:relative;margin-bottom:12px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--g400)">🔍</span><input class="fi" id="aloj-srch" placeholder="Buscar por nombre, lugar, notas…" oninput="renderAloj()" style="padding-left:30px"/></div>
+      <div id="aloj-content"></div>
     </div>
 
     <!-- ══ CLIENTES ══ -->
@@ -1456,6 +1466,7 @@
 <script src="reservas.js"></script>
 <script src="taller-merged.js"></script>
 <script src="mensajes.js"></script>
+<script src="alojamientos.js"></script>
 <script>
 // App instalable en el móvil (y siempre la versión más nueva del programa)
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
