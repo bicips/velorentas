@@ -1058,6 +1058,7 @@ function saveRes(forzarSinStock){
   // Presupuesto: guarda desde cuándo bloquea stock (72 h). Al editar se conserva; si pasa a Presupuesto, empieza ahora.
   var _ant=eidN?reservas.find(function(r){return r.id===eidN;}):null;
   // Al editar se conservan los datos que no están en el formulario (devoluciones, ubicaciones, etc.)
+  res.creado=_ant?fechaCreacion(_ant):new Date().toISOString();
   if(_ant){var _base=Object.assign({},_ant);Object.keys(res).forEach(function(k){_base[k]=res[k];});if(_ant.origen)_base.origen=_ant.origen;res=_base;}
   if(res.estado==='pendiente')res.presupDesde=(_ant&&_ant.estado==='pendiente'&&_presupDesde(_ant))||Date.now();
   // Si en Editar se pasa a Recogida/Finalizada, sus bicis quedan donde termina la reserva (informativo)
@@ -1559,7 +1560,7 @@ function setRFSel(v){var bt=null;document.querySelectorAll('#res-status-tabs .ft
   s.innerHTML=Array.prototype.map.call(document.querySelectorAll('#res-status-tabs .ftab'),function(b){var m=(b.getAttribute('onclick')||'').match(/setRF\('([^']+)'/);return m?'<option value="'+m[1]+'">'+b.textContent.trim()+'</option>':'';}).join('');})();
 
 function setSort(field,btn){
-  if(resSort===field){resSortDir*=-1;}else{resSort=field;resSortDir=1;}
+  if(resSort===field){resSortDir*=-1;}else{resSort=field;resSortDir=field==='ts'?-1:1;} // fecha de reserva: las más nuevas primero
   // Update button styles
   document.querySelectorAll('.sort-btn').forEach(function(b){
     b.style.background='#fff';b.style.color='var(--g700)';b.style.borderColor='var(--g300)';
@@ -1573,6 +1574,14 @@ function setSort(field,btn){
   renderRes();
 }
 
+// Fecha en que se hizo la reserva. "ts" cambia cada vez que se guarda, así que se usa "creado";
+// en las antiguas, el id (es la hora de creación) o, si no, ts.
+function fechaCreacion(r){
+  if(!r)return '';
+  if(r.creado)return r.creado;
+  var n=Number(r.id);if(n>1e12&&n<4e12)return new Date(n).toISOString();
+  return r.ts||'';
+}
 function sortReservas(list){
   // Próximas entregas always sorted by start date ascending
   if(resF==='proxima_entrega') return list.slice().sort(function(a,b){return a.ini.localeCompare(b.ini);});
@@ -1580,7 +1589,7 @@ function sortReservas(list){
     var va,vb;
     if(resSort==='ini'){va=a.ini||'';vb=b.ini||'';}
     else if(resSort==='fin'){va=a.fin||'';vb=b.fin||'';}
-    else if(resSort==='ts'){va=a.ts||'';vb=b.ts||'';}
+    else if(resSort==='ts'){va=fechaCreacion(a);vb=fechaCreacion(b);}
     else if(resSort==='cli'){va=(a.cliente||'').toLowerCase();vb=(b.cliente||'').toLowerCase();}
     else if(resSort==='total'){va=a.total||0;vb=b.total||0;}
     else{va=b.id;vb=a.id;}
@@ -1661,6 +1670,7 @@ function renderRes(){
         +'</div>'
         +'<div class="trow-sub">'
           +'<span>📅 '+fmtD(r.ini)+' → '+fmtD(r.fin)+'</span>'
+          +(resSort==='ts'&&fechaCreacion(r)?'<span style="color:#6b7280">🕐 Reservada el '+new Date(fechaCreacion(r)).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</span>':'')
           +'<span>⏱️ '+r.dias+' días</span>'
           +'<span>'+bikesLine+'</span>'
           +(r.lugarIni?'<span>📍 '+esc(r.lugarIni)+'</span>':'')
